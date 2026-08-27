@@ -1,0 +1,68 @@
+# Environment / secrets
+
+.env
+.env.*
+!.env.example
+
+# Python
+
+**pycache**/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+
+node_modules/
+dist/
+build/
+.vite/
+
+# IDE
+
+.idea/
+.vscode/
+
+# Logs
+
+*.log
+logs/
+
+# Local databases / persistent development data
+
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker persistent data
+
+postgres-data/
+redis-data/
+prometheus-data/
+grafana-data/
+
+# OS
+
+.DS_Store
+Thumbs.db
+
+# Temporary files
+
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Generated files
+
+coverage/
+reports/
