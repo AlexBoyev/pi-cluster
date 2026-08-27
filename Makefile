@@ -32,7 +32,7 @@ tunnel:
 	ssh -N \
 	  -L 5432:localhost:5432 \
 	  -L 6379:localhost:6379 \
-	  pi@10.100.102.10
+	  admin@10.100.102.10
 
 # Local development — run backend and frontend natively
 .PHONY: dev-backend dev-frontend
