@@ -236,31 +236,26 @@ Commands should be explicitly defined and controlled by the backend.
 ## Network
 
 ```text
-10.100.102.0/24
-```
-
-Router:
-
-```text
-10.100.102.1
-```
-
-Cluster switch:
-
-```text
-10.100.102.200
+Subnet:  10.100.102.0/24
+Router:  10.100.102.1
+Switch:  10.100.102.200
 ```
 
 ## Nodes
 
-```text
-pi-node1 → 10.100.102.10
-pi-node2 → 10.100.102.5
-pi-node3 → 10.100.102.17
-pi-node4 → 10.100.102.12
-```
+| Node     | IP            | Role          |
+|----------|---------------|---------------|
+| pi-node1 | 10.100.102.10 | Control plane |
+| pi-node2 | 10.100.102.5  | Worker        |
+| pi-node3 | 10.100.102.17 | Worker        |
+| pi-node4 | 10.100.102.12 | Worker        |
 
-The infrastructure inventory should eventually be represented through configuration and database records rather than hardcoded into frontend code.
+**Control plane (pi-node1)** hosts the full platform stack via Docker Compose:
+FastAPI backend, PostgreSQL, Redis, Prometheus, Grafana.
+
+**Worker nodes (pi-node2/3/4)** run workloads scheduled by the orchestration layer (Phase 5).
+
+The node inventory is seeded from configuration at bootstrap and thereafter managed through the database.
 
 ---
 

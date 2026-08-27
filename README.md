@@ -41,17 +41,61 @@ See [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Development
 
-The project is currently in the architecture/foundation stage.
+Code is written locally. The platform runs on the cluster.
 
-The initial implementation will focus on:
+### Local setup
 
-1. Cluster inventory
-2. Node health
-3. SSH-based metrics collection
-4. Backend API
-5. Web dashboard
-6. Prometheus
-7. Grafana
+```bash
+# Backend
+cd backend
+python -m venv .venv
+source .venv/Scripts/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# Frontend
+cd frontend
+npm install
+```
+
+### Running locally
+
+The backend needs PostgreSQL and Redis. Tunnel the cluster's instances to localhost:
+
+```bash
+make tunnel   # keeps running — open a second terminal for the next steps
+```
+
+Copy `.env.example` to `backend/.env` and set:
+
+```
+DATABASE_URL=postgresql+asyncpg://pi_cluster:PASSWORD@localhost:5432/pi_cluster
+REDIS_URL=redis://localhost:6379/0
+```
+
+Then start the services:
+
+```bash
+make dev-backend    # uvicorn with --reload on :8000
+make dev-frontend   # vite dev server on :5173
+```
+
+API docs: http://localhost:8000/docs
+
+## Deployment
+
+The platform runs on **pi-node1 (10.100.102.10)** as the control plane via Docker Compose.
+
+### First deploy
+
+SSH into pi-node1 and ensure Docker is installed, then place a `.env` file in `~/pi-cluster/.env`.
+
+### Deploy
+
+```bash
+make deploy
+```
+
+This rsyncs the project to pi-node1, rebuilds containers, and runs any pending migrations.
 
 Orchestration, scheduling, deployments, and load balancing will be implemented later.
 
