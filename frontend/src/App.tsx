@@ -9,6 +9,8 @@ const CTRL_IP  = "10.100.102.10";
 const NAV = [
   { label: "Prometheus", href: `http://${CTRL_IP}:9090`,        icon: "◎" },
   { label: "Grafana",    href: `http://${CTRL_IP}:3000`,         icon: "▣" },
+  { label: "Jenkins",    href: `http://${CTRL_IP}:8080`,         icon: "⬡" },
+  { label: "ArgoCD",     href: `https://${CTRL_IP}:30443`,       icon: "◈" },
   { label: "API Docs",   href: `http://${CTRL_IP}:8000/docs`,    icon: "≋" },
   { label: "Metrics",    href: `http://${CTRL_IP}:8000/metrics`, icon: "⌬" },
 ];
@@ -44,7 +46,7 @@ function Clock() {
 
 // ── Ring gauge ────────────────────────────────────────────────────────────────
 
-function Ring({ pct, label, detail, size = 80 }: {
+function Ring({ pct, label, detail, size = 90 }: {
   pct: number; label: string; detail: string; size?: number;
 }) {
   const sw  = 7;

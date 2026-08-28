@@ -1,41 +1,59 @@
 # Pi-Cluster Roadmap
 
-## Phase 0 — Foundation (current)
-
+## Phase 0 — Foundation ✓
 - [x] Repository structure and documentation
 - [x] Docker Compose scaffold
 - [x] Backend scaffold (FastAPI, SQLAlchemy, Alembic)
 - [x] Frontend scaffold (React, TypeScript, Vite)
-- [ ] Migrations applied and API responding
+- [x] Migrations applied and API responding
 
-## Phase 1 — Cluster Inventory
+## Phase 1 — Cluster Inventory ✓
+- [x] Node registration API
+- [x] Node listing API
+- [x] Seed initial cluster nodes (pi-node1–4)
+- [x] Dashboard node list
 
-- [ ] Node registration API
-- [ ] Node listing API
-- [ ] Seed initial cluster nodes
-- [ ] Dashboard node list
+## Phase 2 — Node Health ✓
+- [x] SSH connectivity check (paramiko)
+- [x] CPU, memory, disk, uptime, temperature via SSH
+- [x] Node status tracking (ONLINE / OFFLINE / DEGRADED / UNKNOWN)
+- [x] Background health polling (30s interval, asyncio)
+- [x] Health API endpoint with Redis cache (90s TTL)
+- [x] Dashboard health cards with ring gauges
 
-## Phase 2 — Node Health
-
-- [ ] SSH connectivity check
-- [ ] CPU, memory, disk, uptime, temperature collection via SSH
-- [ ] Node status tracking (ONLINE / OFFLINE / DEGRADED / UNKNOWN)
-- [ ] Background health polling task
-- [ ] Health API endpoint
-- [ ] Dashboard health indicators
-
-## Phase 3 — Prometheus and Grafana
-
-- [ ] Backend exposes `/metrics` endpoint
-- [ ] Prometheus scrape configuration
-- [ ] Grafana datasource and initial dashboards
+## Phase 3 — Observability ✓
+- [x] Backend `/metrics` endpoint (prometheus-fastapi-instrumentator)
+- [x] Custom Prometheus Gauges per node (CPU, RAM, disk, temp, uptime)
+- [x] Prometheus scrape config
+- [x] Grafana auto-provisioned datasource + dashboard
+- [x] Light-blue admin UI with sidebar navigation
 
 ## Phase 4 — Authentication
+- [ ] JWT-based login / token refresh
+- [ ] Protected API routes (FastAPI dependency)
+- [ ] Frontend auth flow (login page, token storage)
+- [ ] Role-based access (admin / viewer)
 
-- [ ] JWT-based login and token refresh
-- [ ] Protected API routes
-- [ ] Frontend auth flow
+## Phase 5 — CI/CD Pipeline
+- [x] Jenkins deployed as Docker service on pi-node1 (:8080)
+- [ ] Jenkins pipeline for build → test → deploy on git push
+- [ ] Webhook from Git repo to Jenkins
+- [ ] Automated docker build and push to local registry
 
-## Phase 5 — Orchestration
+## Phase 6 — Kubernetes + GitOps
+- [ ] K3s server on pi-node1, agents on pi-node2/3/4
+- [ ] ArgoCD deployed on K3s (:30443)
+- [ ] ArgoCD Application watching k8s/apps/ in this repo
+- [ ] Sample nginx workload deployed via GitOps
+- [ ] Workload scheduling and placement policies
 
-Not started. Planned after Phase 4 is complete.
+## Phase 7 — Orchestration
+- [ ] Workload API (create / list / delete deployments)
+- [ ] Scheduler integrating with K3s
+- [ ] Capacity-aware placement
+- [ ] Node drain and cordon support
+
+## Phase 8 — Load Balancing
+- [ ] Traefik IngressController (K3s built-in) configuration
+- [ ] Service routing rules
+- [ ] TLS termination

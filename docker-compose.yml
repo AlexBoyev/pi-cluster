@@ -79,8 +79,23 @@ services:
     depends_on:
       - prometheus
 
+  jenkins:
+    image: jenkins/jenkins:lts-jdk21
+    platform: linux/arm64
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins-data:/var/jenkins_home
+    environment:
+      JAVA_OPTS: >-
+        -Djenkins.install.runSetupWizard=false
+        -Dhudson.model.DirectoryBrowserSupport.CSP=
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   redis-data:
   prometheus-data:
   grafana-data:
+  jenkins-data:
