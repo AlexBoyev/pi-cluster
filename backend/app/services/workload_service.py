@@ -7,15 +7,17 @@ from kubernetes.client.exceptions import ApiException
 from app.models.workload import WorkloadStatus
 from app.repositories.workload_repository import WorkloadRepository
 from app.schemas.workload import NodeCapacity, WorkloadCreate, WorkloadResponse
+from app.services.audit_service import AuditService
 from app.services.k8s_service import K8sService
 
 logger = logging.getLogger(__name__)
 
 
 class WorkloadService:
-    def __init__(self, repo: WorkloadRepository, k8s: K8sService) -> None:
+    def __init__(self, repo: WorkloadRepository, k8s: K8sService, audit: AuditService) -> None:
         self._repo = repo
         self._k8s = k8s
+        self._audit = audit
 
     async def list_workloads(self) -> list[WorkloadResponse]:
         workloads = await self._repo.get_all()
@@ -42,9 +44,10 @@ class WorkloadService:
             ))
         return result
 
-    async def create_workload(self, data: WorkloadCreate) -> WorkloadResponse:
+    async def create_workload(self, data: WorkloadCreate, actor: str = "system") -> WorkloadResponse:
         existing = await self._repo.get_by_name(data.name)
         if existing and existing.status != WorkloadStatus.DELETED:
+            await self._audit.log("workload.create", "workload", data.name, actor, "failure", "Workload already exists")
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Workload already exists")
 
         target_node = data.target_node
@@ -61,6 +64,7 @@ class WorkloadService:
                 target_node, data.cpu_request, data.memory_request,
             )
         except ApiException as e:
+            await self._audit.log("workload.create", "workload", data.name, actor, "failure", e.reason)
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
 
         ingress_host = None
@@ -81,6 +85,11 @@ class WorkloadService:
         workload = await self._repo.create(resolved)
         await self._repo.update_status(workload.name, WorkloadStatus.RUNNING)
 
+        detail = f"node={target_node or 'auto'} image={data.image}"
+        if ingress_host:
+            detail += f" ingress={ingress_host}"
+        await self._audit.log("workload.create", "workload", workload.name, actor, "success", detail)
+
         return WorkloadResponse(
             id=workload.id,
             name=workload.name,
@@ -95,15 +104,17 @@ class WorkloadService:
             created_at=workload.created_at,
         )
 
-    async def delete_workload(self, name: str) -> None:
+    async def delete_workload(self, name: str, actor: str = "system") -> None:
         workload = await self._repo.get_by_name(name)
         if workload is None or workload.status == WorkloadStatus.DELETED:
+            await self._audit.log("workload.delete", "workload", name, actor, "failure", "Workload not found")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workload not found")
 
         try:
             await run_in_threadpool(self._k8s.delete_deployment, name, workload.namespace)
         except ApiException as e:
             if e.status != 404:
+                await self._audit.log("workload.delete", "workload", name, actor, "failure", e.reason)
                 raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
 
         if workload.container_port:
@@ -115,6 +126,7 @@ class WorkloadService:
                         logger.warning("Cleanup failed for %s: %s", name, e.reason)
 
         await self._repo.update_status(name, WorkloadStatus.DELETED)
+        await self._audit.log("workload.delete", "workload", name, actor, "success")
 
     async def get_node_capacities(self) -> list[NodeCapacity]:
         try:
@@ -122,14 +134,18 @@ class WorkloadService:
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e}")
 
-    async def cordon_node(self, node_name: str) -> None:
+    async def cordon_node(self, node_name: str, actor: str = "system") -> None:
         try:
             await run_in_threadpool(self._k8s.cordon_node, node_name)
         except ApiException as e:
+            await self._audit.log("node.cordon", "node", node_name, actor, "failure", e.reason)
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
+        await self._audit.log("node.cordon", "node", node_name, actor, "success")
 
-    async def uncordon_node(self, node_name: str) -> None:
+    async def uncordon_node(self, node_name: str, actor: str = "system") -> None:
         try:
             await run_in_threadpool(self._k8s.uncordon_node, node_name)
         except ApiException as e:
+            await self._audit.log("node.uncordon", "node", node_name, actor, "failure", e.reason)
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
+        await self._audit.log("node.uncordon", "node", node_name, actor, "success")

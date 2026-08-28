@@ -55,6 +55,14 @@
 - [x] Node cordon / uncordon via API and dashboard UI
 - [x] Workloads page in frontend (deploy form, live table, capacity cards)
 
+## Phase 9 — Audit Logging ✓
+- [x] `audit_logs` table: action, resource_type, resource_name, actor, status, detail, timestamp
+- [x] AuditService wraps all writes with best-effort semantics (never breaks the operation)
+- [x] Audit events captured for: workload create/delete, node cordon/uncordon (success + failure)
+- [x] Actor resolved from JWT-authenticated user on every mutation
+- [x] GET /api/v1/audit with limit/offset pagination
+- [x] Audit Log page in frontend: event table, action/status badges, filter by type, load more
+
 ## Phase 8 — Load Balancing ✓
 - [x] Traefik DaemonSet deployed on K3s (HostPort 80/443, IngressClass traefik)
 - [x] Workload API creates K8s Service + Ingress on container_port

@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import "./App.css";
 import { getAllHealth } from "./api/health";
 import { useAuth } from "./context/AuthContext";
+import AuditPage from "./pages/AuditPage";
 import WorkloadsPage from "./pages/WorkloadsPage";
 import type { NodeHealth } from "./types/node";
 
-type Page = "dashboard" | "workloads";
+type Page = "dashboard" | "workloads" | "audit";
 
 const POLL_MS  = 30_000;
 const CTRL_IP  = "10.100.102.10";
@@ -240,6 +241,14 @@ export default function App() {
             <span className="sb-icon">⬡</span>
             Workloads
           </a>
+          <a
+            href="#"
+            className={`sb-link${page === "audit" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); setPage("audit"); }}
+          >
+            <span className="sb-icon">≔</span>
+            Audit Log
+          </a>
 
           <div className="sb-section">Services</div>
           {NAV.map((l) => (
@@ -261,7 +270,7 @@ export default function App() {
           </div>
           <button className="sb-logout" onClick={logout}>Sign out</button>
           <div className="sb-foot-label" style={{ marginTop: "0.8rem" }}>Version</div>
-          <div className="sb-foot-val">v0.1.0 · Phase 7</div>
+          <div className="sb-foot-val">v0.1.0 · Phase 9</div>
           <div className="sb-foot-label" style={{ marginTop: "0.4rem" }}>Cluster</div>
           <div className="sb-foot-val">4 nodes · arm64 · 10.100.102.0/24</div>
         </div>
@@ -274,7 +283,9 @@ export default function App() {
             <button className="hamburger" onClick={() => setSbOpen((o) => !o)}>
               <span /><span /><span />
             </button>
-            <h1 className="page-title">{page === "workloads" ? "Workloads" : "Dashboard"}</h1>
+            <h1 className="page-title">
+              {page === "workloads" ? "Workloads" : page === "audit" ? "Audit Log" : "Dashboard"}
+            </h1>
           </div>
           <div className="tb-right">
             {page === "dashboard" && !loading && (
@@ -290,6 +301,8 @@ export default function App() {
         <main>
           {page === "workloads" ? (
             <WorkloadsPage />
+          ) : page === "audit" ? (
+            <AuditPage />
           ) : (
             <>
               {error && <div className="err-banner">API error: {error}</div>}
