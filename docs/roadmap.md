@@ -77,6 +77,13 @@
 - [x] GET /api/v1/audit with limit/offset pagination
 - [x] Audit Log page in frontend: event table, action/status badges, filter by type, load more
 
+## Phase 13 — Pod Log Viewer ✓
+- [x] `GET /workloads/{name}/logs?tail=N` — reads last N lines from a running pod via K8s API
+- [x] Selects a Running pod first, falls back to first available pod
+- [x] Auth-protected (any authenticated user); returns workload name, pod name, log text
+- [x] LogsModal component: dark terminal viewport, auto-scrolls to bottom, Refresh button, Esc/overlay-click to close
+- [x] "Logs" button per row in workloads table; opens modal without leaving the page
+
 ## Phase 12 — Workload Scaling ✓
 - [x] `PATCH /workloads/{name}/scale` endpoint with replica range validation (1–10)
 - [x] K8s `patch_namespaced_deployment` applies replica count immediately

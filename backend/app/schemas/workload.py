@@ -37,6 +37,12 @@ class WorkloadResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class WorkloadLogs(BaseModel):
+    name: str
+    pod_name: str
+    logs: str
+
+
 class NodeCapacity(BaseModel):
     node_name: str
     cpu_allocatable_m: int

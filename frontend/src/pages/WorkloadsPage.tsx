@@ -8,6 +8,7 @@ import {
   scaleWorkload,
   uncordonNode,
 } from "../api/workloads";
+import LogsModal from "../components/LogsModal";
 import type { NodeCapacity, Workload } from "../types/workload";
 import "./WorkloadsPage.css";
 
@@ -42,6 +43,7 @@ export default function WorkloadsPage() {
   const [deleting, setDeleting]   = useState<string | null>(null);
   const [scaling, setScaling]     = useState<string | null>(null);
   const [cordoning, setCordoning] = useState<string | null>(null);
+  const [logsTarget, setLogsTarget] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -308,13 +310,21 @@ export default function WorkloadsPage() {
                   <td><StatusBadge status={w.status} /></td>
                   <td className="wl-date">{new Date(w.created_at).toLocaleDateString()}</td>
                   <td>
-                    <button
-                      className="wl-btn-del"
-                      onClick={() => handleDelete(w.name)}
-                      disabled={deleting === w.name}
-                    >
-                      {deleting === w.name ? "…" : "Delete"}
-                    </button>
+                    <div className="wl-row-actions">
+                      <button
+                        className="wl-btn-logs"
+                        onClick={() => setLogsTarget(w.name)}
+                      >
+                        Logs
+                      </button>
+                      <button
+                        className="wl-btn-del"
+                        onClick={() => handleDelete(w.name)}
+                        disabled={deleting === w.name}
+                      >
+                        {deleting === w.name ? "…" : "Delete"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -372,5 +382,9 @@ export default function WorkloadsPage() {
         </div>
       )}
     </div>
+
+    {logsTarget && (
+      <LogsModal workloadName={logsTarget} onClose={() => setLogsTarget(null)} />
+    )}
   );
 }

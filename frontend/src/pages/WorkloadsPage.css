@@ -110,6 +110,23 @@
 .wb-deleted  { background: #e2e8f0; color: var(--slate); border: 1px solid #cbd5e1; }
 .wb-cordoned { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-bd); }
 
+/* ── Row actions ────────────────────────────────────────────────────────── */
+
+.wl-row-actions { display: flex; gap: 0.4rem; align-items: center; }
+
+.wl-btn-logs {
+  padding: 0.3rem 0.75rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--rs);
+  font-size: 0.75rem; font-weight: 600;
+  color: var(--t3); cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.wl-btn-logs:hover {
+  background: rgba(29,78,216,0.08); color: var(--blue); border-color: var(--blue-ring);
+}
+
 /* ── Delete button ──────────────────────────────────────────────────────── */
 
 .wl-btn-del {

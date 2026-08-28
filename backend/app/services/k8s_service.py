@@ -155,6 +155,19 @@ class K8sService:
             body={"spec": {"replicas": replicas}},
         )
 
+    def get_pod_logs(self, name: str, namespace: str, tail_lines: int = 100) -> tuple[str, str]:
+        core = self._core()
+        pods = core.list_namespaced_pod(namespace=namespace, label_selector=f"app={name}")
+        if not pods.items:
+            raise ValueError(f"No pods found for deployment {name}")
+        pod = next(
+            (p for p in pods.items if p.status.phase == "Running"),
+            pods.items[0],
+        )
+        pod_name = pod.metadata.name
+        logs = core.read_namespaced_pod_log(name=pod_name, namespace=namespace, tail_lines=tail_lines)
+        return pod_name, logs or ""
+
     def cordon_node(self, node_name: str) -> None:
         self._core().patch_node(node_name, {"spec": {"unschedulable": True}})
 

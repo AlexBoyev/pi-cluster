@@ -6,7 +6,7 @@ from kubernetes.client.exceptions import ApiException
 
 from app.models.workload import WorkloadStatus
 from app.repositories.workload_repository import WorkloadRepository
-from app.schemas.workload import NodeCapacity, WorkloadCreate, WorkloadResponse
+from app.schemas.workload import NodeCapacity, WorkloadCreate, WorkloadLogs, WorkloadResponse
 from app.services.audit_service import AuditService
 from app.services.k8s_service import K8sService
 
@@ -156,6 +156,20 @@ class WorkloadService:
             status=workload.status,
             created_at=workload.created_at,
         )
+
+    async def get_workload_logs(self, name: str, tail_lines: int = 100) -> WorkloadLogs:
+        workload = await self._repo.get_by_name(name)
+        if workload is None or workload.status == WorkloadStatus.DELETED:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workload not found")
+        try:
+            pod_name, logs = await run_in_threadpool(
+                self._k8s.get_pod_logs, name, workload.namespace, tail_lines
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        except ApiException as e:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
+        return WorkloadLogs(name=name, pod_name=pod_name, logs=logs)
 
     async def get_node_capacities(self) -> list[NodeCapacity]:
         try:

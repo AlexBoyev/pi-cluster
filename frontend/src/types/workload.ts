@@ -24,6 +24,12 @@ export interface NodeCapacity {
   schedulable: boolean;
 }
 
+export interface WorkloadLogs {
+  name: string;
+  pod_name: string;
+  logs: string;
+}
+
 export interface WorkloadCreate {
   name: string;
   image: string;
