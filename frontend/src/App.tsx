@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import { getAllHealth } from "./api/health";
+import { useAuth } from "./context/AuthContext";
 import type { NodeHealth } from "./types/node";
 
 const POLL_MS  = 30_000;
@@ -183,6 +184,7 @@ function avgTemp(nodes: NodeHealth[]): string {
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const { username, role, logout } = useAuth();
   const [nodes,   setNodes]   = useState<NodeHealth[]>([]);
   const [error,   setError]   = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -234,8 +236,16 @@ export default function App() {
         </nav>
 
         <div className="sb-foot">
-          <div className="sb-foot-label">Version</div>
-          <div className="sb-foot-val">v0.1.0 · Phase 3</div>
+          <div className="sb-user">
+            <span className="sb-user-icon">◉</span>
+            <div>
+              <div className="sb-user-name">{username}</div>
+              <div className="sb-user-role">{role}</div>
+            </div>
+          </div>
+          <button className="sb-logout" onClick={logout}>Sign out</button>
+          <div className="sb-foot-label" style={{ marginTop: "0.8rem" }}>Version</div>
+          <div className="sb-foot-val">v0.1.0 · Phase 4</div>
           <div className="sb-foot-label" style={{ marginTop: "0.4rem" }}>Cluster</div>
           <div className="sb-foot-val">4 nodes · arm64 · 10.100.102.0/24</div>
         </div>

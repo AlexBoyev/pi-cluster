@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -7,10 +8,33 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.api.v1.router import router
 
+logger = logging.getLogger(__name__)
+
+
+async def _seed_admin() -> None:
+    from app.auth.service import hash_password
+    from app.config import settings
+    from app.database import AsyncSessionLocal
+    from app.models.user import UserRole
+    from app.repositories.user_repository import UserRepository
+
+    async with AsyncSessionLocal() as db:
+        repo = UserRepository(db)
+        if await repo.count() == 0:
+            await repo.create(
+                username="admin",
+                hashed_password=hash_password(settings.admin_default_password),
+                role=UserRole.ADMIN,
+            )
+            logger.warning(
+                "Created default admin user. Change the password via ADMIN_DEFAULT_PASSWORD env var."
+            )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.services.health_service import poll_health_forever
+    await _seed_admin()
     task = asyncio.create_task(poll_health_forever())
     yield
     task.cancel()

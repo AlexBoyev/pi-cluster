@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "CHANGE_ME"
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 7
+    admin_default_password: str = "admin123"
 
     prometheus_url: str = "http://prometheus:9090"
     grafana_url: str = "http://grafana:3000"
