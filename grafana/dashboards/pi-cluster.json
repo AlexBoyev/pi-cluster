@@ -157,7 +157,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "avg(node_thermal_zone_temp{job=\"node-exporter\",type=\"cpu-thermal\"} / 1000)",
+          "expr": "avg(node_thermal_zone_temp{job=\"node-exporter\",type=\"cpu-thermal\"})",
           "legendFormat": "",
           "refId": "A"
         }
@@ -368,7 +368,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "node_thermal_zone_temp{job=\"node-exporter\",type=\"cpu-thermal\"} / 1000",
+          "expr": "node_thermal_zone_temp{job=\"node-exporter\",type=\"cpu-thermal\"}",
           "legendFormat": "{{node_name}}",
           "refId": "A"
         }
