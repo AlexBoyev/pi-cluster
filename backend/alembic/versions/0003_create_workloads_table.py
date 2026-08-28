@@ -14,7 +14,6 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute("CREATE TYPE workloadstatus AS ENUM ('pending', 'running', 'failed', 'deleted')")
     op.create_table(
         "workloads",
         sa.Column("id", sa.Integer, primary_key=True),
@@ -25,7 +24,7 @@ def upgrade() -> None:
         sa.Column("target_node", sa.String(64), nullable=True),
         sa.Column(
             "status",
-            sa.Enum("pending", "running", "failed", "deleted", name="workloadstatus", create_type=False),
+            sa.Enum("pending", "running", "failed", "deleted", name="workloadstatus"),
             nullable=False,
         ),
         sa.Column(
@@ -39,4 +38,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("workloads")
-    op.execute("DROP TYPE workloadstatus")
+    op.execute("DROP TYPE IF EXISTS workloadstatus")
