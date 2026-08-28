@@ -8,3 +8,25 @@ export interface Node {
   created_at: string;
   updated_at: string;
 }
+
+export interface NodeMetrics {
+  cpu_load_1m: number;
+  memory_total_bytes: number;
+  memory_available_bytes: number;
+  memory_percent: number;
+  disk_total_bytes: number;
+  disk_used_bytes: number;
+  disk_percent: number;
+  uptime_seconds: number;
+  temperature_celsius: number | null;
+}
+
+export interface NodeHealth {
+  node_id: number;
+  node_name: string;
+  ip_address: string;
+  status: NodeStatus;
+  metrics: NodeMetrics | null;
+  checked_at: string;
+  error: string | null;
+}
