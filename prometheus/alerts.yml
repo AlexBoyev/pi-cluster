@@ -1,0 +1,48 @@
+groups:
+  - name: node-health
+    interval: 30s
+    rules:
+      - alert: NodeDown
+        expr: up{job="node-exporter"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Node {{ $labels.node_name }} unreachable"
+          description: "node-exporter on {{ $labels.node_name }} has been unreachable for more than 2 minutes"
+
+      - alert: HighCPU
+        expr: 100 - avg by (node_name) (rate(node_cpu_seconds_total{job="node-exporter",mode="idle"}[5m]) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU on {{ $labels.node_name }}"
+          description: "CPU usage is {{ $value | printf \"%.1f\" }}% (threshold: 85%)"
+
+      - alert: HighMemory
+        expr: 100 * (1 - node_memory_MemAvailable_bytes{job="node-exporter"} / node_memory_MemTotal_bytes{job="node-exporter"}) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory on {{ $labels.node_name }}"
+          description: "Memory usage is {{ $value | printf \"%.1f\" }}% (threshold: 85%)"
+
+      - alert: HighDisk
+        expr: 100 * (1 - node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype!="tmpfs"} / node_filesystem_size_bytes{job="node-exporter",mountpoint="/",fstype!="tmpfs"}) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High disk usage on {{ $labels.node_name }}"
+          description: "Disk usage is {{ $value | printf \"%.1f\" }}% (threshold: 80%)"
+
+      - alert: HighTemperature
+        expr: node_thermal_zone_temp{job="node-exporter",type="cpu-thermal"} > 70
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High temperature on {{ $labels.node_name }}"
+          description: "CPU temperature is {{ $value | printf \"%.1f\" }}°C (threshold: 70°C)"

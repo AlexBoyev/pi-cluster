@@ -55,6 +55,13 @@
 - [x] Node cordon / uncordon via API and dashboard UI
 - [x] Workloads page in frontend (deploy form, live table, capacity cards)
 
+## Phase 11 — Alerting ✓
+- [x] Prometheus alerting rules: NodeDown (critical), HighCPU/Memory/Disk/Temperature (warning)
+- [x] AlertManager service (Docker Compose, port 9093) with grouping and repeat intervals
+- [x] Backend `/api/v1/alerts` endpoint proxies Prometheus alert state, sorted by severity
+- [x] AlertsPanel on dashboard: all-clear state, firing/pending badges, severity color, duration
+- [x] Panel border changes to amber/red when alerts are active
+
 ## Phase 10 — Node Exporter ✓
 - [x] prometheus/node-exporter DaemonSet on all 4 K3s nodes via ArgoCD (k8s/apps/node-exporter.yaml)
 - [x] Prometheus scrape job for node-exporter with per-node node_name labels

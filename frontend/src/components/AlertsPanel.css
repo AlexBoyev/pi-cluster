@@ -1,0 +1,125 @@
+.ap-panel {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  transition: border-color 0.3s;
+}
+
+.ap-panel.ap-warning { border-color: var(--amber); }
+.ap-panel.ap-critical { border-color: var(--red); }
+
+.ap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+}
+
+.ap-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.ap-icon { font-size: 1rem; }
+.ap-critical .ap-icon { color: var(--red); }
+.ap-warning .ap-icon  { color: var(--amber); }
+.ap-panel:not(.ap-critical):not(.ap-warning) .ap-icon { color: var(--green); }
+
+.ap-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.ap-clear {
+  padding: 0.85rem 1rem;
+  font-size: 0.85rem;
+  color: var(--green);
+}
+
+/* ── Alert list ─────────────────────────────────────────────── */
+.ap-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ap-item {
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--border);
+  border-left: 3px solid transparent;
+}
+.ap-item:last-child { border-bottom: none; }
+.ap-item-critical { border-left-color: var(--red);   background: rgba(239,68,68,0.04); }
+.ap-item-warning  { border-left-color: var(--amber); background: rgba(245,158,11,0.04); }
+.ap-item-info     { border-left-color: var(--blue);  background: rgba(59,130,246,0.04); }
+
+.ap-item-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* severity badge */
+.al-sev {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.al-sev-critical { background: rgba(239,68,68,0.2);  color: var(--red); }
+.al-sev-warning  { background: rgba(245,158,11,0.2); color: var(--amber); }
+.al-sev-info     { background: rgba(59,130,246,0.2); color: var(--blue); }
+
+/* state badge */
+.al-state {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 9999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  border: 1px solid currentColor;
+}
+.al-state-firing  { color: var(--red); }
+.al-state-pending { color: var(--amber); }
+
+.ap-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.ap-node {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.05);
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.25rem;
+}
+
+.ap-dur {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.ap-summary {
+  font-size: 0.82rem;
+  margin-top: 0.3rem;
+  color: var(--text);
+}
+
+.ap-desc {
+  font-size: 0.78rem;
+  margin-top: 0.15rem;
+  color: var(--text-muted);
+}

@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     admin_default_password: str = "admin123"
 
     prometheus_url: str = "http://prometheus:9090"
+    alertmanager_url: str = "http://alertmanager:9093"
     grafana_url: str = "http://grafana:3000"
     grafana_admin_user: str = "admin"
     grafana_admin_password: str = "CHANGE_ME"
