@@ -148,6 +148,13 @@ class K8sService:
             return None
         return max(eligible, key=lambda c: c.cpu_allocatable_m - c.cpu_requested_m).node_name
 
+    def scale_deployment(self, name: str, namespace: str, replicas: int) -> None:
+        self._apps().patch_namespaced_deployment(
+            name=name,
+            namespace=namespace,
+            body={"spec": {"replicas": replicas}},
+        )
+
     def cordon_node(self, node_name: str) -> None:
         self._core().patch_node(node_name, {"spec": {"unschedulable": True}})
 

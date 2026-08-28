@@ -5,6 +5,7 @@ import {
   deleteWorkload,
   getCapacity,
   listWorkloads,
+  scaleWorkload,
   uncordonNode,
 } from "../api/workloads";
 import type { NodeCapacity, Workload } from "../types/workload";
@@ -38,7 +39,8 @@ export default function WorkloadsPage() {
   const [capLoading, setCapLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleting, setDeleting]   = useState<string | null>(null);
+  const [scaling, setScaling]     = useState<string | null>(null);
   const [cordoning, setCordoning] = useState<string | null>(null);
 
   const [form, setForm] = useState({
@@ -100,6 +102,18 @@ export default function WorkloadsPage() {
       setError(e instanceof Error ? e.message : "Failed to delete workload");
     } finally {
       setDeleting(null);
+    }
+  }
+
+  async function handleScale(name: string, replicas: number) {
+    setScaling(name);
+    try {
+      await scaleWorkload(name, replicas);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to scale workload");
+    } finally {
+      setScaling(null);
     }
   }
 
@@ -270,7 +284,21 @@ export default function WorkloadsPage() {
                   <td className="wl-name">{w.name}</td>
                   <td className="wl-mono">{w.image}</td>
                   <td className="wl-mono">{w.namespace}</td>
-                  <td>{w.ready_replicas}/{w.replicas}</td>
+                  <td>
+                    <div className="wl-scale">
+                      <button
+                        className="wl-scale-btn"
+                        onClick={() => handleScale(w.name, w.replicas - 1)}
+                        disabled={scaling === w.name || w.replicas <= 1}
+                      >−</button>
+                      <span className="wl-scale-val">{w.ready_replicas}/{w.replicas}</span>
+                      <button
+                        className="wl-scale-btn"
+                        onClick={() => handleScale(w.name, w.replicas + 1)}
+                        disabled={scaling === w.name || w.replicas >= 10}
+                      >+</button>
+                    </div>
+                  </td>
                   <td className="wl-mono">{w.target_node ?? "—"}</td>
                   <td className="wl-mono">
                     {w.ingress_host

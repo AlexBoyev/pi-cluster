@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.user import User
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.workload_repository import WorkloadRepository
-from app.schemas.workload import NodeCapacity, WorkloadCreate, WorkloadResponse
+from app.schemas.workload import NodeCapacity, WorkloadCreate, WorkloadResponse, WorkloadScale
 from app.services.audit_service import AuditService
 from app.services.k8s_service import K8sService
 from app.services.workload_service import WorkloadService
@@ -39,6 +39,16 @@ async def create_workload(
     admin: User = Depends(require_admin),
 ) -> WorkloadResponse:
     return await service.create_workload(data, actor=admin.username)
+
+
+@router.patch("/{name}/scale", response_model=WorkloadResponse)
+async def scale_workload(
+    name: str,
+    data: WorkloadScale,
+    service: WorkloadService = Depends(get_service),
+    admin: User = Depends(require_admin),
+) -> WorkloadResponse:
+    return await service.scale_workload(name, data.replicas, actor=admin.username)
 
 
 @router.delete("/{name}", response_model=dict)

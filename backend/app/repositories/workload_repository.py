@@ -41,6 +41,15 @@ class WorkloadRepository:
         await self._db.refresh(workload)
         return workload
 
+    async def update_replicas(self, name: str, replicas: int) -> Workload | None:
+        workload = await self.get_by_name(name)
+        if workload is None:
+            return None
+        workload.replicas = replicas
+        await self._db.commit()
+        await self._db.refresh(workload)
+        return workload
+
     async def delete(self, name: str) -> bool:
         workload = await self.get_by_name(name)
         if workload is None:

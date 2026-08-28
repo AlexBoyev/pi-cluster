@@ -128,6 +128,35 @@ class WorkloadService:
         await self._repo.update_status(name, WorkloadStatus.DELETED)
         await self._audit.log("workload.delete", "workload", name, actor, "success")
 
+    async def scale_workload(self, name: str, replicas: int, actor: str = "system") -> WorkloadResponse:
+        workload = await self._repo.get_by_name(name)
+        if workload is None or workload.status == WorkloadStatus.DELETED:
+            await self._audit.log("workload.scale", "workload", name, actor, "failure", "Workload not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workload not found")
+
+        try:
+            await run_in_threadpool(self._k8s.scale_deployment, name, workload.namespace, replicas)
+        except ApiException as e:
+            await self._audit.log("workload.scale", "workload", name, actor, "failure", e.reason)
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
+
+        workload = await self._repo.update_replicas(name, replicas)
+        await self._audit.log("workload.scale", "workload", name, actor, "success", f"replicas={replicas}")
+
+        return WorkloadResponse(
+            id=workload.id,
+            name=workload.name,
+            namespace=workload.namespace,
+            image=workload.image,
+            replicas=workload.replicas,
+            ready_replicas=0,
+            target_node=workload.target_node,
+            container_port=workload.container_port,
+            ingress_host=workload.ingress_host,
+            status=workload.status,
+            created_at=workload.created_at,
+        )
+
     async def get_node_capacities(self) -> list[NodeCapacity]:
         try:
             return await run_in_threadpool(self._k8s.get_node_capacities)

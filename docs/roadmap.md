@@ -77,6 +77,13 @@
 - [x] GET /api/v1/audit with limit/offset pagination
 - [x] Audit Log page in frontend: event table, action/status badges, filter by type, load more
 
+## Phase 12 — Workload Scaling ✓
+- [x] `PATCH /workloads/{name}/scale` endpoint with replica range validation (1–10)
+- [x] K8s `patch_namespaced_deployment` applies replica count immediately
+- [x] DB `update_replicas` keeps workload record in sync
+- [x] Audit logged on every scale operation (success + failure)
+- [x] Inline − / count / + controls in workloads table; disabled at bounds or while scaling
+
 ## Phase 8 — Load Balancing ✓
 - [x] Traefik DaemonSet deployed on K3s (HostPort 80/443, IngressClass traefik)
 - [x] Workload API creates K8s Service + Ingress on container_port

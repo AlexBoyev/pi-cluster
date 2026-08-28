@@ -17,6 +17,10 @@ class WorkloadCreate(BaseModel):
     ingress_host: str | None = None
 
 
+class WorkloadScale(BaseModel):
+    replicas: int = Field(..., ge=1, le=10)
+
+
 class WorkloadResponse(BaseModel):
     id: int
     name: str
