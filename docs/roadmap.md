@@ -28,11 +28,11 @@
 - [x] Grafana auto-provisioned datasource + dashboard
 - [x] Light-blue admin UI with sidebar navigation
 
-## Phase 4 — Authentication
-- [ ] JWT-based login / token refresh
-- [ ] Protected API routes (FastAPI dependency)
-- [ ] Frontend auth flow (login page, token storage)
-- [ ] Role-based access (admin / viewer)
+## Phase 4 — Authentication ✓
+- [x] JWT-based login / token refresh
+- [x] Protected API routes (FastAPI dependency)
+- [x] Frontend auth flow (login page, token storage)
+- [x] Role-based access (admin / viewer)
 
 ## Phase 5 — CI/CD Pipeline
 - [x] Jenkins deployed as Docker service on pi-node1 (:8080)
