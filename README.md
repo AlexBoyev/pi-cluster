@@ -11,7 +11,7 @@ The long-term goal is to evolve the platform into an infrastructure orchestratio
 | Node     | IP            |
 | -------- | ------------- |
 | pi-node1 | 10.100.102.10 |
-| pi-node2 | 10.100.102.5  |
+| pi-node2 | 10.100.102.16 |
 | pi-node3 | 10.100.102.17 |
 | pi-node4 | 10.100.102.12 |
 

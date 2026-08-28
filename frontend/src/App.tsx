@@ -5,9 +5,11 @@ import type { NodeHealth, NodeStatus } from "./types/node";
 
 const POLL_MS = 30_000;
 
-function fmt(bytes: number): string {
-  const gb = bytes / 1_073_741_824;
-  return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(bytes / 1_048_576).toFixed(0)} MB`;
+// ── Formatters ──────────────────────────────────────────────────────────────
+
+function fmtBytes(b: number): string {
+  if (b >= 1_073_741_824) return `${(b / 1_073_741_824).toFixed(1)} GB`;
+  return `${(b / 1_048_576).toFixed(0)} MB`;
 }
 
 function fmtUptime(secs: number): string {
@@ -19,100 +21,145 @@ function fmtUptime(secs: number): string {
   return `${m}m`;
 }
 
-function level(pct: number): "ok" | "warn" | "danger" {
+function bar(pct: number): "ok" | "warn" | "danger" {
   if (pct >= 90) return "danger";
   if (pct >= 75) return "warn";
   return "ok";
 }
 
-function Bar({ pct }: { pct: number }) {
-  const cls = level(pct);
+// ── Clock ───────────────────────────────────────────────────────────────────
+
+function Clock() {
+  const [time, setTime] = useState(() => new Date().toLocaleTimeString());
+  useEffect(() => {
+    const id = setInterval(() => setTime(new Date().toLocaleTimeString()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <span className="header-clock">{time}</span>;
+}
+
+// ── Metric tile ─────────────────────────────────────────────────────────────
+
+function Tile({
+  label,
+  value,
+  pct,
+  colorClass = "",
+}: {
+  label: string;
+  value: string;
+  pct?: number;
+  colorClass?: string;
+}) {
+  const lvl = pct !== undefined ? bar(pct) : "ok";
   return (
-    <div className="bar-bg">
-      <div className="bar-fill" style={{ width: `${Math.min(pct, 100)}%` }} data-level={cls} />
+    <div className="metric-tile">
+      <div className="metric-label">{label}</div>
+      <div className={`metric-value ${colorClass || (lvl !== "ok" ? lvl : "")}`}>{value}</div>
+      {pct !== undefined && (
+        <div className="metric-bar">
+          <div
+            className={`metric-bar-fill ${lvl !== "ok" ? lvl : ""}`}
+            style={{ width: `${Math.min(pct, 100)}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
-function Metric({ label, value, pct }: { label: string; value: string; pct?: number }) {
-  const cls = pct !== undefined ? level(pct) : "ok";
-  return (
-    <div className="metric">
-      <div className="metric-label">{label}</div>
-      <div className={`metric-value ${cls === "ok" ? "" : cls}`}>{value}</div>
-      {pct !== undefined && <Bar pct={pct} />}
-    </div>
-  );
-}
+// ── Node card ───────────────────────────────────────────────────────────────
 
 function NodeCard({ h }: { h: NodeHealth }) {
   const m = h.metrics;
   const ts = new Date(h.checked_at).toLocaleTimeString();
+
   return (
     <div className={`node-card ${h.status}`}>
-      <div className="node-header">
-        <div>
-          <div className="node-name">{h.node_name}</div>
-          <div className="node-ip">{h.ip_address}</div>
+      <div className={`card-accent ${h.status}`} />
+      <div className="card-body">
+        <div className="card-header">
+          <div className="node-info">
+            <span className="node-name">{h.node_name}</span>
+            <span className="node-ip">{h.ip_address}</span>
+          </div>
+          <span className={`status-badge ${h.status}`}>
+            <span className="status-dot" />
+            {h.status}
+          </span>
         </div>
-        <span className={`badge ${h.status}`}>{h.status}</span>
+
+        {m ? (
+          <>
+            <div className="metrics-grid">
+              <Tile label="CPU load" value={m.cpu_load_1m.toFixed(2)} />
+              <Tile
+                label="RAM"
+                value={`${m.memory_percent.toFixed(1)}%`}
+                pct={m.memory_percent}
+              />
+              <Tile
+                label="Disk"
+                value={`${m.disk_percent.toFixed(1)}%`}
+                pct={m.disk_percent}
+              />
+            </div>
+            <div className="card-footer">
+              {m.temperature_celsius !== null && (
+                <Tile
+                  label="Temp"
+                  value={`${m.temperature_celsius.toFixed(1)} °C`}
+                  pct={(m.temperature_celsius / 85) * 100}
+                />
+              )}
+              <Tile label="Uptime" value={fmtUptime(m.uptime_seconds)} colorClass="blue" />
+            </div>
+          </>
+        ) : (
+          <div className="offline-body">
+            <div className="offline-icon">⊘</div>
+            <div className="offline-msg">
+              {h.error ?? "Node unreachable"}
+            </div>
+          </div>
+        )}
       </div>
-
-      {m ? (
-        <div className="metrics">
-          <Metric label="CPU load" value={m.cpu_load_1m.toFixed(2)} />
-          <Metric
-            label="RAM"
-            value={`${fmt(m.memory_total_bytes - m.memory_available_bytes)} / ${fmt(m.memory_total_bytes)}`}
-            pct={m.memory_percent}
-          />
-          <Metric
-            label="Disk"
-            value={`${fmt(m.disk_used_bytes)} / ${fmt(m.disk_total_bytes)}`}
-            pct={m.disk_percent}
-          />
-          <Metric label="Uptime" value={fmtUptime(m.uptime_seconds)} />
-          {m.temperature_celsius !== null && (
-            <Metric
-              label="Temp"
-              value={`${m.temperature_celsius.toFixed(1)} °C`}
-              pct={m.temperature_celsius > 0 ? (m.temperature_celsius / 85) * 100 : 0}
-            />
-          )}
-        </div>
-      ) : (
-        h.error && <div className="node-error">{h.error}</div>
-      )}
-
       <div className="checked-at">checked {ts}</div>
     </div>
   );
 }
 
-function summary(nodes: NodeHealth[]) {
-  return {
-    online: nodes.filter((n) => n.status === "ONLINE").length,
-    offline: nodes.filter((n) => n.status === "OFFLINE").length,
-    total: nodes.length,
-  };
+// ── Cluster status pill ─────────────────────────────────────────────────────
+
+function clusterStatus(nodes: NodeHealth[]): { label: string; cls: string } {
+  const offline = nodes.filter((n) => n.status === "OFFLINE").length;
+  const degraded = nodes.filter((n) => n.status === "DEGRADED").length;
+  if (offline === nodes.length && nodes.length > 0) return { label: "All offline", cls: "critical" };
+  if (offline > 0 || degraded > 0) return { label: "Degraded", cls: "degraded" };
+  if (nodes.length === 0) return { label: "No nodes", cls: "degraded" };
+  return { label: "All systems operational", cls: "healthy" };
 }
+
+function avgTemp(nodes: NodeHealth[]): string {
+  const temps = nodes.flatMap((n) =>
+    n.metrics?.temperature_celsius != null ? [n.metrics.temperature_celsius] : []
+  );
+  if (temps.length === 0) return "—";
+  return `${(temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1)} °C`;
+}
+
+// ── App ─────────────────────────────────────────────────────────────────────
 
 export default function App() {
   const [nodes, setNodes] = useState<NodeHealth[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
-  const refresh = () => {
+  const refresh = () =>
     getAllHealth()
-      .then((data) => {
-        setNodes(data);
-        setError(null);
-        setLastRefresh(new Date());
-      })
+      .then((data) => { setNodes(data); setError(null); })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
-  };
 
   useEffect(() => {
     refresh();
@@ -120,43 +167,66 @@ export default function App() {
     return () => clearInterval(id);
   }, []);
 
-  const s = summary(nodes);
+  const online  = nodes.filter((n) => n.status === "ONLINE").length;
+  const offline = nodes.filter((n) => n.status === "OFFLINE").length;
+  const cs = clusterStatus(nodes);
 
   return (
     <>
       <header>
-        <h1>Pi Cluster</h1>
-        <span className="refresh-info">
-          {lastRefresh ? `updated ${lastRefresh.toLocaleTimeString()}` : "loading…"}
-        </span>
+        <div className="header-left">
+          <div className="logo-mark">π</div>
+          <span className="header-title">Pi Cluster</span>
+        </div>
+        <div className="header-right">
+          {!loading && (
+            <span className={`cluster-pill ${cs.cls}`}>
+              <span className="cluster-pill-dot" />
+              {cs.label}
+            </span>
+          )}
+          <Clock />
+        </div>
       </header>
+
       <main>
         {error && <div className="error-banner">API error: {error}</div>}
 
-        {!loading && nodes.length > 0 && (
-          <div className="status-bar">
-            <div className="stat">
-              <div className="stat-label">Total nodes</div>
-              <div className="stat-value">{s.total}</div>
-            </div>
-            <div className="stat">
-              <div className="stat-label">Online</div>
-              <div className="stat-value" style={{ color: "#4ade80" }}>{s.online}</div>
-            </div>
-            <div className="stat">
-              <div className="stat-label">Offline</div>
-              <div className="stat-value" style={{ color: s.offline > 0 ? "#f87171" : "#94a3b8" }}>{s.offline}</div>
-            </div>
+        {loading ? (
+          <div className="loading-state">
+            <div className="spinner" />
+            <span>Connecting to cluster…</span>
           </div>
+        ) : (
+          <>
+            {nodes.length > 0 && (
+              <div className="summary">
+                <div className="summary-stat">
+                  <span className="summary-label">Total nodes</span>
+                  <span className="summary-value blue">{nodes.length}</span>
+                </div>
+                <div className="summary-stat">
+                  <span className="summary-label">Online</span>
+                  <span className="summary-value green">{online}</span>
+                </div>
+                <div className="summary-stat">
+                  <span className="summary-label">Offline</span>
+                  <span className={`summary-value ${offline > 0 ? "red" : ""}`}>{offline}</span>
+                </div>
+                <div className="summary-stat">
+                  <span className="summary-label">Avg temp</span>
+                  <span className="summary-value amber">{avgTemp(nodes)}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="node-grid">
+              {nodes.map((n) => (
+                <NodeCard key={n.node_id} h={n} />
+              ))}
+            </div>
+          </>
         )}
-
-        {loading && <p className="loading">Connecting to cluster…</p>}
-
-        <div className="grid">
-          {nodes.map((n) => (
-            <NodeCard key={n.node_id} h={n} />
-          ))}
-        </div>
       </main>
     </>
   );

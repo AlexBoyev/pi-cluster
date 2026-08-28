@@ -246,7 +246,7 @@ Switch:  10.100.102.200
 | Node     | IP            | Role          |
 |----------|---------------|---------------|
 | pi-node1 | 10.100.102.10 | Control plane |
-| pi-node2 | 10.100.102.5  | Worker        |
+| pi-node2 | 10.100.102.16 | Worker        |
 | pi-node3 | 10.100.102.17 | Worker        |
 | pi-node4 | 10.100.102.12 | Worker        |
 

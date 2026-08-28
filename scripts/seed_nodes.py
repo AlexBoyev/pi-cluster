@@ -7,7 +7,7 @@ API = "http://10.100.102.10:8000/api/v1"
 
 NODES = [
     {"name": "pi-node1", "ip_address": "10.100.102.10"},
-    {"name": "pi-node2", "ip_address": "10.100.102.5"},
+    {"name": "pi-node2", "ip_address": "10.100.102.16"},
     {"name": "pi-node3", "ip_address": "10.100.102.17"},
     {"name": "pi-node4", "ip_address": "10.100.102.12"},
 ]
