@@ -9,3 +9,5 @@ paramiko==3.5.0
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 httpx==0.28.0
+prometheus-client==0.21.0
+prometheus-fastapi-instrumentator==6.1.0

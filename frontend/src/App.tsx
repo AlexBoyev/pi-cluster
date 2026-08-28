@@ -38,6 +38,59 @@ function Clock() {
   return <span className="header-clock">{time}</span>;
 }
 
+// ── Ring gauge ──────────────────────────────────────────────────────────────
+
+function Ring({
+  pct,
+  label,
+  value,
+  size = 64,
+}: {
+  pct: number;
+  label: string;
+  value: string;
+  size?: number;
+}) {
+  const strokeW = 5;
+  const r = (size - strokeW) / 2;
+  const circ = 2 * Math.PI * r;
+  const dash = circ * Math.min(pct, 100) / 100;
+  const lvl = bar(pct);
+  const cx = size / 2;
+  const color =
+    lvl === "danger" ? "var(--red)" : lvl === "warn" ? "var(--amber)" : "var(--cyan)";
+
+  return (
+    <div className="ring-wrap">
+      <svg width={size} height={size} className="ring-svg">
+        <circle
+          cx={cx} cy={cx} r={r}
+          fill="none"
+          stroke="var(--border)"
+          strokeWidth={strokeW}
+        />
+        <circle
+          cx={cx} cy={cx} r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeW}
+          strokeDasharray={`${dash} ${circ - dash}`}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${cx} ${cx})`}
+          style={{ transition: "stroke-dasharray 0.6s cubic-bezier(0.4,0,0.2,1)" }}
+        />
+      </svg>
+      <div className="ring-inner">
+        <span className={`ring-pct${lvl !== "ok" ? ` ${lvl}` : ""}`}>
+          {pct.toFixed(0)}%
+        </span>
+      </div>
+      <div className="ring-label">{label}</div>
+      <div className="ring-value">{value}</div>
+    </div>
+  );
+}
+
 // ── Metric tile ─────────────────────────────────────────────────────────────
 
 function Tile({
@@ -91,36 +144,36 @@ function NodeCard({ h }: { h: NodeHealth }) {
 
         {m ? (
           <>
-            <div className="metrics-grid">
-              <Tile label="CPU load" value={m.cpu_load_1m.toFixed(2)} />
-              <Tile
-                label="RAM"
-                value={`${m.memory_percent.toFixed(1)}%`}
+            <div className="metrics-rings">
+              <Ring
                 pct={m.memory_percent}
+                label="RAM"
+                value={`${fmtBytes(m.memory_total_bytes - m.memory_available_bytes)} / ${fmtBytes(m.memory_total_bytes)}`}
               />
-              <Tile
-                label="Disk"
-                value={`${m.disk_percent.toFixed(1)}%`}
+              <Ring
                 pct={m.disk_percent}
+                label="Disk"
+                value={`${fmtBytes(m.disk_used_bytes)} / ${fmtBytes(m.disk_total_bytes)}`}
               />
             </div>
-            <div className="card-footer">
-              {m.temperature_celsius !== null && (
+            <div className="metrics-stats">
+              <Tile label="CPU load" value={m.cpu_load_1m.toFixed(2)} />
+              <Tile label="Uptime" value={fmtUptime(m.uptime_seconds)} colorClass="cyan" />
+              {m.temperature_celsius !== null ? (
                 <Tile
                   label="Temp"
-                  value={`${m.temperature_celsius.toFixed(1)} °C`}
+                  value={`${m.temperature_celsius.toFixed(1)}°C`}
                   pct={(m.temperature_celsius / 85) * 100}
                 />
+              ) : (
+                <Tile label="Temp" value="—" />
               )}
-              <Tile label="Uptime" value={fmtUptime(m.uptime_seconds)} colorClass="blue" />
             </div>
           </>
         ) : (
           <div className="offline-body">
             <div className="offline-icon">⊘</div>
-            <div className="offline-msg">
-              {h.error ?? "Node unreachable"}
-            </div>
+            <div className="offline-msg">{h.error ?? "Node unreachable"}</div>
           </div>
         )}
       </div>
@@ -129,7 +182,7 @@ function NodeCard({ h }: { h: NodeHealth }) {
   );
 }
 
-// ── Cluster status pill ─────────────────────────────────────────────────────
+// ── Cluster status ───────────────────────────────────────────────────────────
 
 function clusterStatus(nodes: NodeHealth[]): { label: string; cls: string } {
   const offline = nodes.filter((n) => n.status === "OFFLINE").length;
@@ -145,7 +198,7 @@ function avgTemp(nodes: NodeHealth[]): string {
     n.metrics?.temperature_celsius != null ? [n.metrics.temperature_celsius] : []
   );
   if (temps.length === 0) return "—";
-  return `${(temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1)} °C`;
+  return `${(temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1)}°C`;
 }
 
 // ── App ─────────────────────────────────────────────────────────────────────
@@ -176,15 +229,20 @@ export default function App() {
       <header>
         <div className="header-left">
           <div className="logo-mark">π</div>
-          <span className="header-title">Pi Cluster</span>
+          <div>
+            <div className="header-title">Pi Cluster</div>
+            <div className="header-subtitle">10.100.102.0/24</div>
+          </div>
         </div>
         <div className="header-right">
-          {!loading && (
-            <span className={`cluster-pill ${cs.cls}`}>
-              <span className="cluster-pill-dot" />
-              {cs.label}
-            </span>
-          )}
+          <div className="header-meta">
+            {!loading && (
+              <span className={`cluster-pill ${cs.cls}`}>
+                <span className="cluster-pill-dot" />
+                {cs.label}
+              </span>
+            )}
+          </div>
           <Clock />
         </div>
       </header>
@@ -203,7 +261,7 @@ export default function App() {
               <div className="summary">
                 <div className="summary-stat">
                   <span className="summary-label">Total nodes</span>
-                  <span className="summary-value blue">{nodes.length}</span>
+                  <span className="summary-value cyan">{nodes.length}</span>
                 </div>
                 <div className="summary-stat">
                   <span className="summary-label">Online</span>

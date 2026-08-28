@@ -2,6 +2,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
+from app import metrics as prom
 from app.cache import redis_client
 from app.database import AsyncSessionLocal
 from app.models.node import NodeStatus
@@ -52,6 +53,16 @@ class HealthService:
 
         if node.status != new_status:
             await self._repo.update_status(node.id, new_status)
+
+        labels = {"node_name": node.name, "ip_address": node.ip_address}
+        prom.node_online.labels(**labels).set(1 if new_status == NodeStatus.ONLINE else 0)
+        if metrics is not None:
+            prom.node_cpu_load.labels(**labels).set(metrics.cpu_load_1m)
+            prom.node_memory_percent.labels(**labels).set(metrics.memory_percent)
+            prom.node_disk_percent.labels(**labels).set(metrics.disk_percent)
+            prom.node_uptime.labels(**labels).set(metrics.uptime_seconds)
+            if metrics.temperature_celsius is not None:
+                prom.node_temperature.labels(**labels).set(metrics.temperature_celsius)
 
         result = NodeHealthResponse(
             node_id=node.id,
