@@ -17,6 +17,11 @@ export const updateWorkloadImage = (name: string, image: string) =>
     method: "PATCH",
     body: JSON.stringify({ image }),
   });
+export const updateWorkloadEnv = (name: string, env_vars: Record<string, string>) =>
+  apiFetch<Workload>(`/workloads/${name}/env`, {
+    method: "PATCH",
+    body: JSON.stringify({ env_vars }),
+  });
 export const getWorkloadEvents = (name: string) =>
   apiFetch<WorkloadEvent[]>(`/workloads/${name}/events`);
 export const getWorkloadLogs = (name: string, tail = 100) =>

@@ -68,8 +68,10 @@ class K8sService:
         target_node: str | None,
         cpu_request: str,
         memory_request: str,
+        env_vars: dict[str, str] | None = None,
     ) -> None:
         node_selector = {"kubernetes.io/hostname": target_node} if target_node else None
+        env = [client.V1EnvVar(name=k, value=v) for k, v in env_vars.items()] if env_vars else None
         deployment = client.V1Deployment(
             metadata=client.V1ObjectMeta(name=name, namespace=namespace),
             spec=client.V1DeploymentSpec(
@@ -83,6 +85,7 @@ class K8sService:
                             client.V1Container(
                                 name=name,
                                 image=image,
+                                env=env,
                                 resources=client.V1ResourceRequirements(
                                     requests={"cpu": cpu_request, "memory": memory_request}
                                 ),
@@ -93,6 +96,14 @@ class K8sService:
             ),
         )
         self._apps().create_namespaced_deployment(namespace=namespace, body=deployment)
+
+    def update_deployment_env(self, name: str, namespace: str, env_vars: dict[str, str]) -> None:
+        env = [{"name": k, "value": v} for k, v in env_vars.items()]
+        self._apps().patch_namespaced_deployment(
+            name=name,
+            namespace=namespace,
+            body={"spec": {"template": {"spec": {"containers": [{"name": name, "env": env}]}}}},
+        )
 
     def delete_deployment(self, name: str, namespace: str) -> None:
         self._apps().delete_namespaced_deployment(name=name, namespace=namespace)

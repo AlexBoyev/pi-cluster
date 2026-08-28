@@ -77,6 +77,13 @@
 - [x] GET /api/v1/audit with limit/offset pagination
 - [x] Audit Log page in frontend: event table, action/status badges, filter by type, load more
 
+## Phase 16 — Environment Variables ✓
+- [x] Migration 0006: `env_vars JSONB` column on workloads table (default `{}`)
+- [x] `WorkloadCreate` accepts `env_vars: dict[str, str]`; K8s deployment created with `V1EnvVar` list
+- [x] `PATCH /workloads/{name}/env` — replaces env vars, triggers K8s rolling restart, audited
+- [x] `EnvModal`: key/value table editor with add/remove rows, Save & restart pods, Escape/overlay to close
+- [x] "Env" button per workload row (green hover); pre-populated with current vars
+
 ## Phase 15 — K8s Events Viewer ✓
 - [x] `GET /workloads/{name}/events` — lists K8s events for the deployment and its pods, sorted newest-first, capped at 50
 - [x] Matches events by exact deployment name or pod name prefix (`<name>-`)

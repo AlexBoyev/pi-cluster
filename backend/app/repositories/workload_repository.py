@@ -26,6 +26,7 @@ class WorkloadRepository:
             target_node=data.target_node,
             container_port=data.container_port,
             ingress_host=data.ingress_host,
+            env_vars=data.env_vars or {},
         )
         self._db.add(workload)
         await self._db.commit()
@@ -55,6 +56,15 @@ class WorkloadRepository:
         if workload is None:
             return None
         workload.image = image
+        await self._db.commit()
+        await self._db.refresh(workload)
+        return workload
+
+    async def update_env_vars(self, name: str, env_vars: dict[str, str]) -> Workload | None:
+        workload = await self.get_by_name(name)
+        if workload is None:
+            return None
+        workload.env_vars = env_vars
         await self._db.commit()
         await self._db.refresh(workload)
         return workload

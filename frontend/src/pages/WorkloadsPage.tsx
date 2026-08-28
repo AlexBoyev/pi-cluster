@@ -9,6 +9,7 @@ import {
   uncordonNode,
   updateWorkloadImage,
 } from "../api/workloads";
+import EnvModal from "../components/EnvModal";
 import EventsModal from "../components/EventsModal";
 import LogsModal from "../components/LogsModal";
 import type { NodeCapacity, Workload } from "../types/workload";
@@ -107,6 +108,7 @@ export default function WorkloadsPage() {
   const [updatingImage, setUpdatingImage] = useState<string | null>(null);
   const [logsTarget, setLogsTarget] = useState<string | null>(null);
   const [eventsTarget, setEventsTarget] = useState<string | null>(null);
+  const [envTarget, setEnvTarget] = useState<Workload | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -393,6 +395,12 @@ export default function WorkloadsPage() {
                   <td>
                     <div className="wl-row-actions">
                       <button
+                        className="wl-btn-env"
+                        onClick={() => setEnvTarget(w)}
+                      >
+                        Env
+                      </button>
+                      <button
                         className="wl-btn-events"
                         onClick={() => setEventsTarget(w.name)}
                       >
@@ -469,6 +477,14 @@ export default function WorkloadsPage() {
         </div>
       )}
 
+      {envTarget && (
+        <EnvModal
+          workloadName={envTarget.name}
+          initialEnv={envTarget.env_vars}
+          onClose={() => setEnvTarget(null)}
+          onSaved={refresh}
+        />
+      )}
       {eventsTarget && (
         <EventsModal workloadName={eventsTarget} onClose={() => setEventsTarget(null)} />
       )}

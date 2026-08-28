@@ -10,6 +10,7 @@ export interface Workload {
   target_node: string | null;
   container_port: number | null;
   ingress_host: string | null;
+  env_vars: Record<string, string>;
   status: WorkloadStatus;
   created_at: string;
 }
@@ -48,4 +49,5 @@ export interface WorkloadCreate {
   target_node?: string | null;
   container_port?: number | null;
   ingress_host?: string | null;
+  env_vars?: Record<string, string>;
 }

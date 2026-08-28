@@ -2,6 +2,7 @@ import enum
 from datetime import datetime
 
 from sqlalchemy import DateTime, Enum, Integer, String, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -25,6 +26,7 @@ class Workload(Base):
     target_node: Mapped[str | None] = mapped_column(String(64), nullable=True)
     container_port: Mapped[int | None] = mapped_column(Integer, nullable=True)
     ingress_host: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    env_vars: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     status: Mapped[WorkloadStatus] = mapped_column(
         Enum(WorkloadStatus, values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
