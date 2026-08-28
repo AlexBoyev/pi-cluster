@@ -114,7 +114,7 @@
 
 .wl-row-actions { display: flex; gap: 0.4rem; align-items: center; }
 
-.wl-btn-logs {
+.wl-btn-logs, .wl-btn-events {
   padding: 0.3rem 0.75rem;
   background: transparent;
   border: 1px solid var(--border);
@@ -125,6 +125,9 @@
 }
 .wl-btn-logs:hover {
   background: rgba(29,78,216,0.08); color: var(--blue); border-color: var(--blue-ring);
+}
+.wl-btn-events:hover {
+  background: var(--amber-bg); color: var(--amber); border-color: var(--amber-bd);
 }
 
 /* ── Delete button ──────────────────────────────────────────────────────── */

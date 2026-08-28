@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.user import User
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.workload_repository import WorkloadRepository
-from app.schemas.workload import NodeCapacity, WorkloadCreate, WorkloadImageUpdate, WorkloadLogs, WorkloadResponse, WorkloadScale
+from app.schemas.workload import NodeCapacity, WorkloadCreate, WorkloadEvent, WorkloadImageUpdate, WorkloadLogs, WorkloadResponse, WorkloadScale
 from app.services.audit_service import AuditService
 from app.services.k8s_service import K8sService
 from app.services.workload_service import WorkloadService
@@ -49,6 +49,15 @@ async def update_workload_image(
     admin: User = Depends(require_admin),
 ) -> WorkloadResponse:
     return await service.update_workload_image(name, data.image, actor=admin.username)
+
+
+@router.get("/{name}/events", response_model=list[WorkloadEvent])
+async def get_workload_events(
+    name: str,
+    service: WorkloadService = Depends(get_service),
+    _: None = Depends(get_current_user),
+) -> list[WorkloadEvent]:
+    return await service.get_workload_events(name)
 
 
 @router.get("/{name}/logs", response_model=WorkloadLogs)

@@ -47,6 +47,16 @@ class WorkloadLogs(BaseModel):
     logs: str
 
 
+class WorkloadEvent(BaseModel):
+    type: str
+    reason: str
+    message: str
+    object_name: str
+    count: int
+    first_time: datetime | None
+    last_time: datetime | None
+
+
 class NodeCapacity(BaseModel):
     node_name: str
     cpu_allocatable_m: int

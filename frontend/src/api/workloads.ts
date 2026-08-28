@@ -1,4 +1,4 @@
-import type { NodeCapacity, Workload, WorkloadCreate, WorkloadLogs } from "../types/workload";
+import type { NodeCapacity, Workload, WorkloadCreate, WorkloadEvent, WorkloadLogs } from "../types/workload";
 import { apiFetch } from "./client";
 
 export const listWorkloads = () => apiFetch<Workload[]>("/workloads/");
@@ -17,6 +17,8 @@ export const updateWorkloadImage = (name: string, image: string) =>
     method: "PATCH",
     body: JSON.stringify({ image }),
   });
+export const getWorkloadEvents = (name: string) =>
+  apiFetch<WorkloadEvent[]>(`/workloads/${name}/events`);
 export const getWorkloadLogs = (name: string, tail = 100) =>
   apiFetch<WorkloadLogs>(`/workloads/${name}/logs?tail=${tail}`);
 export const cordonNode = (name: string) =>

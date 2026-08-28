@@ -6,7 +6,7 @@ from kubernetes.client.exceptions import ApiException
 
 from app.models.workload import WorkloadStatus
 from app.repositories.workload_repository import WorkloadRepository
-from app.schemas.workload import NodeCapacity, WorkloadCreate, WorkloadImageUpdate, WorkloadLogs, WorkloadResponse
+from app.schemas.workload import NodeCapacity, WorkloadCreate, WorkloadEvent, WorkloadImageUpdate, WorkloadLogs, WorkloadResponse
 from app.services.audit_service import AuditService
 from app.services.k8s_service import K8sService
 
@@ -185,6 +185,27 @@ class WorkloadService:
             status=workload.status,
             created_at=workload.created_at,
         )
+
+    async def get_workload_events(self, name: str) -> list[WorkloadEvent]:
+        workload = await self._repo.get_by_name(name)
+        if workload is None or workload.status == WorkloadStatus.DELETED:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workload not found")
+        try:
+            raw = await run_in_threadpool(self._k8s.get_workload_events, name, workload.namespace)
+        except ApiException as e:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
+        return [
+            WorkloadEvent(
+                type=e.type or "Normal",
+                reason=e.reason or "",
+                message=e.message or "",
+                object_name=e.involved_object.name or "",
+                count=e.count or 1,
+                first_time=e.first_timestamp,
+                last_time=e.last_timestamp,
+            )
+            for e in raw
+        ]
 
     async def get_workload_logs(self, name: str, tail_lines: int = 100) -> WorkloadLogs:
         workload = await self._repo.get_by_name(name)

@@ -9,6 +9,7 @@ import {
   uncordonNode,
   updateWorkloadImage,
 } from "../api/workloads";
+import EventsModal from "../components/EventsModal";
 import LogsModal from "../components/LogsModal";
 import type { NodeCapacity, Workload } from "../types/workload";
 import "./WorkloadsPage.css";
@@ -105,6 +106,7 @@ export default function WorkloadsPage() {
   const [cordoning, setCordoning] = useState<string | null>(null);
   const [updatingImage, setUpdatingImage] = useState<string | null>(null);
   const [logsTarget, setLogsTarget] = useState<string | null>(null);
+  const [eventsTarget, setEventsTarget] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -391,6 +393,12 @@ export default function WorkloadsPage() {
                   <td>
                     <div className="wl-row-actions">
                       <button
+                        className="wl-btn-events"
+                        onClick={() => setEventsTarget(w.name)}
+                      >
+                        Events
+                      </button>
+                      <button
                         className="wl-btn-logs"
                         onClick={() => setLogsTarget(w.name)}
                       >
@@ -461,6 +469,9 @@ export default function WorkloadsPage() {
         </div>
       )}
 
+      {eventsTarget && (
+        <EventsModal workloadName={eventsTarget} onClose={() => setEventsTarget(null)} />
+      )}
       {logsTarget && (
         <LogsModal workloadName={logsTarget} onClose={() => setLogsTarget(null)} />
       )}

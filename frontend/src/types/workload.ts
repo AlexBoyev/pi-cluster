@@ -30,6 +30,16 @@ export interface WorkloadLogs {
   logs: string;
 }
 
+export interface WorkloadEvent {
+  type: string;
+  reason: string;
+  message: string;
+  object_name: string;
+  count: number;
+  first_time: string | null;
+  last_time: string | null;
+}
+
 export interface WorkloadCreate {
   name: string;
   image: string;

@@ -155,6 +155,17 @@ class K8sService:
             body={"spec": {"replicas": replicas}},
         )
 
+    def get_workload_events(self, name: str, namespace: str) -> list:
+        core = self._core()
+        all_events = core.list_namespaced_event(namespace)
+        events = [
+            e for e in all_events.items
+            if e.involved_object.name == name
+            or (e.involved_object.name or "").startswith(name + "-")
+        ]
+        events.sort(key=lambda e: e.last_timestamp or 0, reverse=True)
+        return events[:50]
+
     def update_deployment_image(self, name: str, namespace: str, image: str) -> None:
         self._apps().patch_namespaced_deployment(
             name=name,

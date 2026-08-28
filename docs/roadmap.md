@@ -77,6 +77,13 @@
 - [x] GET /api/v1/audit with limit/offset pagination
 - [x] Audit Log page in frontend: event table, action/status badges, filter by type, load more
 
+## Phase 15 — K8s Events Viewer ✓
+- [x] `GET /workloads/{name}/events` — lists K8s events for the deployment and its pods, sorted newest-first, capped at 50
+- [x] Matches events by exact deployment name or pod name prefix (`<name>-`)
+- [x] `WorkloadEvent` schema: type, reason, message, object_name, count, first_time, last_time
+- [x] EventsModal: structured table with Warning/Normal type badges, age formatting, amber row highlight for warnings
+- [x] "Events" button per row in workloads table (amber hover); opens alongside existing Logs button
+
 ## Phase 14 — Rolling Image Updates ✓
 - [x] `PATCH /workloads/{name}/image` endpoint with admin auth and audit logging
 - [x] K8s `patch_namespaced_deployment` updates container image in-place (rolling restart)
