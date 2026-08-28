@@ -36,7 +36,7 @@
 
 ## Phase 5 — CI/CD Pipeline ✓
 - [x] Jenkins deployed as Docker service on pi-node1 (:8080)
-- [x] Jenkins pipeline for build → migrate → deploy → health check on git push
+- [x] Jenkins pipeline: Checkout → Sync → Deploy → Migrate → Health Check
 - [x] SCM polling every 2 minutes (triggers on any master push)
 - [ ] Webhook from Git repo to Jenkins (optional, polling sufficient)
 - [ ] Automated docker build and push to local registry
@@ -55,12 +55,20 @@
 - [x] Node cordon / uncordon via API and dashboard UI
 - [x] Workloads page in frontend (deploy form, live table, capacity cards)
 
-## Phase 11 — Alerting ✓
-- [x] Prometheus alerting rules: NodeDown (critical), HighCPU/Memory/Disk/Temperature (warning)
-- [x] AlertManager service (Docker Compose, port 9093) with grouping and repeat intervals
-- [x] Backend `/api/v1/alerts` endpoint proxies Prometheus alert state, sorted by severity
-- [x] AlertsPanel on dashboard: all-clear state, firing/pending badges, severity color, duration
-- [x] Panel border changes to amber/red when alerts are active
+## Phase 8 — Load Balancing ✓
+- [x] Traefik DaemonSet deployed on K3s (HostPort 80/443, IngressClass traefik)
+- [x] Workload API creates K8s Service + Ingress on container_port
+- [x] TLS termination via Traefik built-in self-signed cert
+- [x] Ingress host auto-assigned as `<name>.pi-cluster.local`
+- [x] Frontend shows ingress URL as clickable link in workloads table
+
+## Phase 9 — Audit Logging ✓
+- [x] `audit_logs` table: action, resource_type, resource_name, actor, status, detail, timestamp
+- [x] AuditService wraps all writes with best-effort semantics (never breaks the operation)
+- [x] Audit events captured for: workload create/delete/scale/image-update/env-update, node cordon/uncordon
+- [x] Actor resolved from JWT-authenticated user on every mutation
+- [x] GET /api/v1/audit with limit/offset pagination
+- [x] Audit Log page in frontend: event table, action/status badges, filter by type, load more
 
 ## Phase 10 — Node Exporter ✓
 - [x] prometheus/node-exporter DaemonSet on all 4 K3s nodes via ArgoCD (k8s/apps/node-exporter.yaml)
@@ -69,41 +77,12 @@
 - [x] Two new panels: Network Receive and Network Transmit per node
 - [x] SSH metric collection retained for health card status; Grafana uses native Prometheus data
 
-## Phase 9 — Audit Logging ✓
-- [x] `audit_logs` table: action, resource_type, resource_name, actor, status, detail, timestamp
-- [x] AuditService wraps all writes with best-effort semantics (never breaks the operation)
-- [x] Audit events captured for: workload create/delete, node cordon/uncordon (success + failure)
-- [x] Actor resolved from JWT-authenticated user on every mutation
-- [x] GET /api/v1/audit with limit/offset pagination
-- [x] Audit Log page in frontend: event table, action/status badges, filter by type, load more
-
-## Phase 16 — Environment Variables ✓
-- [x] Migration 0006: `env_vars JSONB` column on workloads table (default `{}`)
-- [x] `WorkloadCreate` accepts `env_vars: dict[str, str]`; K8s deployment created with `V1EnvVar` list
-- [x] `PATCH /workloads/{name}/env` — replaces env vars, triggers K8s rolling restart, audited
-- [x] `EnvModal`: key/value table editor with add/remove rows, Save & restart pods, Escape/overlay to close
-- [x] "Env" button per workload row (green hover); pre-populated with current vars
-
-## Phase 15 — K8s Events Viewer ✓
-- [x] `GET /workloads/{name}/events` — lists K8s events for the deployment and its pods, sorted newest-first, capped at 50
-- [x] Matches events by exact deployment name or pod name prefix (`<name>-`)
-- [x] `WorkloadEvent` schema: type, reason, message, object_name, count, first_time, last_time
-- [x] EventsModal: structured table with Warning/Normal type badges, age formatting, amber row highlight for warnings
-- [x] "Events" button per row in workloads table (amber hover); opens alongside existing Logs button
-
-## Phase 14 — Rolling Image Updates ✓
-- [x] `PATCH /workloads/{name}/image` endpoint with admin auth and audit logging
-- [x] K8s `patch_namespaced_deployment` updates container image in-place (rolling restart)
-- [x] DB `update_image` keeps workload record in sync
-- [x] Inline image editor in workloads table: click image → editable input, Enter to apply, Escape to cancel, blur to apply
-- [x] Row dims during update; edit pencil icon appears on hover
-
-## Phase 13 — Pod Log Viewer ✓
-- [x] `GET /workloads/{name}/logs?tail=N` — reads last N lines from a running pod via K8s API
-- [x] Selects a Running pod first, falls back to first available pod
-- [x] Auth-protected (any authenticated user); returns workload name, pod name, log text
-- [x] LogsModal component: dark terminal viewport, auto-scrolls to bottom, Refresh button, Esc/overlay-click to close
-- [x] "Logs" button per row in workloads table; opens modal without leaving the page
+## Phase 11 — Alerting ✓
+- [x] Prometheus alerting rules: NodeDown (critical), HighCPU/Memory/Disk/Temperature (warning)
+- [x] AlertManager service (Docker Compose, port 9093) with grouping and repeat intervals
+- [x] Backend `/api/v1/alerts` endpoint proxies Prometheus alert state, sorted by severity
+- [x] AlertsPanel on dashboard: all-clear state, firing/pending badges, severity color, duration
+- [x] Panel border changes to amber/red when alerts are active
 
 ## Phase 12 — Workload Scaling ✓
 - [x] `PATCH /workloads/{name}/scale` endpoint with replica range validation (1–10)
@@ -112,9 +91,30 @@
 - [x] Audit logged on every scale operation (success + failure)
 - [x] Inline − / count / + controls in workloads table; disabled at bounds or while scaling
 
-## Phase 8 — Load Balancing ✓
-- [x] Traefik DaemonSet deployed on K3s (HostPort 80/443, IngressClass traefik)
-- [x] Workload API creates K8s Service + Ingress on container_port
-- [x] TLS termination via Traefik built-in self-signed cert
-- [x] Ingress host auto-assigned as `<name>.pi-cluster.local`
-- [x] Frontend shows ingress URL as clickable link in workloads table
+## Phase 13 — Pod Log Viewer ✓
+- [x] `GET /workloads/{name}/logs?tail=N` — reads last N lines from a running pod via K8s API
+- [x] Selects a Running pod first, falls back to first available pod
+- [x] Auth-protected (any authenticated user); returns workload name, pod name, log text
+- [x] LogsModal component: dark terminal viewport, auto-scrolls to bottom, Refresh button, Esc/overlay-click to close
+- [x] "Logs" button per row in workloads table; opens modal without leaving the page
+
+## Phase 14 — Rolling Image Updates ✓
+- [x] `PATCH /workloads/{name}/image` endpoint with admin auth and audit logging
+- [x] K8s `patch_namespaced_deployment` updates container image in-place (rolling restart)
+- [x] DB `update_image` keeps workload record in sync
+- [x] Inline image editor in workloads table: click image → editable input, Enter to apply, Escape to cancel
+- [x] Row dims during update; edit pencil icon appears on hover
+
+## Phase 15 — K8s Events Viewer ✓
+- [x] `GET /workloads/{name}/events` — lists K8s events for the deployment and its pods, sorted newest-first, capped at 50
+- [x] Matches events by exact deployment name or pod name prefix (`<name>-`)
+- [x] `WorkloadEvent` schema: type, reason, message, object_name, count, first_time, last_time
+- [x] EventsModal: structured table with Warning/Normal type badges, age formatting, amber row highlight for warnings
+- [x] "Events" button per row in workloads table (amber hover)
+
+## Phase 16 — Environment Variables ✓
+- [x] Migration 0006: `env_vars JSONB` column on workloads table (default `{}`)
+- [x] `WorkloadCreate` accepts `env_vars: dict[str, str]`; K8s deployment created with `V1EnvVar` list
+- [x] `PATCH /workloads/{name}/env` — replaces env vars, triggers K8s rolling restart, audited
+- [x] `EnvModal`: key/value table editor with add/remove rows, Save & restart pods, Escape/overlay to close
+- [x] "Env" button per workload row (green hover); pre-populated with current vars
