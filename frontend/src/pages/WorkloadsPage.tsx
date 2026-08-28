@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import {
   cordonNode,
   createWorkload,
@@ -7,6 +7,7 @@ import {
   listWorkloads,
   scaleWorkload,
   uncordonNode,
+  updateWorkloadImage,
 } from "../api/workloads";
 import LogsModal from "../components/LogsModal";
 import type { NodeCapacity, Workload } from "../types/workload";
@@ -33,6 +34,65 @@ function StatusBadge({ status }: { status: Workload["status"] }) {
   return <span className={`wl-badge wb-${status}`}>{status}</span>;
 }
 
+interface ImageCellProps {
+  workload: Workload;
+  onUpdate: (name: string, image: string) => Promise<void>;
+  updating: boolean;
+}
+
+function ImageCell({ workload, onUpdate, updating }: ImageCellProps) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(workload.image);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.select();
+  }, [editing]);
+
+  function startEdit() {
+    setValue(workload.image);
+    setEditing(true);
+  }
+
+  function cancel() {
+    setEditing(false);
+    setValue(workload.image);
+  }
+
+  async function submit() {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === workload.image) { cancel(); return; }
+    setEditing(false);
+    await onUpdate(workload.name, trimmed);
+  }
+
+  if (editing) {
+    return (
+      <div className="wl-img-edit">
+        <input
+          ref={inputRef}
+          className="wl-img-input"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") submit();
+            if (e.key === "Escape") cancel();
+          }}
+          onBlur={submit}
+          disabled={updating}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="wl-img-view" onClick={startEdit} title="Click to update image">
+      <span className="wl-mono">{workload.image}</span>
+      <span className="wl-img-edit-icon">✎</span>
+    </div>
+  );
+}
+
 export default function WorkloadsPage() {
   const [workloads, setWorkloads] = useState<Workload[]>([]);
   const [capacity, setCapacity] = useState<NodeCapacity[]>([]);
@@ -43,6 +103,7 @@ export default function WorkloadsPage() {
   const [deleting, setDeleting]   = useState<string | null>(null);
   const [scaling, setScaling]     = useState<string | null>(null);
   const [cordoning, setCordoning] = useState<string | null>(null);
+  const [updatingImage, setUpdatingImage] = useState<string | null>(null);
   const [logsTarget, setLogsTarget] = useState<string | null>(null);
 
   const [form, setForm] = useState({
@@ -116,6 +177,18 @@ export default function WorkloadsPage() {
       setError(e instanceof Error ? e.message : "Failed to scale workload");
     } finally {
       setScaling(null);
+    }
+  }
+
+  async function handleImageUpdate(name: string, image: string) {
+    setUpdatingImage(name);
+    try {
+      await updateWorkloadImage(name, image);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update image");
+    } finally {
+      setUpdatingImage(null);
     }
   }
 
@@ -282,9 +355,15 @@ export default function WorkloadsPage() {
             </thead>
             <tbody>
               {workloads.map((w) => (
-                <tr key={w.id}>
+                <tr key={w.id} className={updatingImage === w.name ? "wl-row-updating" : ""}>
                   <td className="wl-name">{w.name}</td>
-                  <td className="wl-mono">{w.image}</td>
+                  <td>
+                    <ImageCell
+                      workload={w}
+                      onUpdate={handleImageUpdate}
+                      updating={updatingImage === w.name}
+                    />
+                  </td>
                   <td className="wl-mono">{w.namespace}</td>
                   <td>
                     <div className="wl-scale">
@@ -381,10 +460,10 @@ export default function WorkloadsPage() {
           })}
         </div>
       )}
-    </div>
 
-    {logsTarget && (
-      <LogsModal workloadName={logsTarget} onClose={() => setLogsTarget(null)} />
-    )}
+      {logsTarget && (
+        <LogsModal workloadName={logsTarget} onClose={() => setLogsTarget(null)} />
+      )}
+    </div>
   );
 }

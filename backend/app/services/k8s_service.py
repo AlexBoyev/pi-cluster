@@ -155,6 +155,13 @@ class K8sService:
             body={"spec": {"replicas": replicas}},
         )
 
+    def update_deployment_image(self, name: str, namespace: str, image: str) -> None:
+        self._apps().patch_namespaced_deployment(
+            name=name,
+            namespace=namespace,
+            body={"spec": {"template": {"spec": {"containers": [{"name": name, "image": image}]}}}},
+        )
+
     def get_pod_logs(self, name: str, namespace: str, tail_lines: int = 100) -> tuple[str, str]:
         core = self._core()
         pods = core.list_namespaced_pod(namespace=namespace, label_selector=f"app={name}")

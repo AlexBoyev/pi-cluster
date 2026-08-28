@@ -50,6 +50,15 @@ class WorkloadRepository:
         await self._db.refresh(workload)
         return workload
 
+    async def update_image(self, name: str, image: str) -> Workload | None:
+        workload = await self.get_by_name(name)
+        if workload is None:
+            return None
+        workload.image = image
+        await self._db.commit()
+        await self._db.refresh(workload)
+        return workload
+
     async def delete(self, name: str) -> bool:
         workload = await self.get_by_name(name)
         if workload is None:

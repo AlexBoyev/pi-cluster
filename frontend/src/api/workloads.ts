@@ -12,6 +12,11 @@ export const scaleWorkload = (name: string, replicas: number) =>
     method: "PATCH",
     body: JSON.stringify({ replicas }),
   });
+export const updateWorkloadImage = (name: string, image: string) =>
+  apiFetch<Workload>(`/workloads/${name}/image`, {
+    method: "PATCH",
+    body: JSON.stringify({ image }),
+  });
 export const getWorkloadLogs = (name: string, tail = 100) =>
   apiFetch<WorkloadLogs>(`/workloads/${name}/logs?tail=${tail}`);
 export const cordonNode = (name: string) =>

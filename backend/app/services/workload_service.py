@@ -6,7 +6,7 @@ from kubernetes.client.exceptions import ApiException
 
 from app.models.workload import WorkloadStatus
 from app.repositories.workload_repository import WorkloadRepository
-from app.schemas.workload import NodeCapacity, WorkloadCreate, WorkloadLogs, WorkloadResponse
+from app.schemas.workload import NodeCapacity, WorkloadCreate, WorkloadImageUpdate, WorkloadLogs, WorkloadResponse
 from app.services.audit_service import AuditService
 from app.services.k8s_service import K8sService
 
@@ -142,6 +142,35 @@ class WorkloadService:
 
         workload = await self._repo.update_replicas(name, replicas)
         await self._audit.log("workload.scale", "workload", name, actor, "success", f"replicas={replicas}")
+
+        return WorkloadResponse(
+            id=workload.id,
+            name=workload.name,
+            namespace=workload.namespace,
+            image=workload.image,
+            replicas=workload.replicas,
+            ready_replicas=0,
+            target_node=workload.target_node,
+            container_port=workload.container_port,
+            ingress_host=workload.ingress_host,
+            status=workload.status,
+            created_at=workload.created_at,
+        )
+
+    async def update_workload_image(self, name: str, image: str, actor: str = "system") -> WorkloadResponse:
+        workload = await self._repo.get_by_name(name)
+        if workload is None or workload.status == WorkloadStatus.DELETED:
+            await self._audit.log("workload.update_image", "workload", name, actor, "failure", "Workload not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workload not found")
+
+        try:
+            await run_in_threadpool(self._k8s.update_deployment_image, name, workload.namespace, image)
+        except ApiException as e:
+            await self._audit.log("workload.update_image", "workload", name, actor, "failure", e.reason)
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
+
+        workload = await self._repo.update_image(name, image)
+        await self._audit.log("workload.update_image", "workload", name, actor, "success", f"image={image}")
 
         return WorkloadResponse(
             id=workload.id,

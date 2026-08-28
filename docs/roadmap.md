@@ -77,6 +77,13 @@
 - [x] GET /api/v1/audit with limit/offset pagination
 - [x] Audit Log page in frontend: event table, action/status badges, filter by type, load more
 
+## Phase 14 — Rolling Image Updates ✓
+- [x] `PATCH /workloads/{name}/image` endpoint with admin auth and audit logging
+- [x] K8s `patch_namespaced_deployment` updates container image in-place (rolling restart)
+- [x] DB `update_image` keeps workload record in sync
+- [x] Inline image editor in workloads table: click image → editable input, Enter to apply, Escape to cancel, blur to apply
+- [x] Row dims during update; edit pencil icon appears on hover
+
 ## Phase 13 — Pod Log Viewer ✓
 - [x] `GET /workloads/{name}/logs?tail=N` — reads last N lines from a running pod via K8s API
 - [x] Selects a Running pod first, falls back to first available pod

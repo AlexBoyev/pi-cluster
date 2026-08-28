@@ -21,6 +21,10 @@ class WorkloadScale(BaseModel):
     replicas: int = Field(..., ge=1, le=10)
 
 
+class WorkloadImageUpdate(BaseModel):
+    image: str = Field(..., min_length=1)
+
+
 class WorkloadResponse(BaseModel):
     id: int
     name: str
