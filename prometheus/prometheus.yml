@@ -11,3 +11,18 @@ scrape_configs:
     static_configs:
       - targets: ["backend:8000"]
     metrics_path: /metrics
+
+  - job_name: node-exporter
+    static_configs:
+      - targets: ["10.100.102.10:9100"]
+        labels:
+          node_name: pi-node1
+      - targets: ["10.100.102.16:9100"]
+        labels:
+          node_name: pi-node2
+      - targets: ["10.100.102.17:9100"]
+        labels:
+          node_name: pi-node3
+      - targets: ["10.100.102.12:9100"]
+        labels:
+          node_name: pi-node4

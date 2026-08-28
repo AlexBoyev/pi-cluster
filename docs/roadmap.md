@@ -55,6 +55,13 @@
 - [x] Node cordon / uncordon via API and dashboard UI
 - [x] Workloads page in frontend (deploy form, live table, capacity cards)
 
+## Phase 10 — Node Exporter ✓
+- [x] prometheus/node-exporter DaemonSet on all 4 K3s nodes via ArgoCD (k8s/apps/node-exporter.yaml)
+- [x] Prometheus scrape job for node-exporter with per-node node_name labels
+- [x] Grafana dashboard rewritten with node_exporter metrics (CPU %, memory %, disk %, temp, network)
+- [x] Two new panels: Network Receive and Network Transmit per node
+- [x] SSH metric collection retained for health card status; Grafana uses native Prometheus data
+
 ## Phase 9 — Audit Logging ✓
 - [x] `audit_logs` table: action, resource_type, resource_name, actor, status, detail, timestamp
 - [x] AuditService wraps all writes with best-effort semantics (never breaks the operation)

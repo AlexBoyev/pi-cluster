@@ -1,6 +1,6 @@
 {
   "annotations": { "list": [] },
-  "description": "Pi Cluster node monitoring",
+  "description": "Pi Cluster node monitoring — node_exporter",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -39,7 +39,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(pi_cluster_node_online)",
+          "expr": "sum(up{job=\"node-exporter\"})",
           "legendFormat": "",
           "refId": "A"
         }
@@ -77,7 +77,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "count(pi_cluster_node_online) - sum(pi_cluster_node_online)",
+          "expr": "count(up{job=\"node-exporter\"}) - sum(up{job=\"node-exporter\"})",
           "legendFormat": "",
           "refId": "A"
         }
@@ -93,12 +93,12 @@
             "mode": "absolute",
             "steps": [
               { "color": "green", "value": null },
-              { "color": "yellow", "value": 2 },
-              { "color": "red", "value": 4 }
+              { "color": "yellow", "value": 60 },
+              { "color": "red", "value": 85 }
             ]
           },
-          "unit": "short",
-          "decimals": 2
+          "unit": "percent",
+          "decimals": 1
         },
         "overrides": []
       },
@@ -112,12 +112,12 @@
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "textMode": "auto"
       },
-      "title": "Avg CPU Load",
+      "title": "Avg CPU Usage",
       "type": "stat",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "avg(pi_cluster_node_cpu_load_1m)",
+          "expr": "avg(100 - avg by (node_name) (rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[2m]) * 100))",
           "legendFormat": "",
           "refId": "A"
         }
@@ -157,7 +157,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "avg(pi_cluster_node_temperature_celsius)",
+          "expr": "avg(node_thermal_zone_temp{job=\"node-exporter\",type=\"cpu-thermal\"} / 1000)",
           "legendFormat": "",
           "refId": "A"
         }
@@ -191,9 +191,10 @@
           },
           "mappings": [],
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
-          "unit": "short",
-          "decimals": 2,
-          "min": 0
+          "unit": "percent",
+          "decimals": 1,
+          "min": 0,
+          "max": 100
         },
         "overrides": []
       },
@@ -203,12 +204,12 @@
         "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "right", "showLegend": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
-      "title": "CPU Load (1 min avg)",
+      "title": "CPU Usage %",
       "type": "timeseries",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "pi_cluster_node_cpu_load_1m",
+          "expr": "100 - avg by (node_name) (rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[2m]) * 100)",
           "legendFormat": "{{node_name}}",
           "refId": "A"
         }
@@ -259,7 +260,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "pi_cluster_node_memory_percent",
+          "expr": "100 * (1 - node_memory_MemAvailable_bytes{job=\"node-exporter\"} / node_memory_MemTotal_bytes{job=\"node-exporter\"})",
           "legendFormat": "{{node_name}}",
           "refId": "A"
         }
@@ -310,7 +311,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "pi_cluster_node_disk_percent",
+          "expr": "100 * (1 - node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!=\"tmpfs\"} / node_filesystem_size_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!=\"tmpfs\"})",
           "legendFormat": "{{node_name}}",
           "refId": "A"
         }
@@ -367,7 +368,107 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "pi_cluster_node_temperature_celsius",
+          "expr": "node_thermal_zone_temp{job=\"node-exporter\",type=\"cpu-thermal\"} / 1000",
+          "legendFormat": "{{node_name}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "Bps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "id": 9,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "Network Receive",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (node_name) (rate(node_network_receive_bytes_total{job=\"node-exporter\",device!~\"lo|veth.*|cni.*|flannel.*|cali.*|tunl.*\"}[2m]))",
+          "legendFormat": "{{node_name}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "Bps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "id": 10,
+      "options": {
+        "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "Network Transmit",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (node_name) (rate(node_network_transmit_bytes_total{job=\"node-exporter\",device!~\"lo|veth.*|cni.*|flannel.*|cali.*|tunl.*\"}[2m]))",
           "legendFormat": "{{node_name}}",
           "refId": "A"
         }
@@ -383,5 +484,5 @@
   "timezone": "browser",
   "title": "Pi Cluster",
   "uid": "pi-cluster",
-  "version": 1
+  "version": 2
 }
