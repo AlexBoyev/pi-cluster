@@ -11,6 +11,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - /etc/rancher/k3s/k3s.yaml:/app/kubeconfig:ro
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:

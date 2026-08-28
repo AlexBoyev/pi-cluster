@@ -48,11 +48,12 @@
 - [x] Sample nginx workload deployed via GitOps
 - [ ] Workload scheduling and placement policies
 
-## Phase 7 — Orchestration
-- [ ] Workload API (create / list / delete deployments)
-- [ ] Scheduler integrating with K3s
-- [ ] Capacity-aware placement
-- [ ] Node drain and cordon support
+## Phase 7 — Orchestration ✓
+- [x] Workload API (create / list / delete K8s deployments)
+- [x] Kubernetes Python client integrating with K3s via kubeconfig
+- [x] Capacity-aware placement (picks node with most free CPU)
+- [x] Node cordon / uncordon via API and dashboard UI
+- [x] Workloads page in frontend (deploy form, live table, capacity cards)
 
 ## Phase 8 — Load Balancing
 - [ ] Traefik IngressController (K3s built-in) configuration

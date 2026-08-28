@@ -1,0 +1,203 @@
+.wl-page { display: flex; flex-direction: column; }
+
+/* ── Form ───────────────────────────────────────────────────────────────── */
+
+.wl-form-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 1.25rem 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.wl-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  align-items: flex-end;
+}
+
+.wl-field { display: flex; flex-direction: column; gap: 0.3rem; min-width: 140px; }
+.wl-field-wide { min-width: 220px; flex: 1; }
+.wl-field-submit { justify-content: flex-end; }
+
+.wl-label {
+  font-size: 0.65rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--t3);
+}
+
+.wl-input {
+  padding: 0.5rem 0.7rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--rs);
+  background: #fff;
+  color: var(--t1);
+  font-size: 0.86rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.12s;
+}
+.wl-input:focus { border-color: var(--blue); }
+.wl-input:disabled { opacity: 0.6; }
+
+.wl-btn-primary {
+  padding: 0.52rem 1.4rem;
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: var(--rs);
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s;
+  white-space: nowrap;
+}
+.wl-btn-primary:hover:not(:disabled) { background: var(--blue-mid); }
+.wl-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Table ──────────────────────────────────────────────────────────────── */
+
+.wl-table-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.wl-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.wl-table thead tr {
+  background: rgba(29,78,216,0.05);
+  border-bottom: 1px solid var(--border);
+}
+.wl-table th {
+  padding: 0.65rem 1rem;
+  text-align: left;
+  font-size: 0.6rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.09em;
+  color: var(--t3);
+}
+
+.wl-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--t1);
+  vertical-align: middle;
+}
+.wl-table tr:last-child td { border-bottom: none; }
+.wl-table tbody tr:hover { background: rgba(29,78,216,0.03); }
+
+.wl-name { font-weight: 700; }
+.wl-mono { font-family: var(--mono); font-size: 0.8rem; color: var(--t2); }
+.wl-date { font-family: var(--mono); font-size: 0.78rem; color: var(--t3); }
+
+/* ── Badges ─────────────────────────────────────────────────────────────── */
+
+.wl-badge {
+  display: inline-flex; align-items: center;
+  font-size: 0.58rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 0.2rem 0.55rem; border-radius: 20px;
+}
+.wb-pending  { background: #e2e8f0; color: var(--slate); border: 1px solid #cbd5e1; }
+.wb-running  { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-bd); }
+.wb-failed   { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-bd); }
+.wb-deleted  { background: #e2e8f0; color: var(--slate); border: 1px solid #cbd5e1; }
+.wb-cordoned { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-bd); }
+
+/* ── Delete button ──────────────────────────────────────────────────────── */
+
+.wl-btn-del {
+  padding: 0.3rem 0.75rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--rs);
+  font-size: 0.75rem; font-weight: 600;
+  color: var(--t3); cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.wl-btn-del:hover:not(:disabled) {
+  background: var(--red-bg); color: var(--red); border-color: var(--red-bd);
+}
+.wl-btn-del:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Capacity grid ──────────────────────────────────────────────────────── */
+
+.wl-cap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.wl-cap-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 1rem 1.1rem 0.9rem;
+  box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 0.65rem;
+  transition: box-shadow 0.15s, transform 0.12s;
+}
+.wl-cap-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+.wl-cordoned { border-left: 4px solid var(--amber); opacity: 0.85; }
+
+.wl-cap-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+}
+.wl-cap-name { font-size: 0.9rem; font-weight: 800; color: var(--t1); font-family: var(--mono); }
+.wl-cap-badges { display: flex; gap: 0.35rem; flex-wrap: wrap; justify-content: flex-end; }
+
+.wl-cap-row { display: flex; align-items: center; gap: 0.6rem; }
+.wl-cap-lbl {
+  font-size: 0.6rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.09em; color: var(--t3); width: 30px; flex-shrink: 0;
+}
+.wl-bar {
+  flex: 1; height: 6px; background: var(--border);
+  border-radius: 4px; overflow: hidden;
+}
+.wl-bar-fill {
+  height: 100%; border-radius: 4px;
+  transition: width 0.5s ease;
+}
+.wl-bar-ok   { background: linear-gradient(90deg, var(--blue) 0%, var(--blue-ring) 100%); }
+.wl-bar-warn { background: var(--amber); }
+.wl-bar-crit { background: var(--red); }
+
+.wl-cap-val {
+  font-size: 0.66rem; font-family: var(--mono); color: var(--t2);
+  white-space: nowrap; min-width: 110px; text-align: right;
+}
+
+.wl-cordon-btn {
+  margin-top: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--rs);
+  background: transparent;
+  font-size: 0.74rem; font-weight: 600;
+  color: var(--t2); cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  align-self: flex-start;
+}
+.wl-cordon-btn:hover:not(:disabled) { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-bd); }
+.wl-cordon-btn.wl-cordon-active { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-bd); }
+.wl-cordon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Misc ───────────────────────────────────────────────────────────────── */
+
+.wl-empty {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 2rem;
+  text-align: center;
+  color: var(--t3);
+  font-size: 0.84rem;
+  box-shadow: var(--shadow-sm);
+}

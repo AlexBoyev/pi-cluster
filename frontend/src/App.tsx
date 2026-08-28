@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import "./App.css";
 import { getAllHealth } from "./api/health";
 import { useAuth } from "./context/AuthContext";
+import WorkloadsPage from "./pages/WorkloadsPage";
 import type { NodeHealth } from "./types/node";
+
+type Page = "dashboard" | "workloads";
 
 const POLL_MS  = 30_000;
 const CTRL_IP  = "10.100.102.10";
@@ -185,6 +188,7 @@ function avgTemp(nodes: NodeHealth[]): string {
 
 export default function App() {
   const { username, role, logout } = useAuth();
+  const [page,    setPage]    = useState<Page>("dashboard");
   const [nodes,   setNodes]   = useState<NodeHealth[]>([]);
   const [error,   setError]   = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -220,9 +224,21 @@ export default function App() {
 
         <nav className="sb-nav">
           <div className="sb-section">Cluster</div>
-          <a href="#" className="sb-link active">
+          <a
+            href="#"
+            className={`sb-link${page === "dashboard" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); setPage("dashboard"); }}
+          >
             <span className="sb-icon">⊞</span>
             Dashboard
+          </a>
+          <a
+            href="#"
+            className={`sb-link${page === "workloads" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); setPage("workloads"); }}
+          >
+            <span className="sb-icon">⬡</span>
+            Workloads
           </a>
 
           <div className="sb-section">Services</div>
@@ -245,7 +261,7 @@ export default function App() {
           </div>
           <button className="sb-logout" onClick={logout}>Sign out</button>
           <div className="sb-foot-label" style={{ marginTop: "0.8rem" }}>Version</div>
-          <div className="sb-foot-val">v0.1.0 · Phase 4</div>
+          <div className="sb-foot-val">v0.1.0 · Phase 7</div>
           <div className="sb-foot-label" style={{ marginTop: "0.4rem" }}>Cluster</div>
           <div className="sb-foot-val">4 nodes · arm64 · 10.100.102.0/24</div>
         </div>
@@ -258,10 +274,10 @@ export default function App() {
             <button className="hamburger" onClick={() => setSbOpen((o) => !o)}>
               <span /><span /><span />
             </button>
-            <h1 className="page-title">Dashboard</h1>
+            <h1 className="page-title">{page === "workloads" ? "Workloads" : "Dashboard"}</h1>
           </div>
           <div className="tb-right">
-            {!loading && (
+            {page === "dashboard" && !loading && (
               <span className={`pill pill-${pill.cls}`}>
                 <span className="pill-dot" />
                 {pill.label}
@@ -272,50 +288,56 @@ export default function App() {
         </header>
 
         <main>
-          {error && <div className="err-banner">API error: {error}</div>}
-
-          {loading ? (
-            <div className="loading">
-              <div className="spinner" />
-              <span>Connecting to cluster…</span>
-            </div>
+          {page === "workloads" ? (
+            <WorkloadsPage />
           ) : (
             <>
-              {nodes.length > 0 && (
-                <div className="summary-row">
-                  <div className="summ-card sc-blue">
-                    <div className="summ-label">Total nodes</div>
-                    <div className="summ-value sv-blue">{nodes.length}</div>
-                    <div className="summ-sub">10.100.102.0/24</div>
-                  </div>
-                  <div className="summ-card sc-green">
-                    <div className="summ-label">Online</div>
-                    <div className="summ-value sv-green">{online}</div>
-                    <div className="summ-sub">{((online / nodes.length) * 100).toFixed(0)}% availability</div>
-                  </div>
-                  <div className="summ-card sc-red">
-                    <div className="summ-label">Offline</div>
-                    <div className={`summ-value${offline > 0 ? " sv-red" : " sv-dim"}`}>{offline}</div>
-                    <div className="summ-sub">{offline === 0 ? "All nodes healthy" : `${offline} node(s) down`}</div>
-                  </div>
-                  <div className="summ-card sc-amber">
-                    <div className="summ-label">Avg Temperature</div>
-                    <div className="summ-value sv-amber">{avgTemp(nodes)}</div>
-                    <div className="summ-sub">across {nodes.filter(n => n.metrics?.temperature_celsius != null).length} reporting nodes</div>
-                  </div>
+              {error && <div className="err-banner">API error: {error}</div>}
+
+              {loading ? (
+                <div className="loading">
+                  <div className="spinner" />
+                  <span>Connecting to cluster…</span>
                 </div>
+              ) : (
+                <>
+                  {nodes.length > 0 && (
+                    <div className="summary-row">
+                      <div className="summ-card sc-blue">
+                        <div className="summ-label">Total nodes</div>
+                        <div className="summ-value sv-blue">{nodes.length}</div>
+                        <div className="summ-sub">10.100.102.0/24</div>
+                      </div>
+                      <div className="summ-card sc-green">
+                        <div className="summ-label">Online</div>
+                        <div className="summ-value sv-green">{online}</div>
+                        <div className="summ-sub">{((online / nodes.length) * 100).toFixed(0)}% availability</div>
+                      </div>
+                      <div className="summ-card sc-red">
+                        <div className="summ-label">Offline</div>
+                        <div className={`summ-value${offline > 0 ? " sv-red" : " sv-dim"}`}>{offline}</div>
+                        <div className="summ-sub">{offline === 0 ? "All nodes healthy" : `${offline} node(s) down`}</div>
+                      </div>
+                      <div className="summ-card sc-amber">
+                        <div className="summ-label">Avg Temperature</div>
+                        <div className="summ-value sv-amber">{avgTemp(nodes)}</div>
+                        <div className="summ-sub">across {nodes.filter(n => n.metrics?.temperature_celsius != null).length} reporting nodes</div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="section-header">
+                    <span className="section-title">Node Health</span>
+                    <span className="section-meta">auto-refresh every 30s</span>
+                  </div>
+
+                  <div className="node-grid">
+                    {sorted.map((n) => (
+                      <NodeCard key={n.node_id} h={n} />
+                    ))}
+                  </div>
+                </>
               )}
-
-              <div className="section-header">
-                <span className="section-title">Node Health</span>
-                <span className="section-meta">auto-refresh every 30s</span>
-              </div>
-
-              <div className="node-grid">
-                {sorted.map((n) => (
-                  <NodeCard key={n.node_id} h={n} />
-                ))}
-              </div>
             </>
           )}
         </main>
