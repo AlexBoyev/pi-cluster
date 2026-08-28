@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import { getAllHealth } from "./api/health";
-import type { NodeHealth, NodeStatus } from "./types/node";
+import type { NodeHealth } from "./types/node";
 
 const POLL_MS = 30_000;
+const CTRL_IP  = "10.100.102.10";
 
-// ── Formatters ──────────────────────────────────────────────────────────────
+// ── Formatters ───────────────────────────────────────────────────────────────
 
 function fmtBytes(b: number): string {
   if (b >= 1_073_741_824) return `${(b / 1_073_741_824).toFixed(1)} GB`;
@@ -21,99 +22,131 @@ function fmtUptime(secs: number): string {
   return `${m}m`;
 }
 
-function bar(pct: number): "ok" | "warn" | "danger" {
-  if (pct >= 90) return "danger";
+function severity(pct: number): "ok" | "warn" | "crit" {
+  if (pct >= 90) return "crit";
   if (pct >= 75) return "warn";
   return "ok";
 }
 
-// ── Clock ───────────────────────────────────────────────────────────────────
+// ── Clock ────────────────────────────────────────────────────────────────────
 
 function Clock() {
-  const [time, setTime] = useState(() => new Date().toLocaleTimeString());
+  const [t, setT] = useState(() => new Date().toLocaleTimeString());
   useEffect(() => {
-    const id = setInterval(() => setTime(new Date().toLocaleTimeString()), 1000);
+    const id = setInterval(() => setT(new Date().toLocaleTimeString()), 1000);
     return () => clearInterval(id);
   }, []);
-  return <span className="header-clock">{time}</span>;
+  return <span className="clock">{t}</span>;
 }
 
-// ── Ring gauge ──────────────────────────────────────────────────────────────
+// ── Sidebar ──────────────────────────────────────────────────────────────────
 
-function Ring({
-  pct,
-  label,
-  value,
-  size = 64,
-}: {
-  pct: number;
-  label: string;
-  value: string;
-  size?: number;
+const NAV_LINKS = [
+  { label: "Prometheus",  href: `http://${CTRL_IP}:9090`,       ext: true },
+  { label: "Grafana",     href: `http://${CTRL_IP}:3000`,        ext: true },
+  { label: "API Docs",    href: `http://${CTRL_IP}:8000/docs`,   ext: true },
+  { label: "Metrics",     href: `http://${CTRL_IP}:8000/metrics`,ext: true },
+];
+
+function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <>
+      {open && <div className="backdrop" onClick={onClose} />}
+      <aside className={`sidebar${open ? " open" : ""}`}>
+        <div className="sb-brand">
+          <div className="sb-logo">π</div>
+          <div>
+            <div className="sb-name">Pi Cluster</div>
+            <div className="sb-sub">10.100.102.0/24</div>
+          </div>
+          <button className="sb-close" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="sb-divider" />
+
+        <nav className="sb-nav">
+          <div className="sb-section-label">Cluster</div>
+          <a href="#" className="sb-item active" onClick={onClose}>
+            <span className="sb-icon">⊞</span>
+            Dashboard
+          </a>
+
+          <div className="sb-section-label">Services</div>
+          {NAV_LINKS.map((l) => (
+            <a
+              key={l.label}
+              href={l.href}
+              target="_blank"
+              rel="noreferrer"
+              className="sb-item"
+            >
+              <span className="sb-icon">◎</span>
+              {l.label}
+              <span className="sb-ext">↗</span>
+            </a>
+          ))}
+        </nav>
+
+        <div className="sb-footer">
+          <span className="sb-version">v0.1.0 · Phase 3</span>
+          <span className="sb-build">4 nodes · arm64</span>
+        </div>
+      </aside>
+    </>
+  );
+}
+
+// ── Ring gauge ────────────────────────────────────────────────────────────────
+
+function Ring({ pct, label, detail, size = 76 }: {
+  pct: number; label: string; detail: string; size?: number;
 }) {
-  const strokeW = 5;
-  const r = (size - strokeW) / 2;
-  const circ = 2 * Math.PI * r;
-  const dash = circ * Math.min(pct, 100) / 100;
-  const lvl = bar(pct);
-  const cx = size / 2;
-  const color =
-    lvl === "danger" ? "var(--red)" : lvl === "warn" ? "var(--amber)" : "var(--cyan)";
+  const sw = 6;
+  const r  = (size - sw) / 2;
+  const c  = 2 * Math.PI * r;
+  const fill = c * Math.min(pct, 100) / 100;
+  const sev  = severity(pct);
+  const cx   = size / 2;
+  const stroke =
+    sev === "crit" ? "var(--red)" : sev === "warn" ? "var(--amber)" : "var(--teal)";
 
   return (
-    <div className="ring-wrap">
-      <svg width={size} height={size} className="ring-svg">
+    <div className="ring">
+      <svg width={size} height={size}>
+        <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--border)" strokeWidth={sw} />
         <circle
-          cx={cx} cy={cx} r={r}
-          fill="none"
-          stroke="var(--border)"
-          strokeWidth={strokeW}
-        />
-        <circle
-          cx={cx} cy={cx} r={r}
-          fill="none"
-          stroke={color}
-          strokeWidth={strokeW}
-          strokeDasharray={`${dash} ${circ - dash}`}
+          cx={cx} cy={cx} r={r} fill="none"
+          stroke={stroke} strokeWidth={sw}
+          strokeDasharray={`${fill} ${c - fill}`}
           strokeLinecap="round"
           transform={`rotate(-90 ${cx} ${cx})`}
-          style={{ transition: "stroke-dasharray 0.6s cubic-bezier(0.4,0,0.2,1)" }}
+          style={{ transition: "stroke-dasharray .6s cubic-bezier(.4,0,.2,1)" }}
         />
       </svg>
-      <div className="ring-inner">
-        <span className={`ring-pct${lvl !== "ok" ? ` ${lvl}` : ""}`}>
-          {pct.toFixed(0)}%
-        </span>
+      <div className="ring-center">
+        <span className={`ring-pct sev-${sev}`}>{pct.toFixed(0)}%</span>
       </div>
       <div className="ring-label">{label}</div>
-      <div className="ring-value">{value}</div>
+      <div className="ring-detail">{detail}</div>
     </div>
   );
 }
 
-// ── Metric tile ─────────────────────────────────────────────────────────────
+// ── Stat tile ────────────────────────────────────────────────────────────────
 
-function Tile({
-  label,
-  value,
-  pct,
-  colorClass = "",
-}: {
-  label: string;
-  value: string;
-  pct?: number;
-  colorClass?: string;
+function StatTile({ label, value, accent, bar: barPct }: {
+  label: string; value: string; accent?: string; bar?: number;
 }) {
-  const lvl = pct !== undefined ? bar(pct) : "ok";
+  const sev = barPct !== undefined ? severity(barPct) : "ok";
   return (
-    <div className="metric-tile">
-      <div className="metric-label">{label}</div>
-      <div className={`metric-value ${colorClass || (lvl !== "ok" ? lvl : "")}`}>{value}</div>
-      {pct !== undefined && (
-        <div className="metric-bar">
+    <div className="stat-tile">
+      <div className="stat-label">{label}</div>
+      <div className={`stat-value${accent ? ` accent-${accent}` : ""}`}>{value}</div>
+      {barPct !== undefined && (
+        <div className="stat-bar">
           <div
-            className={`metric-bar-fill ${lvl !== "ok" ? lvl : ""}`}
-            style={{ width: `${Math.min(pct, 100)}%` }}
+            className={`stat-bar-fill sev-${sev}`}
+            style={{ width: `${Math.min(barPct, 100)}%` }}
           />
         </div>
       )}
@@ -121,96 +154,99 @@ function Tile({
   );
 }
 
-// ── Node card ───────────────────────────────────────────────────────────────
+// ── Node card ────────────────────────────────────────────────────────────────
 
 function NodeCard({ h }: { h: NodeHealth }) {
-  const m = h.metrics;
+  const m  = h.metrics;
   const ts = new Date(h.checked_at).toLocaleTimeString();
+  const isCtrl = h.ip_address === CTRL_IP;
 
   return (
-    <div className={`node-card ${h.status}`}>
-      <div className={`card-accent ${h.status}`} />
-      <div className="card-body">
-        <div className="card-header">
-          <div className="node-info">
-            <span className="node-name">{h.node_name}</span>
-            <span className="node-ip">{h.ip_address}</span>
-          </div>
-          <span className={`status-badge ${h.status}`}>
-            <span className="status-dot" />
-            {h.status}
-          </span>
-        </div>
+    <div className={`card status-${h.status}`}>
+      <div className={`card-bar bar-${h.status}`} />
 
-        {m ? (
-          <>
-            <div className="metrics-rings">
-              <Ring
-                pct={m.memory_percent}
-                label="RAM"
-                value={`${fmtBytes(m.memory_total_bytes - m.memory_available_bytes)} / ${fmtBytes(m.memory_total_bytes)}`}
-              />
-              <Ring
-                pct={m.disk_percent}
-                label="Disk"
-                value={`${fmtBytes(m.disk_used_bytes)} / ${fmtBytes(m.disk_total_bytes)}`}
-              />
-            </div>
-            <div className="metrics-stats">
-              <Tile label="CPU load" value={m.cpu_load_1m.toFixed(2)} />
-              <Tile label="Uptime" value={fmtUptime(m.uptime_seconds)} colorClass="cyan" />
-              {m.temperature_celsius !== null ? (
-                <Tile
-                  label="Temp"
-                  value={`${m.temperature_celsius.toFixed(1)}°C`}
-                  pct={(m.temperature_celsius / 85) * 100}
-                />
-              ) : (
-                <Tile label="Temp" value="—" />
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="offline-body">
-            <div className="offline-icon">⊘</div>
-            <div className="offline-msg">{h.error ?? "Node unreachable"}</div>
+      <div className="card-head">
+        <div className="card-title-row">
+          <div className="card-node-info">
+            <span className="card-name">{h.node_name}</span>
+            <span className="card-ip">{h.ip_address}</span>
           </div>
-        )}
+          <div className="card-badges">
+            {isCtrl && <span className="badge-ctrl">CTRL</span>}
+            <span className={`badge-status st-${h.status}`}>
+              <span className="st-dot" />{h.status}
+            </span>
+          </div>
+        </div>
       </div>
-      <div className="checked-at">checked {ts}</div>
+
+      {m ? (
+        <div className="card-body">
+          <div className="rings-row">
+            <Ring
+              pct={m.memory_percent}
+              label="RAM"
+              detail={`${fmtBytes(m.memory_total_bytes - m.memory_available_bytes)} / ${fmtBytes(m.memory_total_bytes)}`}
+            />
+            <Ring
+              pct={m.disk_percent}
+              label="Disk"
+              detail={`${fmtBytes(m.disk_used_bytes)} / ${fmtBytes(m.disk_total_bytes)}`}
+            />
+          </div>
+          <div className="stats-row">
+            <StatTile label="CPU load" value={m.cpu_load_1m.toFixed(2)} />
+            <StatTile label="Uptime"   value={fmtUptime(m.uptime_seconds)} accent="teal" />
+            <StatTile
+              label="Temp"
+              value={m.temperature_celsius !== null ? `${m.temperature_celsius.toFixed(1)}°C` : "—"}
+              bar={m.temperature_celsius !== null ? (m.temperature_celsius / 85) * 100 : undefined}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="card-offline">
+          <span className="offline-glyph">⊘</span>
+          <span className="offline-msg">{h.error ?? "Node unreachable"}</span>
+        </div>
+      )}
+
+      <div className="card-foot">checked {ts}</div>
     </div>
   );
 }
 
-// ── Cluster status ───────────────────────────────────────────────────────────
+// ── Cluster helpers ──────────────────────────────────────────────────────────
 
-function clusterStatus(nodes: NodeHealth[]): { label: string; cls: string } {
-  const offline = nodes.filter((n) => n.status === "OFFLINE").length;
-  const degraded = nodes.filter((n) => n.status === "DEGRADED").length;
-  if (offline === nodes.length && nodes.length > 0) return { label: "All offline", cls: "critical" };
-  if (offline > 0 || degraded > 0) return { label: "Degraded", cls: "degraded" };
-  if (nodes.length === 0) return { label: "No nodes", cls: "degraded" };
-  return { label: "All systems operational", cls: "healthy" };
+function clusterPill(nodes: NodeHealth[]): { label: string; cls: string } {
+  const off = nodes.filter((n) => n.status === "OFFLINE").length;
+  const deg = nodes.filter((n) => n.status === "DEGRADED").length;
+  if (nodes.length === 0)          return { label: "No nodes",    cls: "deg" };
+  if (off === nodes.length)        return { label: "All offline",  cls: "crit" };
+  if (off > 0 || deg > 0)          return { label: "Degraded",     cls: "deg" };
+  return                                  { label: "All systems go", cls: "ok" };
 }
 
 function avgTemp(nodes: NodeHealth[]): string {
-  const temps = nodes.flatMap((n) =>
+  const ts = nodes.flatMap((n) =>
     n.metrics?.temperature_celsius != null ? [n.metrics.temperature_celsius] : []
   );
-  if (temps.length === 0) return "—";
-  return `${(temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1)}°C`;
+  return ts.length
+    ? `${(ts.reduce((a, b) => a + b) / ts.length).toFixed(1)}°C`
+    : "—";
 }
 
-// ── App ─────────────────────────────────────────────────────────────────────
+// ── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [nodes, setNodes] = useState<NodeHealth[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [nodes,   setNodes]   = useState<NodeHealth[]>([]);
+  const [error,   setError]   = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sbOpen,  setSbOpen]  = useState(false);
 
   const refresh = () =>
     getAllHealth()
-      .then((data) => { setNodes(data); setError(null); })
+      .then((d) => { setNodes(d); setError(null); })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
 
@@ -220,66 +256,69 @@ export default function App() {
     return () => clearInterval(id);
   }, []);
 
+  const sorted  = [...nodes].sort((a, b) =>
+    a.node_name.localeCompare(b.node_name, undefined, { numeric: true })
+  );
   const online  = nodes.filter((n) => n.status === "ONLINE").length;
   const offline = nodes.filter((n) => n.status === "OFFLINE").length;
-  const cs = clusterStatus(nodes);
+  const pill    = clusterPill(nodes);
 
   return (
     <>
+      <Sidebar open={sbOpen} onClose={() => setSbOpen(false)} />
+
       <header>
-        <div className="header-left">
-          <div className="logo-mark">π</div>
-          <div>
-            <div className="header-title">Pi Cluster</div>
-            <div className="header-subtitle">10.100.102.0/24</div>
-          </div>
+        <div className="h-left">
+          <button className="hamburger" onClick={() => setSbOpen((o) => !o)}>
+            <span /><span /><span />
+          </button>
+          <div className="h-logo">π</div>
+          <div className="h-title">Pi Cluster</div>
         </div>
-        <div className="header-right">
-          <div className="header-meta">
-            {!loading && (
-              <span className={`cluster-pill ${cs.cls}`}>
-                <span className="cluster-pill-dot" />
-                {cs.label}
-              </span>
-            )}
-          </div>
+        <div className="h-right">
+          {!loading && (
+            <span className={`pill pill-${pill.cls}`}>
+              <span className="pill-dot" />
+              {pill.label}
+            </span>
+          )}
           <Clock />
         </div>
       </header>
 
       <main>
-        {error && <div className="error-banner">API error: {error}</div>}
+        {error && <div className="err-banner">API error: {error}</div>}
 
         {loading ? (
-          <div className="loading-state">
+          <div className="loading">
             <div className="spinner" />
             <span>Connecting to cluster…</span>
           </div>
         ) : (
           <>
             {nodes.length > 0 && (
-              <div className="summary">
-                <div className="summary-stat">
-                  <span className="summary-label">Total nodes</span>
-                  <span className="summary-value cyan">{nodes.length}</span>
+              <div className="summary-row">
+                <div className="summ-card top-teal">
+                  <div className="summ-label">Total nodes</div>
+                  <div className="summ-value color-teal">{nodes.length}</div>
                 </div>
-                <div className="summary-stat">
-                  <span className="summary-label">Online</span>
-                  <span className="summary-value green">{online}</span>
+                <div className="summ-card top-green">
+                  <div className="summ-label">Online</div>
+                  <div className="summ-value color-green">{online}</div>
                 </div>
-                <div className="summary-stat">
-                  <span className="summary-label">Offline</span>
-                  <span className={`summary-value ${offline > 0 ? "red" : ""}`}>{offline}</span>
+                <div className="summ-card top-red">
+                  <div className="summ-label">Offline</div>
+                  <div className={`summ-value${offline > 0 ? " color-red" : ""}`}>{offline}</div>
                 </div>
-                <div className="summary-stat">
-                  <span className="summary-label">Avg temp</span>
-                  <span className="summary-value amber">{avgTemp(nodes)}</span>
+                <div className="summ-card top-amber">
+                  <div className="summ-label">Avg temp</div>
+                  <div className="summ-value color-amber">{avgTemp(nodes)}</div>
                 </div>
               </div>
             )}
 
             <div className="node-grid">
-              {nodes.map((n) => (
+              {sorted.map((n) => (
                 <NodeCard key={n.node_id} h={n} />
               ))}
             </div>
