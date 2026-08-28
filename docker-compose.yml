@@ -84,6 +84,7 @@ services:
       context: .
       dockerfile: docker/jenkins/Dockerfile
     platform: linux/arm64
+    user: root
     ports:
       - "8080:8080"
       - "50000:50000"
