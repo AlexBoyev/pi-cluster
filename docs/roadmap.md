@@ -34,10 +34,11 @@
 - [x] Frontend auth flow (login page, token storage)
 - [x] Role-based access (admin / viewer)
 
-## Phase 5 — CI/CD Pipeline
+## Phase 5 — CI/CD Pipeline ✓
 - [x] Jenkins deployed as Docker service on pi-node1 (:8080)
-- [ ] Jenkins pipeline for build → test → deploy on git push
-- [ ] Webhook from Git repo to Jenkins
+- [x] Jenkins pipeline for build → migrate → deploy → health check on git push
+- [x] SCM polling every 2 minutes (triggers on any master push)
+- [ ] Webhook from Git repo to Jenkins (optional, polling sufficient)
 - [ ] Automated docker build and push to local registry
 
 ## Phase 6 — Kubernetes + GitOps ✓
