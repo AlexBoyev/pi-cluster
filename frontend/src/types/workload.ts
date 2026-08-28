@@ -8,6 +8,8 @@ export interface Workload {
   replicas: number;
   ready_replicas: number;
   target_node: string | null;
+  container_port: number | null;
+  ingress_host: string | null;
   status: WorkloadStatus;
   created_at: string;
 }
@@ -28,4 +30,6 @@ export interface WorkloadCreate {
   replicas: number;
   namespace: string;
   target_node?: string | null;
+  container_port?: number | null;
+  ingress_host?: string | null;
 }

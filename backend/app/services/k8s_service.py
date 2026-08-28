@@ -56,6 +56,9 @@ class K8sService:
     def _core(self) -> client.CoreV1Api:
         return client.CoreV1Api(_load_api())
 
+    def _networking(self) -> client.NetworkingV1Api:
+        return client.NetworkingV1Api(_load_api())
+
     def create_deployment(
         self,
         name: str,
@@ -150,3 +153,55 @@ class K8sService:
 
     def uncordon_node(self, node_name: str) -> None:
         self._core().patch_node(node_name, {"spec": {"unschedulable": False}})
+
+    def create_service(self, name: str, namespace: str, port: int) -> None:
+        svc = client.V1Service(
+            metadata=client.V1ObjectMeta(name=name, namespace=namespace),
+            spec=client.V1ServiceSpec(
+                selector={"app": name},
+                ports=[client.V1ServicePort(port=port, target_port=port, protocol="TCP")],
+                type="ClusterIP",
+            ),
+        )
+        self._core().create_namespaced_service(namespace=namespace, body=svc)
+
+    def delete_service(self, name: str, namespace: str) -> None:
+        self._core().delete_namespaced_service(name=name, namespace=namespace)
+
+    def create_ingress(self, name: str, namespace: str, host: str, port: int) -> None:
+        ingress = client.V1Ingress(
+            metadata=client.V1ObjectMeta(
+                name=name,
+                namespace=namespace,
+                annotations={
+                    "traefik.ingress.kubernetes.io/router.entrypoints": "web,websecure",
+                },
+            ),
+            spec=client.V1IngressSpec(
+                ingress_class_name="traefik",
+                tls=[client.V1IngressTLS(hosts=[host])],
+                rules=[
+                    client.V1IngressRule(
+                        host=host,
+                        http=client.V1HTTPIngressRuleValue(
+                            paths=[
+                                client.V1HTTPIngressPath(
+                                    path="/",
+                                    path_type="Prefix",
+                                    backend=client.V1IngressBackend(
+                                        service=client.V1IngressServiceBackend(
+                                            name=name,
+                                            port=client.V1ServiceBackendPort(number=port),
+                                        )
+                                    ),
+                                )
+                            ]
+                        ),
+                    )
+                ],
+            ),
+        )
+        self._networking().create_namespaced_ingress(namespace=namespace, body=ingress)
+
+    def delete_ingress(self, name: str, namespace: str) -> None:
+        self._networking().delete_namespaced_ingress(name=name, namespace=namespace)

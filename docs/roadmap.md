@@ -55,7 +55,9 @@
 - [x] Node cordon / uncordon via API and dashboard UI
 - [x] Workloads page in frontend (deploy form, live table, capacity cards)
 
-## Phase 8 — Load Balancing
-- [ ] Traefik IngressController (K3s built-in) configuration
-- [ ] Service routing rules
-- [ ] TLS termination
+## Phase 8 — Load Balancing ✓
+- [x] Traefik DaemonSet deployed on K3s (HostPort 80/443, IngressClass traefik)
+- [x] Workload API creates K8s Service + Ingress on container_port
+- [x] TLS termination via Traefik built-in self-signed cert
+- [x] Ingress host auto-assigned as `<name>.pi-cluster.local`
+- [x] Frontend shows ingress URL as clickable link in workloads table

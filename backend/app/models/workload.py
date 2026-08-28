@@ -23,6 +23,8 @@ class Workload(Base):
     image: Mapped[str] = mapped_column(String(255), nullable=False)
     replicas: Mapped[int] = mapped_column(Integer, nullable=False)
     target_node: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    container_port: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ingress_host: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[WorkloadStatus] = mapped_column(
         Enum(WorkloadStatus, values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,

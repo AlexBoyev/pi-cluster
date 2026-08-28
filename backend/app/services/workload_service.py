@@ -35,6 +35,8 @@ class WorkloadService:
                 replicas=w.replicas,
                 ready_replicas=ready,
                 target_node=w.target_node,
+                container_port=w.container_port,
+                ingress_host=w.ingress_host,
                 status=w.status,
                 created_at=w.created_at,
             ))
@@ -61,7 +63,21 @@ class WorkloadService:
         except ApiException as e:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
 
-        resolved = data.model_copy(update={"target_node": target_node})
+        ingress_host = None
+        if data.container_port:
+            ingress_host = data.ingress_host or f"{data.name}.pi-cluster.local"
+            try:
+                await run_in_threadpool(
+                    self._k8s.create_service, data.name, data.namespace, data.container_port
+                )
+                await run_in_threadpool(
+                    self._k8s.create_ingress, data.name, data.namespace, ingress_host, data.container_port
+                )
+            except ApiException as e:
+                logger.warning("Service/Ingress creation failed for %s: %s", data.name, e.reason)
+                ingress_host = None
+
+        resolved = data.model_copy(update={"target_node": target_node, "ingress_host": ingress_host})
         workload = await self._repo.create(resolved)
         await self._repo.update_status(workload.name, WorkloadStatus.RUNNING)
 
@@ -73,6 +89,8 @@ class WorkloadService:
             replicas=workload.replicas,
             ready_replicas=0,
             target_node=workload.target_node,
+            container_port=workload.container_port,
+            ingress_host=workload.ingress_host,
             status=WorkloadStatus.RUNNING,
             created_at=workload.created_at,
         )
@@ -81,11 +99,21 @@ class WorkloadService:
         workload = await self._repo.get_by_name(name)
         if workload is None or workload.status == WorkloadStatus.DELETED:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workload not found")
+
         try:
             await run_in_threadpool(self._k8s.delete_deployment, name, workload.namespace)
         except ApiException as e:
             if e.status != 404:
                 raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
+
+        if workload.container_port:
+            for fn in (self._k8s.delete_ingress, self._k8s.delete_service):
+                try:
+                    await run_in_threadpool(fn, name, workload.namespace)
+                except ApiException as e:
+                    if e.status != 404:
+                        logger.warning("Cleanup failed for %s: %s", name, e.reason)
+
         await self._repo.update_status(name, WorkloadStatus.DELETED)
 
     async def get_node_capacities(self) -> list[NodeCapacity]:

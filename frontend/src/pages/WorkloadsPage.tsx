@@ -47,6 +47,7 @@ export default function WorkloadsPage() {
     replicas: "1",
     namespace: DEFAULT_NS,
     target_node: "",
+    container_port: "",
   });
 
   const refresh = async () => {
@@ -79,8 +80,9 @@ export default function WorkloadsPage() {
         replicas: parseInt(form.replicas, 10),
         namespace: form.namespace,
         target_node: form.target_node || null,
+        container_port: form.container_port ? parseInt(form.container_port, 10) : null,
       });
-      setForm({ name: "", image: "", replicas: "1", namespace: DEFAULT_NS, target_node: "" });
+      setForm({ name: "", image: "", replicas: "1", namespace: DEFAULT_NS, target_node: "", container_port: "" });
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create workload");
@@ -215,6 +217,19 @@ export default function WorkloadsPage() {
               ))}
             </select>
           </div>
+          <div className="wl-field">
+            <label className="wl-label">Container port (optional)</label>
+            <input
+              className="wl-input"
+              type="number"
+              min={1}
+              max={65535}
+              placeholder="e.g. 80"
+              value={form.container_port}
+              onChange={(e) => setForm((f) => ({ ...f, container_port: e.target.value }))}
+              disabled={creating}
+            />
+          </div>
           <div className="wl-field wl-field-submit">
             <button className="wl-btn-primary" type="submit" disabled={creating}>
               {creating ? "Deploying…" : "Deploy"}
@@ -243,6 +258,7 @@ export default function WorkloadsPage() {
                 <th>Namespace</th>
                 <th>Replicas</th>
                 <th>Node</th>
+                <th>Ingress</th>
                 <th>Status</th>
                 <th>Created</th>
                 <th></th>
@@ -256,6 +272,11 @@ export default function WorkloadsPage() {
                   <td className="wl-mono">{w.namespace}</td>
                   <td>{w.ready_replicas}/{w.replicas}</td>
                   <td className="wl-mono">{w.target_node ?? "—"}</td>
+                  <td className="wl-mono">
+                    {w.ingress_host
+                      ? <a href={`https://${w.ingress_host}`} target="_blank" rel="noreferrer">{w.ingress_host}</a>
+                      : "—"}
+                  </td>
                   <td><StatusBadge status={w.status} /></td>
                   <td className="wl-date">{new Date(w.created_at).toLocaleDateString()}</td>
                   <td>

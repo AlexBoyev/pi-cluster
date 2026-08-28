@@ -24,6 +24,8 @@ class WorkloadRepository:
             image=data.image,
             replicas=data.replicas,
             target_node=data.target_node,
+            container_port=data.container_port,
+            ingress_host=data.ingress_host,
         )
         self._db.add(workload)
         await self._db.commit()

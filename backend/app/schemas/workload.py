@@ -13,6 +13,8 @@ class WorkloadCreate(BaseModel):
     target_node: str | None = None
     cpu_request: str = "100m"
     memory_request: str = "128Mi"
+    container_port: int | None = Field(None, ge=1, le=65535)
+    ingress_host: str | None = None
 
 
 class WorkloadResponse(BaseModel):
@@ -23,6 +25,8 @@ class WorkloadResponse(BaseModel):
     replicas: int
     ready_replicas: int
     target_node: str | None
+    container_port: int | None
+    ingress_host: str | None
     status: WorkloadStatus
     created_at: datetime
 
