@@ -40,11 +40,11 @@
 - [ ] Webhook from Git repo to Jenkins
 - [ ] Automated docker build and push to local registry
 
-## Phase 6 — Kubernetes + GitOps
-- [ ] K3s server on pi-node1, agents on pi-node2/3/4
-- [ ] ArgoCD deployed on K3s (:30443)
-- [ ] ArgoCD Application watching k8s/apps/ in this repo
-- [ ] Sample nginx workload deployed via GitOps
+## Phase 6 — Kubernetes + GitOps ✓
+- [x] K3s server on pi-node1, agents on pi-node2/3/4
+- [x] ArgoCD deployed on K3s (:30443)
+- [x] ArgoCD Application watching k8s/apps/ in this repo
+- [x] Sample nginx workload deployed via GitOps
 - [ ] Workload scheduling and placement policies
 
 ## Phase 7 — Orchestration
