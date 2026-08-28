@@ -37,15 +37,18 @@ pipeline {
             }
         }
 
-        stage('Migrate') {
-            steps {
-                sh 'cd $PROJECT_DIR && docker compose run --rm backend alembic upgrade head'
-            }
-        }
-
         stage('Deploy') {
             steps {
                 sh 'cd $PROJECT_DIR && docker compose up -d --build backend frontend'
+            }
+        }
+
+        stage('Migrate') {
+            steps {
+                sh '''
+                    sleep 5
+                    cd $PROJECT_DIR && docker compose exec -T backend alembic upgrade head
+                '''
             }
         }
 
