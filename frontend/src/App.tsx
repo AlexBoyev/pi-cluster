@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import { getAllHealth } from "./api/health";
-import { restartAllNodes, shutdownAllNodes } from "./api/nodes";
+import { restartAllNodes, shutdownAllNodes, restartNode, shutdownNode } from "./api/nodes";
 import { useAuth } from "./context/AuthContext";
 import ConfirmDialog from "./components/ConfirmDialog";
 import AlertHistoryPage from "./pages/AlertHistoryPage";
@@ -133,7 +133,9 @@ function NodeCard({ h, onDetails }: { h: NodeHealth; onDetails: () => void }) {
   const m     = h.metrics;
   const ts    = new Date(h.checked_at).toLocaleTimeString();
   const isCtrl = h.ip_address === CTRL_IP;
-  const [sshOpen, setSshOpen] = useState(false);
+  const [sshOpen,    setSshOpen]    = useState(false);
+  const [nodeAction, setNodeAction] = useState<"restart" | "shutdown" | null>(null);
+  const [nodeBusy,   setNodeBusy]   = useState(false);
 
   return (
     <>
@@ -150,6 +152,16 @@ function NodeCard({ h, onDetails }: { h: NodeHealth; onDetails: () => void }) {
             <span className={`badge-status bs-${h.status}`}>
               <span className="st-dot" />{h.status}
             </span>
+            <button
+              className="card-node-btn card-node-restart"
+              title="Restart node"
+              onClick={() => setNodeAction("restart")}
+            >↺</button>
+            <button
+              className="card-node-btn card-node-shutdown"
+              title="Shutdown node"
+              onClick={() => setNodeAction("shutdown")}
+            >⏻</button>
           </div>
         </div>
 
@@ -196,6 +208,30 @@ function NodeCard({ h, onDetails }: { h: NodeHealth; onDetails: () => void }) {
       </div>
 
       {sshOpen && <NodeSSHModal node={h} onClose={() => setSshOpen(false)} />}
+
+      {nodeAction && (
+        <ConfirmDialog
+          title={nodeAction === "restart" ? `Restart ${h.node_name}?` : `Shutdown ${h.node_name}?`}
+          message={
+            nodeAction === "restart"
+              ? `This will reboot ${h.node_name} (${h.ip_address}). Any workloads on this node will be temporarily unavailable.`
+              : `This will power off ${h.node_name} (${h.ip_address}). It will need to be manually powered on again.`
+          }
+          confirmLabel={nodeBusy ? "Please wait…" : nodeAction === "restart" ? "Restart" : "Shutdown"}
+          onConfirm={async () => {
+            setNodeBusy(true);
+            try {
+              if (nodeAction === "restart") await restartNode(h.node_id);
+              else await shutdownNode(h.node_id);
+            } finally {
+              setNodeBusy(false);
+              setNodeAction(null);
+            }
+          }}
+          onCancel={() => setNodeAction(null)}
+          dangerous
+        />
+      )}
     </>
   );
 }

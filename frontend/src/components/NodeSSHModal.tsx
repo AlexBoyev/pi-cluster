@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import "@xterm/xterm/css/xterm.css";
 import type { NodeHealth } from "../types/node";
 import "./NodeSSHModal.css";
 
@@ -8,54 +11,68 @@ interface Props {
 }
 
 export default function NodeSSHModal({ node, onClose }: Props) {
-  const [lines, setLines]         = useState<string[]>([]);
-  const [input, setInput]         = useState("");
   const [connected, setConnected] = useState(false);
   const [error, setError]         = useState<string | null>(null);
-  const wsRef     = useRef<WebSocket | null>(null);
-  const outputRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const termRef      = useRef<Terminal | null>(null);
 
   useEffect(() => {
+    const term = new Terminal({
+      cursorBlink: true,
+      fontSize: 13,
+      fontFamily: '"Cascadia Code", "Fira Code", "Consolas", monospace',
+      theme: {
+        background: "#0d1117",
+        foreground: "#c9d1d9",
+        cursor:     "#e6edf3",
+        selectionBackground: "#264f78",
+      },
+      scrollback: 5000,
+    });
+    const fit = new FitAddon();
+    term.loadAddon(fit);
+    if (containerRef.current) {
+      term.open(containerRef.current);
+      fit.fit();
+    }
+    termRef.current = term;
+
     let alive = true;
     const token = localStorage.getItem("access_token") ?? "";
     const proto = window.location.protocol === "https:" ? "wss" : "ws";
-    const url = `${proto}://${window.location.host}/api/v1/ws/ssh/${encodeURIComponent(node.ip_address)}?token=${encodeURIComponent(token)}`;
-    const ws = new WebSocket(url);
-    wsRef.current = ws;
+    const url   = `${proto}://${window.location.host}/api/v1/ws/ssh/${encodeURIComponent(node.ip_address)}?token=${encodeURIComponent(token)}`;
+    const ws    = new WebSocket(url);
+
     ws.onopen    = () => { if (alive) setConnected(true); };
-    ws.onmessage = (e: MessageEvent<string>) => { if (alive) setLines((p) => [...p, e.data]); };
+    ws.onmessage = (e: MessageEvent<string>) => { if (alive) term.write(e.data); };
     ws.onclose   = (e) => {
       if (!alive) return;
       setConnected(false);
-      setLines((p) => [...p, "\r\n[session closed]\r\n"]);
+      term.write("\r\n\x1b[33m[session closed]\x1b[0m\r\n");
       if (e.code === 4001) setError("Authentication failed");
     };
-    ws.onerror   = () => { if (alive) setError("Connection failed. Check that the node is reachable via SSH."); };
-    return () => { alive = false; ws.close(); };
-  }, [node.ip_address]);
+    ws.onerror   = () => {
+      if (alive) setError("Connection failed. Check that the node is reachable via SSH.");
+    };
 
-  useEffect(() => {
-    if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight;
-  }, [lines]);
+    term.onData((data) => { ws.send(data); });
+
+    const onResize = () => { if (alive) fit.fit(); };
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      alive = false;
+      ws.close();
+      term.dispose();
+      window.removeEventListener("resize", onResize);
+    };
+  }, [node.ip_address]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      wsRef.current?.send(input + "\n");
-      setInput("");
-    } else if (e.key === "c" && e.ctrlKey) {
-      e.preventDefault();
-      wsRef.current?.send("\x03");
-    } else if (e.key === "l" && e.ctrlKey) {
-      e.preventDefault();
-      setLines([]);
-    }
-  }
 
   return (
     <div className="nssh-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -73,24 +90,8 @@ export default function NodeSSHModal({ node, onClose }: Props) {
           </div>
         </div>
         {error && <div className="nssh-error">{error}</div>}
-        <div className="nssh-output" ref={outputRef}>
-          <pre className="nssh-pre">{lines.join("")}</pre>
-        </div>
-        <div className="nssh-input-row">
-          <span className="nssh-prompt">$</span>
-          <input
-            className="nssh-input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={!connected}
-            autoFocus
-            autoComplete="off"
-            spellCheck={false}
-            placeholder={connected ? "Type a command and press Enter…" : "Connecting…"}
-          />
-        </div>
-        <div className="nssh-hint">Ctrl+C to interrupt &middot; Ctrl+L to clear &middot; Esc or click outside to close</div>
+        <div className="nssh-term" ref={containerRef} />
+        <div className="nssh-hint">Type directly into the terminal &middot; Ctrl+C interrupt &middot; Esc or click outside to close</div>
       </div>
     </div>
   );

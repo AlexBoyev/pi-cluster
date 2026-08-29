@@ -409,6 +409,16 @@ main { flex: 1; padding: 1.75rem 2rem 3rem; max-width: 1440px; width: 100%; marg
 }
 .card-detail-btn:hover { background: rgba(29,78,216,0.07); color: var(--blue); border-color: var(--blue-ring); }
 
+.card-node-btn {
+  width: 22px; height: 22px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid var(--border); border-radius: var(--rs);
+  font-size: 0.8rem; cursor: pointer; color: var(--t3);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.card-node-restart:hover  { background: rgba(245,158,11,0.1); color: var(--amber); border-color: var(--amber-bd); }
+.card-node-shutdown:hover { background: rgba(239,68,68,0.1);  color: var(--red);   border-color: var(--red-bd); }
+
 /* offline */
 .card-offline {
   display: flex; flex-direction: column; align-items: center; gap: 0.65rem;
