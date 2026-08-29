@@ -13,6 +13,8 @@ export interface Workload {
   env_vars: Record<string, string>;
   cpu_limit: string;
   memory_limit: string;
+  liveness_path: string | null;
+  readiness_path: string | null;
   status: WorkloadStatus;
   created_at: string;
 }
@@ -54,4 +56,6 @@ export interface WorkloadCreate {
   env_vars?: Record<string, string>;
   cpu_limit?: string;
   memory_limit?: string;
+  liveness_path?: string | null;
+  readiness_path?: string | null;
 }

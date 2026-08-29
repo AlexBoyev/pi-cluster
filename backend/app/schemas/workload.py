@@ -18,6 +18,8 @@ class WorkloadCreate(BaseModel):
     env_vars: dict[str, str] = Field(default_factory=dict)
     cpu_limit: str = "500m"
     memory_limit: str = "256Mi"
+    liveness_path: str | None = None
+    readiness_path: str | None = None
 
 
 class WorkloadEnvUpdate(BaseModel):
@@ -37,6 +39,11 @@ class WorkloadImageUpdate(BaseModel):
     image: str = Field(..., min_length=1)
 
 
+class WorkloadProbeUpdate(BaseModel):
+    liveness_path: str | None = None
+    readiness_path: str | None = None
+
+
 class WorkloadResponse(BaseModel):
     id: int
     name: str
@@ -50,6 +57,8 @@ class WorkloadResponse(BaseModel):
     env_vars: dict[str, str]
     cpu_limit: str
     memory_limit: str
+    liveness_path: str | None
+    readiness_path: str | None
     status: WorkloadStatus
     created_at: datetime
 

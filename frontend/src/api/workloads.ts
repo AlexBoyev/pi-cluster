@@ -31,6 +31,11 @@ export const getWorkloadEvents = (name: string) =>
   apiFetch<WorkloadEvent[]>(`/workloads/${name}/events`);
 export const getWorkloadLogs = (name: string, tail = 100) =>
   apiFetch<WorkloadLogs>(`/workloads/${name}/logs?tail=${tail}`);
+export const updateWorkloadProbes = (name: string, liveness_path: string | null, readiness_path: string | null) =>
+  apiFetch<Workload>(`/workloads/${name}/probes`, {
+    method: "PATCH",
+    body: JSON.stringify({ liveness_path, readiness_path }),
+  });
 export const restartWorkload = (name: string) =>
   apiFetch<{ restarted: string }>(`/workloads/${name}/restart`, { method: "POST" });
 export const cordonNode = (name: string) =>

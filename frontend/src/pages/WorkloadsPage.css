@@ -114,7 +114,7 @@
 
 .wl-row-actions { display: flex; gap: 0.4rem; align-items: center; }
 
-.wl-btn-logs, .wl-btn-events, .wl-btn-env, .wl-btn-resources, .wl-btn-restart {
+.wl-btn-logs, .wl-btn-events, .wl-btn-env, .wl-btn-resources, .wl-btn-probes, .wl-btn-restart {
   padding: 0.3rem 0.75rem;
   background: transparent;
   border: 1px solid var(--border);
@@ -134,6 +134,9 @@
 }
 .wl-btn-resources:hover {
   background: rgba(109,40,217,0.08); color: #7c3aed; border-color: #c4b5fd;
+}
+.wl-btn-probes:hover {
+  background: rgba(13,148,136,0.08); color: #0d9488; border-color: #99f6e4;
 }
 .wl-btn-restart:hover {
   background: rgba(234,88,12,0.08); color: #ea580c; border-color: #fed7aa;

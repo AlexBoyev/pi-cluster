@@ -71,9 +71,25 @@ class K8sService:
         env_vars: dict[str, str] | None = None,
         cpu_limit: str = "500m",
         memory_limit: str = "256Mi",
+        liveness_path: str | None = None,
+        readiness_path: str | None = None,
+        probe_port: int | None = None,
     ) -> None:
         node_selector = {"kubernetes.io/hostname": target_node} if target_node else None
         env = [client.V1EnvVar(name=k, value=v) for k, v in env_vars.items()] if env_vars else None
+        liveness_probe = None
+        readiness_probe = None
+        if probe_port:
+            if liveness_path:
+                liveness_probe = client.V1Probe(
+                    http_get=client.V1HTTPGetAction(path=liveness_path, port=probe_port),
+                    initial_delay_seconds=15, period_seconds=10, failure_threshold=3,
+                )
+            if readiness_path:
+                readiness_probe = client.V1Probe(
+                    http_get=client.V1HTTPGetAction(path=readiness_path, port=probe_port),
+                    initial_delay_seconds=5, period_seconds=10, failure_threshold=3,
+                )
         deployment = client.V1Deployment(
             metadata=client.V1ObjectMeta(name=name, namespace=namespace),
             spec=client.V1DeploymentSpec(
@@ -92,6 +108,8 @@ class K8sService:
                                     requests={"cpu": cpu_request, "memory": memory_request},
                                     limits={"cpu": cpu_limit, "memory": memory_limit},
                                 ),
+                                liveness_probe=liveness_probe,
+                                readiness_probe=readiness_probe,
                             )
                         ],
                     ),
@@ -99,6 +117,25 @@ class K8sService:
             ),
         )
         self._apps().create_namespaced_deployment(namespace=namespace, body=deployment)
+
+    def update_deployment_probes(
+        self, name: str, namespace: str,
+        liveness_path: str | None, readiness_path: str | None, probe_port: int,
+    ) -> None:
+        def _probe(path: str | None) -> dict | None:
+            if not path:
+                return None
+            return {"httpGet": {"path": path, "port": probe_port}, "initialDelaySeconds": 15, "periodSeconds": 10, "failureThreshold": 3}
+
+        self._apps().patch_namespaced_deployment(
+            name=name,
+            namespace=namespace,
+            body={"spec": {"template": {"spec": {"containers": [{
+                "name": name,
+                "livenessProbe": _probe(liveness_path),
+                "readinessProbe": _probe(readiness_path),
+            }]}}}},
+        )
 
     def update_deployment_resources(self, name: str, namespace: str, cpu_limit: str, memory_limit: str) -> None:
         self._apps().patch_namespaced_deployment(

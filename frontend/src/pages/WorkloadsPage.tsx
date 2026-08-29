@@ -9,10 +9,12 @@ import {
   scaleWorkload,
   uncordonNode,
   updateWorkloadImage,
+  updateWorkloadProbes,
 } from "../api/workloads";
 import EnvModal from "../components/EnvModal";
 import EventsModal from "../components/EventsModal";
 import LogsModal from "../components/LogsModal";
+import ProbesModal from "../components/ProbesModal";
 import ResourcesModal from "../components/ResourcesModal";
 import type { NodeCapacity, Workload } from "../types/workload";
 import "./WorkloadsPage.css";
@@ -112,6 +114,7 @@ export default function WorkloadsPage() {
   const [eventsTarget, setEventsTarget] = useState<string | null>(null);
   const [envTarget, setEnvTarget] = useState<Workload | null>(null);
   const [resourcesTarget, setResourcesTarget] = useState<Workload | null>(null);
+  const [probesTarget, setProbesTarget] = useState<Workload | null>(null);
   const [restarting, setRestarting] = useState<string | null>(null);
 
   const [form, setForm] = useState({
@@ -123,6 +126,8 @@ export default function WorkloadsPage() {
     container_port: "",
     cpu_limit: "",
     memory_limit: "",
+    liveness_path: "",
+    readiness_path: "",
   });
 
   const refresh = async () => {
@@ -158,8 +163,10 @@ export default function WorkloadsPage() {
         container_port: form.container_port ? parseInt(form.container_port, 10) : null,
         cpu_limit: form.cpu_limit || undefined,
         memory_limit: form.memory_limit || undefined,
+        liveness_path: form.liveness_path || null,
+        readiness_path: form.readiness_path || null,
       });
-      setForm({ name: "", image: "", replicas: "1", namespace: DEFAULT_NS, target_node: "", container_port: "", cpu_limit: "", memory_limit: "" });
+      setForm({ name: "", image: "", replicas: "1", namespace: DEFAULT_NS, target_node: "", container_port: "", cpu_limit: "", memory_limit: "", liveness_path: "", readiness_path: "" });
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create workload");
@@ -363,6 +370,26 @@ export default function WorkloadsPage() {
               disabled={creating}
             />
           </div>
+          <div className="wl-field">
+            <label className="wl-label">Liveness path (optional)</label>
+            <input
+              className="wl-input"
+              placeholder="/health"
+              value={form.liveness_path}
+              onChange={(e) => setForm((f) => ({ ...f, liveness_path: e.target.value }))}
+              disabled={creating}
+            />
+          </div>
+          <div className="wl-field">
+            <label className="wl-label">Readiness path (optional)</label>
+            <input
+              className="wl-input"
+              placeholder="/ready"
+              value={form.readiness_path}
+              onChange={(e) => setForm((f) => ({ ...f, readiness_path: e.target.value }))}
+              disabled={creating}
+            />
+          </div>
           <div className="wl-field wl-field-submit">
             <button className="wl-btn-primary" type="submit" disabled={creating}>
               {creating ? "Deploying…" : "Deploy"}
@@ -445,6 +472,12 @@ export default function WorkloadsPage() {
                         onClick={() => setResourcesTarget(w)}
                       >
                         Resources
+                      </button>
+                      <button
+                        className="wl-btn-probes"
+                        onClick={() => setProbesTarget(w)}
+                      >
+                        Probes
                       </button>
                       <button
                         className="wl-btn-events"
@@ -542,6 +575,13 @@ export default function WorkloadsPage() {
         <ResourcesModal
           workload={resourcesTarget}
           onClose={() => setResourcesTarget(null)}
+          onSaved={refresh}
+        />
+      )}
+      {probesTarget && (
+        <ProbesModal
+          workload={probesTarget}
+          onClose={() => setProbesTarget(null)}
           onSaved={refresh}
         />
       )}

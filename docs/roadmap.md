@@ -132,3 +132,12 @@
 - [x] Admin-only; audited with actor
 - [x] No DB schema change — restart is a live K8s operation only
 - [x] "Restart" button per workload row (orange hover); shows spinner while in-flight
+
+## Phase 19 — Health Probes ✓
+- [x] Migration 0008: `liveness_path VARCHAR(255)` and `readiness_path VARCHAR(255)` nullable columns on workloads table
+- [x] `WorkloadCreate` accepts optional `liveness_path` / `readiness_path`; K8s deployment created with HTTP `V1Probe` objects using container port (initialDelay 15s/5s, period 10s, failureThreshold 3)
+- [x] `PATCH /workloads/{name}/probes` — replaces probe config with rolling patch, audited; 400 if container port absent
+- [x] `ProbesModal`: two path inputs (liveness + readiness), port hint, warning when no container port, teal Apply button
+- [x] "Probes" button per workload row (teal hover)
+- [x] Deploy form includes optional liveness/readiness path fields
+- [x] Fixed: `WorkloadResponse` constructors in scale/image/env responses were missing `cpu_limit`, `memory_limit` — all constructors now complete

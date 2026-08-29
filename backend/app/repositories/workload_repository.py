@@ -29,6 +29,8 @@ class WorkloadRepository:
             env_vars=data.env_vars or {},
             cpu_limit=data.cpu_limit,
             memory_limit=data.memory_limit,
+            liveness_path=data.liveness_path,
+            readiness_path=data.readiness_path,
         )
         self._db.add(workload)
         await self._db.commit()
@@ -77,6 +79,16 @@ class WorkloadRepository:
         if workload is None:
             return None
         workload.env_vars = env_vars
+        await self._db.commit()
+        await self._db.refresh(workload)
+        return workload
+
+    async def update_probes(self, name: str, liveness_path: str | None, readiness_path: str | None) -> Workload | None:
+        workload = await self.get_by_name(name)
+        if workload is None:
+            return None
+        workload.liveness_path = liveness_path
+        workload.readiness_path = readiness_path
         await self._db.commit()
         await self._db.refresh(workload)
         return workload

@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.user import User
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.workload_repository import WorkloadRepository
-from app.schemas.workload import NodeCapacity, WorkloadCreate, WorkloadEnvUpdate, WorkloadEvent, WorkloadImageUpdate, WorkloadLogs, WorkloadResourceUpdate, WorkloadResponse, WorkloadScale
+from app.schemas.workload import NodeCapacity, WorkloadCreate, WorkloadEnvUpdate, WorkloadEvent, WorkloadImageUpdate, WorkloadLogs, WorkloadProbeUpdate, WorkloadResourceUpdate, WorkloadResponse, WorkloadScale
 from app.services.audit_service import AuditService
 from app.services.k8s_service import K8sService
 from app.services.workload_service import WorkloadService
@@ -98,6 +98,16 @@ async def scale_workload(
     admin: User = Depends(require_admin),
 ) -> WorkloadResponse:
     return await service.scale_workload(name, data.replicas, actor=admin.username)
+
+
+@router.patch("/{name}/probes", response_model=WorkloadResponse)
+async def update_workload_probes(
+    name: str,
+    data: WorkloadProbeUpdate,
+    service: WorkloadService = Depends(get_service),
+    admin: User = Depends(require_admin),
+) -> WorkloadResponse:
+    return await service.update_workload_probes(name, data.liveness_path, data.readiness_path, actor=admin.username)
 
 
 @router.post("/{name}/restart", response_model=dict)

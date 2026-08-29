@@ -29,6 +29,8 @@ class Workload(Base):
     env_vars: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     cpu_limit: Mapped[str] = mapped_column(String(16), nullable=False, server_default="500m")
     memory_limit: Mapped[str] = mapped_column(String(16), nullable=False, server_default="256Mi")
+    liveness_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    readiness_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[WorkloadStatus] = mapped_column(
         Enum(WorkloadStatus, values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
