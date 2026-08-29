@@ -385,15 +385,9 @@ async def test_get_pods_success(client, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_get_pods_viewer_allowed(client, viewer_headers):
-    """Pods is a read endpoint — viewers should be allowed."""
-    with patch(K8S_SERVICE_PATCH) as MockK8s:
-        MockK8s.return_value.get_pod_list.return_value = []
-        MockK8s.return_value.get_by_name = AsyncMock(return_value=None)
-        # The workload doesn't exist in DB, so the service will 404 — that's OK,
-        # it means the auth layer let the viewer through (not 403).
-        r = await client.get("/api/v1/workloads/nonexistent/pods", headers=viewer_headers)
-    assert r.status_code != 403
+async def test_get_pods_viewer_forbidden(client, viewer_headers):
+    r = await client.get("/api/v1/workloads/nonexistent/pods", headers=viewer_headers)
+    assert r.status_code == 403
 
 
 # ---------------------------------------------------------------------------

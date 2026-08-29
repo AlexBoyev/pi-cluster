@@ -56,7 +56,7 @@ pipeline {
                         -e K8S_KUBECONFIG_PATH=/tmp/kubeconfig \
                         -e PROMETHEUS_URL=http://localhost:9090 \
                         backend \
-                        sh -c "rm -f ./test_ci.db && pip install pytest pytest-asyncio httpx aiosqlite --quiet && pytest tests/ -v --tb=long -x"
+                        sh -c "rm -f ./test_ci.db && pip install pytest pytest-asyncio httpx aiosqlite --quiet && pytest tests/ -v --tb=short"
                 '''
             }
         }

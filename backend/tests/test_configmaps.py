@@ -50,11 +50,9 @@ async def test_list_configmaps_requires_auth(client):
 
 
 @pytest.mark.asyncio
-async def test_list_configmaps_viewer_allowed(client, viewer_headers):
-    with patch(K8S_PATCH) as MockK8s:
-        MockK8s.return_value.list_configmaps.return_value = []
-        r = await client.get("/api/v1/configmaps/", headers=viewer_headers)
-    assert r.status_code == 200
+async def test_list_configmaps_viewer_forbidden(client, viewer_headers):
+    r = await client.get("/api/v1/configmaps/", headers=viewer_headers)
+    assert r.status_code == 403
 
 
 # ---------------------------------------------------------------------------
