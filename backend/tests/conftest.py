@@ -55,7 +55,7 @@ async def admin_token(test_session_factory):
                 hashed_password=hash_password("adminpass123"),
                 role=UserRole.ADMIN,
             )
-    token = create_access_token({"sub": "admin", "role": "admin"})
+    token = create_access_token("admin", "admin")
     return token
 
 @pytest_asyncio.fixture(scope="session")
