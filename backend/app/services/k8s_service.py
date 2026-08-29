@@ -864,6 +864,234 @@ class K8sService:
         pod = running[0] if running else (pods.items[0] if pods.items else None)
         return pod.metadata.name if pod else None
 
+    def list_storage_classes(self) -> list[dict]:
+        result = []
+        for sc in self._core().list_storage_class().items:
+            annotations = sc.metadata.annotations or {}
+            is_default = annotations.get(
+                "storageclass.kubernetes.io/is-default-class", ""
+            ) == "true"
+            result.append({
+                "name": sc.metadata.name,
+                "provisioner": sc.provisioner or "",
+                "reclaim_policy": sc.reclaim_policy or "Delete",
+                "binding_mode": sc.volume_binding_mode or "Immediate",
+                "is_default": is_default,
+                "created_at": sc.metadata.creation_timestamp,
+            })
+        result.sort(key=lambda x: (not x["is_default"], x["name"]))
+        return result
+
+    def create_pvc(
+        self,
+        name: str,
+        namespace: str,
+        storage_class: str,
+        access_modes: list[str],
+        size: str,
+    ) -> None:
+        self._core().create_namespaced_persistent_volume_claim(
+            namespace=namespace,
+            body=client.V1PersistentVolumeClaim(
+                metadata=client.V1ObjectMeta(name=name, namespace=namespace),
+                spec=client.V1PersistentVolumeClaimSpec(
+                    storage_class_name=storage_class,
+                    access_modes=access_modes,
+                    resources=client.V1ResourceRequirements(
+                        requests={"storage": size}
+                    ),
+                ),
+            ),
+        )
+
+    # ── StatefulSets & DaemonSets ────────────────────────────────────────────
+
+    def list_statefulsets(self, namespace: str | None = None) -> list[dict]:
+        apps = self._apps()
+        items = (
+            apps.list_namespaced_stateful_set(namespace=namespace).items
+            if namespace
+            else apps.list_stateful_set_for_all_namespaces().items
+        )
+        result = []
+        for sts in items:
+            spec = sts.spec
+            status = sts.status
+            containers = []
+            if spec and spec.template and spec.template.spec:
+                containers = spec.template.spec.containers or []
+            result.append({
+                "name": sts.metadata.name,
+                "namespace": sts.metadata.namespace,
+                "replicas": spec.replicas if spec else 0,
+                "ready_replicas": (status.ready_replicas or 0) if status else 0,
+                "service_name": spec.service_name if spec else None,
+                "images": [c.image for c in containers if c.image],
+                "created_at": sts.metadata.creation_timestamp,
+            })
+        result.sort(key=lambda x: (x["namespace"], x["name"]))
+        return result
+
+    def list_daemonsets(self, namespace: str | None = None) -> list[dict]:
+        apps = self._apps()
+        items = (
+            apps.list_namespaced_daemon_set(namespace=namespace).items
+            if namespace
+            else apps.list_daemon_set_for_all_namespaces().items
+        )
+        result = []
+        for ds in items:
+            spec = ds.spec
+            status = ds.status
+            containers = []
+            if spec and spec.template and spec.template.spec:
+                containers = spec.template.spec.containers or []
+            result.append({
+                "name": ds.metadata.name,
+                "namespace": ds.metadata.namespace,
+                "desired": (status.desired_number_scheduled or 0) if status else 0,
+                "current": (status.current_number_scheduled or 0) if status else 0,
+                "ready": (status.number_ready or 0) if status else 0,
+                "available": (status.number_available or 0) if status else 0,
+                "images": [c.image for c in containers if c.image],
+                "created_at": ds.metadata.creation_timestamp,
+            })
+        result.sort(key=lambda x: (x["namespace"], x["name"]))
+        return result
+
+    # ── Helm releases ────────────────────────────────────────────────────────
+
+    def list_helm_releases(self, namespace: str | None = None) -> list[dict]:
+        import base64
+        import gzip
+        import json as _json
+
+        core = self._core()
+        try:
+            items = (
+                core.list_namespaced_secret(
+                    namespace=namespace, label_selector="owner=helm"
+                ).items
+                if namespace
+                else core.list_secret_for_all_namespaces(
+                    label_selector="owner=helm"
+                ).items
+            )
+        except ApiException:
+            return []
+
+        latest: dict[tuple[str, str], dict] = {}
+        for secret in items:
+            labels = secret.metadata.labels or {}
+            raw = (secret.data or {}).get("release")
+            if not raw:
+                continue
+            try:
+                if isinstance(raw, bytes):
+                    raw = raw.decode("ascii")
+                decoded = base64.b64decode(raw)
+                try:
+                    decompressed = gzip.decompress(decoded)
+                except Exception:
+                    decompressed = gzip.decompress(base64.b64decode(decoded))
+                release = _json.loads(decompressed)
+            except Exception:
+                continue
+
+            rel_name = release.get("name") or secret.metadata.name
+            rel_ns = release.get("namespace") or secret.metadata.namespace or ""
+            key = (rel_ns, rel_name)
+            version = release.get("version", 0)
+
+            if key not in latest or latest[key]["revision"] < version:
+                chart_meta = (release.get("chart") or {}).get("metadata") or {}
+                info = release.get("info") or {}
+                latest[key] = {
+                    "name": rel_name,
+                    "namespace": rel_ns,
+                    "chart": chart_meta.get("name", "unknown"),
+                    "chart_version": chart_meta.get("version"),
+                    "app_version": chart_meta.get("appVersion"),
+                    "status": info.get("status") or labels.get("status", "unknown"),
+                    "revision": version,
+                    "description": info.get("description"),
+                    "first_deployed": info.get("first_deployed"),
+                    "last_deployed": info.get("last_deployed"),
+                }
+
+        result = list(latest.values())
+        result.sort(key=lambda x: (x["namespace"], x["name"]))
+        return result
+
+    # ── RBAC ─────────────────────────────────────────────────────────────────
+
+    def _rbac(self) -> client.RbacAuthorizationV1Api:
+        return client.RbacAuthorizationV1Api(_load_api())
+
+    def list_cluster_roles(self, hide_system: bool = True) -> list[dict]:
+        result = []
+        for cr in self._rbac().list_cluster_role().items:
+            name = cr.metadata.name or ""
+            if hide_system and name.startswith("system:"):
+                continue
+            rules = [
+                {
+                    "api_groups": rule.api_groups or [],
+                    "resources": rule.resources or [],
+                    "verbs": rule.verbs or [],
+                }
+                for rule in (cr.rules or [])
+            ]
+            result.append({
+                "name": name,
+                "rules_count": len(rules),
+                "rules": rules,
+                "created_at": cr.metadata.creation_timestamp,
+            })
+        result.sort(key=lambda x: x["name"])
+        return result
+
+    def list_cluster_role_bindings(self, hide_system: bool = True) -> list[dict]:
+        result = []
+        for crb in self._rbac().list_cluster_role_binding().items:
+            name = crb.metadata.name or ""
+            if hide_system and name.startswith("system:"):
+                continue
+            subjects = [
+                {"kind": s.kind, "name": s.name, "namespace": s.namespace}
+                for s in (crb.subjects or [])
+            ]
+            result.append({
+                "name": name,
+                "role_kind": crb.role_ref.kind if crb.role_ref else None,
+                "role_name": crb.role_ref.name if crb.role_ref else None,
+                "subjects": subjects,
+                "created_at": crb.metadata.creation_timestamp,
+            })
+        result.sort(key=lambda x: x["name"])
+        return result
+
+    def list_service_accounts(self, namespace: str | None = None) -> list[dict]:
+        core = self._core()
+        items = (
+            core.list_namespaced_service_account(namespace=namespace).items
+            if namespace
+            else core.list_service_account_for_all_namespaces().items
+        )
+        result = []
+        for sa in items:
+            name = sa.metadata.name or ""
+            if name == "default":
+                continue
+            result.append({
+                "name": name,
+                "namespace": sa.metadata.namespace,
+                "secrets_count": len(sa.secrets or []),
+                "created_at": sa.metadata.creation_timestamp,
+            })
+        result.sort(key=lambda x: (x["namespace"], x["name"]))
+        return result
+
     def rollback_deployment(self, name: str, namespace: str, revision: int) -> str:
         apps = self._apps()
         rs_list = apps.list_namespaced_replica_set(

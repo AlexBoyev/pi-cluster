@@ -9,7 +9,10 @@ import ConfigMapsPage from "./pages/ConfigMapsPage";
 import CronJobsPage from "./pages/CronJobsPage";
 import EventsPage from "./pages/EventsPage";
 import NamespacesPage from "./pages/NamespacesPage";
+import HelmPage from "./pages/HelmPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import ObjectsPage from "./pages/ObjectsPage";
+import RBACPage from "./pages/RBACPage";
 import SecretsPage from "./pages/SecretsPage";
 import ServicesPage from "./pages/ServicesPage";
 import StoragePage from "./pages/StoragePage";
@@ -19,7 +22,7 @@ import { NodeDetailView } from "./pages/NodesPage";
 import WorkloadsPage from "./pages/WorkloadsPage";
 import type { NodeHealth } from "./types/node";
 
-type Page = "dashboard" | "workloads" | "capacity" | "events" | "namespaces" | "audit" | "alert-history" | "users" | "configmaps" | "secrets" | "services" | "cronjobs" | "storage" | "notifications";
+type Page = "dashboard" | "workloads" | "capacity" | "events" | "namespaces" | "audit" | "alert-history" | "users" | "configmaps" | "secrets" | "services" | "cronjobs" | "storage" | "notifications" | "objects" | "helm" | "rbac";
 
 const POLL_MS  = 30_000;
 const CTRL_IP  = "10.100.102.10";
@@ -338,6 +341,22 @@ export default function App() {
             <span className="sb-icon">◫</span>
             Storage
           </a>
+          <a
+            href="#"
+            className={`sb-link${page === "objects" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); setPage("objects"); }}
+          >
+            <span className="sb-icon">◈</span>
+            Objects
+          </a>
+          <a
+            href="#"
+            className={`sb-link${page === "helm" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); setPage("helm"); }}
+          >
+            <span className="sb-icon">⛵</span>
+            Helm
+          </a>
 
           <div className="sb-section">Admin</div>
           <a
@@ -355,6 +374,14 @@ export default function App() {
           >
             <span className="sb-icon">⊛</span>
             Notifications
+          </a>
+          <a
+            href="#"
+            className={`sb-link${page === "rbac" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); setPage("rbac"); }}
+          >
+            <span className="sb-icon">⊗</span>
+            RBAC
           </a>
 
           <div className="sb-section">Services</div>
@@ -377,7 +404,7 @@ export default function App() {
           </div>
           <button className="sb-logout" onClick={logout}>Sign out</button>
           <div className="sb-foot-label" style={{ marginTop: "0.8rem" }}>Version</div>
-          <div className="sb-foot-val">v0.1.0 · Phase 42</div>
+          <div className="sb-foot-val">v0.1.0 · Phase 45</div>
           <div className="sb-foot-label" style={{ marginTop: "0.4rem" }}>Cluster</div>
           <div className="sb-foot-val">4 nodes · arm64 · 10.100.102.0/24</div>
         </div>
@@ -391,7 +418,7 @@ export default function App() {
               <span /><span /><span />
             </button>
             <h1 className="page-title">
-              {page === "workloads" ? "Workloads" : page === "capacity" ? "Capacity" : page === "events" ? "Events" : page === "namespaces" ? "Namespaces" : page === "audit" ? "Audit Log" : page === "alert-history" ? "Alert History" : page === "users" ? "Users" : page === "configmaps" ? "ConfigMaps" : page === "secrets" ? "Secrets" : page === "services" ? "Services & Ingresses" : page === "cronjobs" ? "CronJobs" : page === "storage" ? "Storage" : page === "notifications" ? "Notifications" : "Dashboard"}
+              {page === "workloads" ? "Workloads" : page === "capacity" ? "Capacity" : page === "events" ? "Events" : page === "namespaces" ? "Namespaces" : page === "audit" ? "Audit Log" : page === "alert-history" ? "Alert History" : page === "users" ? "Users" : page === "configmaps" ? "ConfigMaps" : page === "secrets" ? "Secrets" : page === "services" ? "Services & Ingresses" : page === "cronjobs" ? "CronJobs" : page === "storage" ? "Storage" : page === "notifications" ? "Notifications" : page === "objects" ? "Objects" : page === "helm" ? "Helm Releases" : page === "rbac" ? "RBAC Explorer" : "Dashboard"}
             </h1>
           </div>
           <div className="tb-right">
@@ -432,6 +459,12 @@ export default function App() {
             <StoragePage />
           ) : page === "notifications" ? (
             <NotificationsPage />
+          ) : page === "objects" ? (
+            <ObjectsPage />
+          ) : page === "helm" ? (
+            <HelmPage />
+          ) : page === "rbac" ? (
+            <RBACPage />
           ) : selectedNode ? (
             <NodeDetailView node={selectedNode} onBack={() => setSelectedNode(null)} />
           ) : (

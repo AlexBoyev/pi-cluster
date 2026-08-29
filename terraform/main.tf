@@ -24,16 +24,24 @@ resource "kubernetes_cluster_role" "pi_cluster_api" {
     }
   }
 
+  # Workloads — Deployments, StatefulSets, DaemonSets, ReplicaSets
   rule {
     api_groups = ["apps"]
-    resources  = ["deployments", "replicasets"]
+    resources  = ["deployments", "replicasets", "statefulsets", "daemonsets"]
     verbs      = ["get", "list", "watch", "create", "update", "patch", "delete"]
+  }
+
+  # Core — Pods, Services, Endpoints, Nodes
+  rule {
+    api_groups = [""]
+    resources  = ["pods", "pods/log", "pods/exec", "services", "endpoints", "nodes"]
+    verbs      = ["get", "list", "watch"]
   }
 
   rule {
     api_groups = [""]
-    resources  = ["pods", "pods/log", "services", "endpoints", "nodes"]
-    verbs      = ["get", "list", "watch"]
+    resources  = ["pods/exec"]
+    verbs      = ["create"]
   }
 
   rule {
@@ -43,14 +51,76 @@ resource "kubernetes_cluster_role" "pi_cluster_api" {
   }
 
   rule {
+    api_groups = [""]
+    resources  = ["nodes"]
+    verbs      = ["patch", "update"]
+  }
+
+  # Core — Namespaces
+  rule {
+    api_groups = [""]
+    resources  = ["namespaces"]
+    verbs      = ["get", "list", "watch", "create", "delete"]
+  }
+
+  # Core — ConfigMaps, Secrets
+  rule {
+    api_groups = [""]
+    resources  = ["configmaps", "secrets"]
+    verbs      = ["get", "list", "watch", "create", "update", "patch", "delete"]
+  }
+
+  # Core — Persistent storage
+  rule {
+    api_groups = [""]
+    resources  = ["persistentvolumeclaims", "persistentvolumes"]
+    verbs      = ["get", "list", "watch", "create", "delete"]
+  }
+
+  rule {
+    api_groups = ["storage.k8s.io"]
+    resources  = ["storageclasses"]
+    verbs      = ["get", "list", "watch"]
+  }
+
+  # Core — Events, Service Accounts
+  rule {
+    api_groups = [""]
+    resources  = ["events"]
+    verbs      = ["get", "list", "watch"]
+  }
+
+  rule {
+    api_groups = [""]
+    resources  = ["serviceaccounts"]
+    verbs      = ["get", "list", "watch"]
+  }
+
+  # Networking — Ingresses
+  rule {
     api_groups = ["networking.k8s.io"]
     resources  = ["ingresses"]
     verbs      = ["get", "list", "watch", "create", "update", "patch", "delete"]
   }
 
+  # Autoscaling — HPA
   rule {
-    api_groups = [""]
-    resources  = ["events"]
+    api_groups = ["autoscaling"]
+    resources  = ["horizontalpodautoscalers"]
+    verbs      = ["get", "list", "watch", "create", "update", "patch", "delete"]
+  }
+
+  # Batch — CronJobs, Jobs
+  rule {
+    api_groups = ["batch"]
+    resources  = ["cronjobs", "jobs"]
+    verbs      = ["get", "list", "watch", "create", "update", "patch", "delete"]
+  }
+
+  # RBAC — read-only visibility
+  rule {
+    api_groups = ["rbac.authorization.k8s.io"]
+    resources  = ["clusterroles", "clusterrolebindings", "roles", "rolebindings"]
     verbs      = ["get", "list", "watch"]
   }
 }

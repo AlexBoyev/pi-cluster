@@ -4,6 +4,7 @@
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;
   margin-bottom: 0.75rem;
 }
+.st-toolbar-right { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 
 .st-tabs { display: flex; gap: 0.4rem; }
 .st-tab {
@@ -79,3 +80,31 @@
   padding: 0.28rem 0.55rem; border: 1px solid var(--border); border-radius: var(--rs);
   background: transparent; font-size: 0.75rem; font-weight: 600; color: var(--t2); cursor: pointer;
 }
+
+.st-btn-create {
+  padding: 0.3rem 0.8rem; border: 1px solid var(--blue); border-radius: var(--rs);
+  background: var(--blue); color: #fff; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+}
+.st-btn-create:hover { filter: brightness(1.1); }
+
+.st-btn-submit {
+  padding: 0.35rem 0.9rem; border: none; border-radius: var(--rs);
+  background: var(--blue); color: #fff; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+}
+.st-btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.st-create-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 1.2rem 1.4rem; margin-bottom: 0.75rem;
+}
+.st-create-title { font-size: 0.9rem; font-weight: 700; color: var(--t1); margin-bottom: 1rem; }
+
+.st-create-form { display: flex; flex-direction: column; gap: 0.65rem; }
+.st-form-row { display: flex; align-items: center; gap: 0.75rem; }
+.st-form-lbl { font-size: 0.75rem; font-weight: 600; color: var(--t2); width: 110px; flex-shrink: 0; }
+.st-form-input {
+  flex: 1; padding: 0.3rem 0.6rem; border: 1.5px solid var(--border); border-radius: var(--rs);
+  background: var(--bg); color: var(--t1); font-size: 0.82rem; outline: none;
+}
+.st-form-input:focus { border-color: var(--blue); }
+.st-form-actions { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
