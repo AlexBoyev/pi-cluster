@@ -1,5 +1,6 @@
 import asyncio
 import queue
+import socket
 import threading
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
@@ -221,6 +222,7 @@ async def ws_ssh(
                 timeout=_s.ssh_connect_timeout,
             )
             chan = client.invoke_shell(term="xterm-256color", width=200, height=50)
+            chan.settimeout(0.1)
             loop.call_soon_threadsafe(
                 out_q.put_nowait,
                 f"[SSH] Connected to {node_ip} as {_s.ssh_username}\r\n",
@@ -231,8 +233,10 @@ async def ws_ssh(
                     if not data:
                         break
                     loop.call_soon_threadsafe(out_q.put_nowait, data.decode("utf-8", errors="replace"))
+                except socket.timeout:
+                    pass  # no output yet — fall through to check for pending input
                 except Exception:
-                    pass
+                    break
                 try:
                     inp = in_q.get_nowait()
                     chan.send(inp)

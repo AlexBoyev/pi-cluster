@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import { getAllHealth } from "./api/health";
+import { restartAllNodes, shutdownAllNodes } from "./api/nodes";
 import { useAuth } from "./context/AuthContext";
+import ConfirmDialog from "./components/ConfirmDialog";
 import AlertHistoryPage from "./pages/AlertHistoryPage";
 import AlertRulesPage from "./pages/AlertRulesPage";
 import AuditPage from "./pages/AuditPage";
@@ -225,8 +227,10 @@ export default function App() {
   const [nodes,        setNodes]        = useState<NodeHealth[]>([]);
   const [error,        setError]        = useState<string | null>(null);
   const [loading,      setLoading]      = useState(true);
-  const [sbOpen,       setSbOpen]       = useState(true);
-  const [selectedNode, setSelectedNode] = useState<NodeHealth | null>(null);
+  const [sbOpen,        setSbOpen]        = useState(true);
+  const [selectedNode,  setSelectedNode]  = useState<NodeHealth | null>(null);
+  const [clusterAction, setClusterAction] = useState<"restart" | "shutdown" | null>(null);
+  const [clusterBusy,   setClusterBusy]   = useState(false);
 
   const refresh = () =>
     getAllHealth()
@@ -556,6 +560,22 @@ export default function App() {
                     </div>
                   )}
 
+                  <div className="cluster-power-row">
+                    <span className="cluster-power-label">Cluster Power</span>
+                    <button
+                      className="cluster-restart-btn"
+                      onClick={() => setClusterAction("restart")}
+                    >
+                      ↺ Restart All Nodes
+                    </button>
+                    <button
+                      className="cluster-shutdown-btn"
+                      onClick={() => setClusterAction("shutdown")}
+                    >
+                      ⏻ Shutdown All Nodes
+                    </button>
+                  </div>
+
                   <AlertsPanel />
 
                   <div className="section-header">
@@ -574,6 +594,29 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {clusterAction && (
+        <ConfirmDialog
+          title={clusterAction === "restart" ? "Restart entire cluster?" : "Shutdown entire cluster?"}
+          message={
+            clusterAction === "restart"
+              ? `This will reboot all ${nodes.length} nodes. The cluster will be temporarily unreachable.`
+              : `This will power off all ${nodes.length} nodes. They will need to be manually powered back on.`
+          }
+          confirmLabel={clusterBusy ? "Please wait…" : clusterAction === "restart" ? "Restart All" : "Shutdown All"}
+          dangerous
+          onConfirm={async () => {
+            setClusterBusy(true);
+            try {
+              if (clusterAction === "restart") await restartAllNodes();
+              else await shutdownAllNodes();
+            } catch { /* nodes go offline immediately */ }
+            setClusterBusy(false);
+            setClusterAction(null);
+          }}
+          onCancel={() => setClusterAction(null)}
+        />
+      )}
     </div>
   );
 }

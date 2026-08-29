@@ -13,6 +13,7 @@ services:
       - ./backend:/app
       - /etc/rancher/k3s/k3s.yaml:/app/kubeconfig:ro
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
 
   frontend:
     build: ./frontend
@@ -25,6 +26,7 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    restart: unless-stopped
 
   postgres:
     image: postgres:16-alpine
@@ -41,6 +43,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -53,6 +56,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   prometheus:
     image: prom/prometheus:latest
@@ -66,6 +70,7 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
       - --web.enable-lifecycle
+    restart: unless-stopped
 
   alertmanager:
     image: prom/alertmanager:latest
@@ -77,6 +82,7 @@ services:
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
       - --storage.path=/alertmanager
+    restart: unless-stopped
 
   grafana:
     image: grafana/grafana:latest
@@ -92,6 +98,7 @@ services:
       - ./grafana/dashboards:/var/lib/grafana/dashboards
     depends_on:
       - prometheus
+    restart: unless-stopped
 
   jenkins:
     build:

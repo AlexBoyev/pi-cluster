@@ -227,6 +227,39 @@ main { flex: 1; padding: 1.75rem 2rem 3rem; max-width: 1440px; width: 100%; marg
 
 .summ-sub { font-size: 0.66rem; color: var(--t3); margin-top: 0.5rem; }
 
+/* ── Cluster power row ───────────────────────────────────────────────────── */
+
+.cluster-power-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--rc);
+}
+.cluster-power-label {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--t3); margin-right: 0.4rem;
+}
+.cluster-restart-btn {
+  padding: 0.32rem 0.9rem;
+  background: transparent; border: 1.5px solid var(--amber-bd);
+  border-radius: var(--rs); font-size: 0.74rem; font-weight: 700;
+  color: var(--amber); cursor: pointer; font-family: inherit;
+  transition: background 0.12s;
+}
+.cluster-restart-btn:hover { background: rgba(245,158,11,0.1); }
+.cluster-shutdown-btn {
+  padding: 0.32rem 0.9rem;
+  background: transparent; border: 1.5px solid var(--red-bd);
+  border-radius: var(--rs); font-size: 0.74rem; font-weight: 700;
+  color: var(--red); cursor: pointer; font-family: inherit;
+  transition: background 0.12s;
+}
+.cluster-shutdown-btn:hover { background: rgba(239,68,68,0.1); }
+
 /* ── Section header ──────────────────────────────────────────────────────── */
 
 .section-header {

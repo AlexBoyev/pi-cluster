@@ -16,20 +16,22 @@ export default function NodeSSHModal({ node, onClose }: Props) {
   const outputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let alive = true;
     const token = localStorage.getItem("access_token") ?? "";
     const proto = window.location.protocol === "https:" ? "wss" : "ws";
     const url = `${proto}://${window.location.host}/api/v1/ws/ssh/${encodeURIComponent(node.ip_address)}?token=${encodeURIComponent(token)}`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
-    ws.onopen    = () => { setConnected(true); };
-    ws.onmessage = (e: MessageEvent<string>) => { setLines((p) => [...p, e.data]); };
+    ws.onopen    = () => { if (alive) setConnected(true); };
+    ws.onmessage = (e: MessageEvent<string>) => { if (alive) setLines((p) => [...p, e.data]); };
     ws.onclose   = (e) => {
+      if (!alive) return;
       setConnected(false);
       setLines((p) => [...p, "\r\n[session closed]\r\n"]);
       if (e.code === 4001) setError("Authentication failed");
     };
-    ws.onerror   = () => setError("Connection failed. Check that the node is reachable via SSH.");
-    return () => ws.close();
+    ws.onerror   = () => { if (alive) setError("Connection failed. Check that the node is reachable via SSH."); };
+    return () => { alive = false; ws.close(); };
   }, [node.ip_address]);
 
   useEffect(() => {
