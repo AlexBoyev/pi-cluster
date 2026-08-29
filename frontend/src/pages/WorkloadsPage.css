@@ -273,8 +273,11 @@
   white-space: nowrap; min-width: 110px; text-align: right;
 }
 
+.wl-cap-actions {
+  display: flex; gap: 0.5rem; margin-top: 0.35rem; flex-wrap: wrap;
+}
+
 .wl-cordon-btn {
-  margin-top: 0.35rem;
   padding: 0.35rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: var(--rs);
@@ -282,11 +285,22 @@
   font-size: 0.74rem; font-weight: 600;
   color: var(--t2); cursor: pointer;
   transition: background 0.12s, color 0.12s;
-  align-self: flex-start;
 }
 .wl-cordon-btn:hover:not(:disabled) { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-bd); }
 .wl-cordon-btn.wl-cordon-active { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-bd); }
 .wl-cordon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.wl-drain-btn {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--rs);
+  background: transparent;
+  font-size: 0.74rem; font-weight: 600;
+  color: var(--t2); cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.wl-drain-btn:hover:not(:disabled) { background: var(--red-bg); color: var(--red); border-color: var(--red-bd); }
+.wl-drain-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Inline image editor ────────────────────────────────────────────────── */
 

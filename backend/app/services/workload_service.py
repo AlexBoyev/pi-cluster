@@ -410,3 +410,12 @@ class WorkloadService:
             await self._audit.log("node.uncordon", "node", node_name, actor, "failure", e.reason)
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
         await self._audit.log("node.uncordon", "node", node_name, actor, "success")
+
+    async def drain_node(self, node_name: str, actor: str = "system") -> int:
+        try:
+            evicted = await run_in_threadpool(self._k8s.drain_node, node_name)
+        except ApiException as e:
+            await self._audit.log("node.drain", "node", node_name, actor, "failure", e.reason)
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
+        await self._audit.log("node.drain", "node", node_name, actor, "success", f"evicted={evicted}")
+        return evicted

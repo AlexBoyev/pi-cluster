@@ -260,6 +260,34 @@ class K8sService:
             }}}}},
         )
 
+    def drain_node(self, node_name: str) -> int:
+        from kubernetes.client import V1Eviction, V1ObjectMeta
+        core = self._core()
+        core.patch_node(node_name, {"spec": {"unschedulable": True}})
+        pods = core.list_pod_for_all_namespaces(field_selector=f"spec.nodeName={node_name}")
+        evicted = 0
+        for pod in pods.items:
+            owners = pod.metadata.owner_references or []
+            if any(o.kind == "DaemonSet" for o in owners) or not owners:
+                continue
+            try:
+                core.create_namespaced_pod_eviction(
+                    name=pod.metadata.name,
+                    namespace=pod.metadata.namespace,
+                    body=V1Eviction(
+                        metadata=V1ObjectMeta(
+                            name=pod.metadata.name,
+                            namespace=pod.metadata.namespace,
+                        )
+                    ),
+                )
+                evicted += 1
+            except ApiException as e:
+                if e.status == 404:
+                    continue
+                raise
+        return evicted
+
     def cordon_node(self, node_name: str) -> None:
         self._core().patch_node(node_name, {"spec": {"unschedulable": True}})
 

@@ -9,6 +9,7 @@ import {
   cordonNode,
   createWorkload,
   deleteWorkload,
+  drainNode,
   getCapacity,
   listWorkloads,
   restartWorkload,
@@ -116,6 +117,7 @@ export default function WorkloadsPage() {
   const [deleting, setDeleting]   = useState<string | null>(null);
   const [scaling, setScaling]     = useState<string | null>(null);
   const [cordoning, setCordoning] = useState<string | null>(null);
+  const [draining, setDraining] = useState<string | null>(null);
   const [updatingImage, setUpdatingImage] = useState<string | null>(null);
   const [logsTarget, setLogsTarget] = useState<string | null>(null);
   const [eventsTarget, setEventsTarget] = useState<string | null>(null);
@@ -252,6 +254,18 @@ export default function WorkloadsPage() {
       setError(e instanceof Error ? e.message : "Failed to restart workload");
     } finally {
       setRestarting(null);
+    }
+  }
+
+  async function handleDrain(node: NodeCapacity) {
+    setDraining(node.node_name);
+    try {
+      await drainNode(node.node_name);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Drain failed");
+    } finally {
+      setDraining(null);
     }
   }
 
@@ -648,13 +662,23 @@ export default function WorkloadsPage() {
                   <div className="wl-bar"><div className={`wl-bar-fill wl-bar-${sevCls(mem)}`} style={{ width: `${Math.min(mem, 100)}%` }} /></div>
                   <span className="wl-cap-val">{fmtMi(c.memory_requested_mi)} / {fmtMi(c.memory_allocatable_mi)}</span>
                 </div>
-                <button
-                  className={`wl-cordon-btn${!c.schedulable ? " wl-cordon-active" : ""}`}
-                  onClick={() => handleCordon(c)}
-                  disabled={cordoning === c.node_name}
-                >
-                  {cordoning === c.node_name ? "…" : c.schedulable ? "Cordon" : "Uncordon"}
-                </button>
+                <div className="wl-cap-actions">
+                  <button
+                    className={`wl-cordon-btn${!c.schedulable ? " wl-cordon-active" : ""}`}
+                    onClick={() => handleCordon(c)}
+                    disabled={cordoning === c.node_name || draining === c.node_name}
+                  >
+                    {cordoning === c.node_name ? "…" : c.schedulable ? "Cordon" : "Uncordon"}
+                  </button>
+                  <button
+                    className="wl-drain-btn"
+                    onClick={() => handleDrain(c)}
+                    disabled={draining === c.node_name || cordoning === c.node_name || !c.ready}
+                    title="Cordon and evict all non-DaemonSet pods"
+                  >
+                    {draining === c.node_name ? "Draining…" : "Drain"}
+                  </button>
+                </div>
               </div>
             );
           })}

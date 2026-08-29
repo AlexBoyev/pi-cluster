@@ -162,3 +162,7 @@
 ## Phase 23 — Workload Table Sorting ✓
 - [x] Clickable column headers for Name, Replicas, Status, Created — click once to sort ascending, again to flip to descending
 - [x] Active sort column shows a blue directional arrow; inactive columns show a faded ↕ idle indicator; default sort is Created descending (newest first)
+
+## Phase 24 — Node Drain ✓
+- [x] `POST /workloads/nodes/{name}/drain` — cordons the node then evicts all non-DaemonSet, non-static pods via the K8s Eviction API; returns eviction count; admin-only and audit-logged
+- [x] Drain button (red hover) on each capacity card beside Cordon/Uncordon; disabled while another drain/cordon is in-flight or node is NotReady

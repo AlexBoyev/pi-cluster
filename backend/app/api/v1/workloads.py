@@ -139,6 +139,16 @@ async def delete_workload(
     return {"deleted": name}
 
 
+@router.post("/nodes/{node_name}/drain", response_model=dict)
+async def drain_node(
+    node_name: str,
+    service: WorkloadService = Depends(get_service),
+    admin: User = Depends(require_admin),
+) -> dict:
+    evicted = await service.drain_node(node_name, actor=admin.username)
+    return {"drained": node_name, "evicted": evicted}
+
+
 @router.post("/nodes/{node_name}/cordon", response_model=dict)
 async def cordon_node(
     node_name: str,

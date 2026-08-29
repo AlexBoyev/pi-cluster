@@ -40,6 +40,8 @@ export const updateWorkloadProbes = (name: string, liveness_path: string | null,
   });
 export const restartWorkload = (name: string) =>
   apiFetch<{ restarted: string }>(`/workloads/${name}/restart`, { method: "POST" });
+export const drainNode = (name: string) =>
+  apiFetch<{ drained: string; evicted: number }>(`/workloads/nodes/${name}/drain`, { method: "POST" });
 export const cordonNode = (name: string) =>
   apiFetch<{ cordoned: string }>(`/workloads/nodes/${name}/cordon`, { method: "POST" });
 export const uncordonNode = (name: string) =>
