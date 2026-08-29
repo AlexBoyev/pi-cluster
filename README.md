@@ -314,6 +314,11 @@ All routes are prefixed `/api/v1/`. Authentication is JWT Bearer token (`Authori
 | GET | `/alerts/` | user | Active Prometheus alerts (proxied) |
 | GET | `/alert-history/` | user | Persisted alert firings — params: `limit`, `offset`, `severity`, `state` |
 | GET | `/audit/` | user | Audit log — params: `limit`, `offset`, `status`, `resource_type` |
+| GET | `/cluster/capacity` | user | Cluster-wide CPU/memory: allocatable, requested, and actually used (Prometheus) |
+| GET | `/events/` | user | K8s events across all namespaces — params: `namespace`, `event_type`, `limit` |
+| GET | `/namespaces/` | user | List all K8s namespaces with status and labels |
+| POST | `/namespaces/` | admin | Create namespace (protected namespaces blocked) |
+| DELETE | `/namespaces/{name}` | admin | Delete namespace (protected namespaces blocked) |
 | POST | `/auth/login` | none | Exchange credentials for JWT |
 | POST | `/auth/refresh` | user | Refresh JWT token |
 

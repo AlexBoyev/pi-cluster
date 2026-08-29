@@ -1,0 +1,138 @@
+.ns-page { display: flex; flex-direction: column; }
+
+/* ── Create form ─────────────────────────────────────────────────────────── */
+
+.ns-create-form {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.ns-input {
+  padding: 0.4rem 0.75rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--rs);
+  background: var(--card);
+  color: var(--t1);
+  font-size: 0.84rem;
+  font-family: var(--mono);
+  width: 240px;
+  transition: border-color 0.12s;
+}
+.ns-input:focus { outline: none; border-color: var(--blue-ring); }
+.ns-input.ns-input-err { border-color: var(--red-bd); }
+
+.ns-create-btn {
+  padding: 0.4rem 1rem;
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: var(--rs);
+  font-size: 0.82rem; font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.12s;
+}
+.ns-create-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ns-form-err {
+  font-size: 0.75rem; color: var(--red);
+  flex-basis: 100%;
+}
+
+/* ── Table ───────────────────────────────────────────────────────────────── */
+
+.ns-table-wrap {
+  overflow-x: auto;
+  border: 1.5px solid var(--border);
+  border-radius: var(--rc);
+}
+
+.ns-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.ns-table th {
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  font-size: 0.65rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--t3);
+  background: var(--bg);
+  border-bottom: 1.5px solid var(--border);
+}
+
+.ns-table td {
+  padding: 0.55rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--t2);
+  vertical-align: middle;
+}
+.ns-table tr:last-child td { border-bottom: none; }
+.ns-table tbody tr:hover td { background: rgba(0,0,0,0.018); }
+
+.ns-row-system td { background: rgba(100,116,139,0.04); }
+.ns-row-system:hover td { background: rgba(100,116,139,0.08) !important; }
+
+/* ── Cells ───────────────────────────────────────────────────────────────── */
+
+.ns-name {
+  font-weight: 700; font-family: var(--mono);
+  color: var(--t1); font-size: 0.82rem;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.ns-system-tag {
+  font-size: 0.58rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--t3);
+  background: rgba(100,116,139,0.12);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.1rem 0.4rem;
+}
+.ns-age      { font-family: var(--mono); font-size: 0.75rem; color: var(--t3); white-space: nowrap; }
+.ns-labels   { font-size: 0.75rem; }
+.ns-label-count { color: var(--t2); }
+.ns-dim      { color: var(--t3); }
+.ns-actions  { text-align: right; white-space: nowrap; }
+
+/* ── Badges ──────────────────────────────────────────────────────────────── */
+
+.ns-badge {
+  font-size: 0.6rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 0.14rem 0.48rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.ns-badge-active      { background: rgba(16,185,129,0.12); color: var(--green); border: 1px solid var(--green-bd); }
+.ns-badge-terminating { background: rgba(239,68,68,0.12);  color: var(--red);   border: 1px solid var(--red-bd); }
+.ns-badge-unknown     { background: rgba(100,116,139,0.1); color: var(--t3);    border: 1px solid var(--border); }
+
+/* ── Delete confirm ──────────────────────────────────────────────────────── */
+
+.ns-del-btn {
+  font-size: 0.72rem; font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  background: transparent;
+  border: 1.5px solid var(--border);
+  border-radius: var(--rs);
+  color: var(--t3); cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.ns-del-btn:hover:not(:disabled) { background: rgba(239,68,68,0.08); color: var(--red); border-color: var(--red-bd); }
+.ns-del-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.ns-confirm { font-size: 0.75rem; color: var(--t2); display: flex; align-items: center; gap: 0.35rem; }
+.ns-confirm-yes {
+  font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.55rem;
+  background: var(--red); color: #fff; border: none;
+  border-radius: var(--rs); cursor: pointer;
+}
+.ns-confirm-no {
+  font-size: 0.72rem; font-weight: 600; padding: 0.2rem 0.55rem;
+  background: transparent; border: 1.5px solid var(--border);
+  border-radius: var(--rs); color: var(--t3); cursor: pointer;
+}

@@ -132,6 +132,7 @@ export default function WorkloadsPage() {
   const [rollbackTarget, setRollbackTarget] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "running" | "pending" | "failed">("all");
+  const [nsFilter, setNsFilter] = useState("all");
   const [sortField, setSortField] = useState<"name" | "status" | "replicas" | "created_at">("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
@@ -293,12 +294,15 @@ export default function WorkloadsPage() {
   const failed = workloads.filter((w) => w.status === "failed").length;
   const nodeNames = capacity.map((c) => c.node_name);
 
+  const uniqueNs = ["all", ...Array.from(new Set(workloads.map((w) => w.namespace))).sort()];
+
   const filtered = workloads.filter((w) => {
-    const matchName = w.name.toLowerCase().includes(search.toLowerCase());
+    const matchName   = w.name.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "all" || w.status === statusFilter;
-    return matchName && matchStatus;
+    const matchNs     = nsFilter === "all" || w.namespace === nsFilter;
+    return matchName && matchStatus && matchNs;
   });
-  const isFiltered = search !== "" || statusFilter !== "all";
+  const isFiltered = search !== "" || statusFilter !== "all" || nsFilter !== "all";
 
   function toggleSort(field: typeof sortField) {
     if (sortField === field) {
@@ -510,6 +514,19 @@ export default function WorkloadsPage() {
             </button>
           ))}
         </div>
+        {uniqueNs.length > 2 && (
+          <div className="wl-filter-pills">
+            {uniqueNs.map((ns) => (
+              <button
+                key={ns}
+                className={`wl-pill${nsFilter === ns ? " wl-pill-active" : ""}`}
+                onClick={() => setNsFilter(ns)}
+              >
+                {ns === "all" ? "All ns" : ns}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading ? (

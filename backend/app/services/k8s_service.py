@@ -1,5 +1,6 @@
 import logging
 import re
+from datetime import datetime, timezone
 from typing import Any
 
 import yaml
@@ -372,6 +373,61 @@ class K8sService:
             })
         revisions.sort(key=lambda r: r["revision"], reverse=True)
         return revisions
+
+    def get_cluster_events(
+        self,
+        namespace: str | None = None,
+        event_type: str | None = None,
+        limit: int = 200,
+    ) -> list[dict]:
+        core = self._core()
+        events = (
+            core.list_namespaced_event(namespace=namespace)
+            if namespace
+            else core.list_event_for_all_namespaces()
+        )
+        result = []
+        for e in events.items:
+            if event_type and e.type != event_type:
+                continue
+            result.append({
+                "namespace": e.metadata.namespace or "default",
+                "type": e.type or "Normal",
+                "reason": e.reason or "",
+                "message": e.message or "",
+                "object_kind": (e.involved_object.kind if e.involved_object else "") or "",
+                "object_name": (e.involved_object.name if e.involved_object else "") or "",
+                "count": e.count or 1,
+                "first_time": e.first_timestamp,
+                "last_time": e.last_timestamp,
+            })
+        result.sort(
+            key=lambda x: x["last_time"] or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
+        return result[:limit]
+
+    def list_namespaces(self) -> list[dict]:
+        return [
+            {
+                "name": ns.metadata.name,
+                "status": (ns.status.phase if ns.status else None) or "Unknown",
+                "created_at": ns.metadata.creation_timestamp,
+                "labels": {
+                    k: v for k, v in (ns.metadata.labels or {}).items()
+                    if not k.startswith("kubernetes.io/")
+                },
+            }
+            for ns in self._core().list_namespace().items
+        ]
+
+    def create_namespace(self, name: str) -> None:
+        self._core().create_namespace(
+            body=client.V1Namespace(metadata=client.V1ObjectMeta(name=name))
+        )
+
+    def delete_namespace(self, name: str) -> None:
+        self._core().delete_namespace(name=name)
 
     def rollback_deployment(self, name: str, namespace: str, revision: int) -> str:
         apps = self._apps()

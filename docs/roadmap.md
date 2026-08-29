@@ -228,3 +228,30 @@
 - [x] Active rows highlighted in faint red; resolved rows show "Resolved" green badge; active rows show "Active" red badge
 - [x] "Alert History" sidebar link (⊛ icon) added between Audit Log and Services
 - [x] Sidebar version string bumped to Phase 30
+
+## Phase 31 — Cluster Resource Capacity ✓
+- [x] `GET /api/v1/cluster/capacity` — queries K8s for per-node allocatable + pod requests, queries Prometheus for actual CPU/memory used per node; returns cluster totals and per-node breakdown
+- [x] `ClusterCapacity` and `NodeCapacityDetail` schemas; CPU in cores (float), memory in bytes (int); Prometheus gracefully skipped if unreachable
+- [x] `ClusterService.get_cluster_capacity()` — 2 Prometheus instant queries (mem used, CPU fraction) matched by `node_name` label across all nodes in one request each
+- [x] Capacity page: summary cards (total CPU cores, CPU used %, total memory, memory used %), cluster-wide stacked bars (used · requested · free), per-node breakdown cards
+- [x] Stacked bar: blue=used, grey=requested-above-used, transparent=free; color shifts to amber at 65%, red at 85%
+- [x] Per-node cards: CPU and memory rows with mini bars, used/allocatable/requested labels, Ready/Cordoned badges
+- [x] "Capacity" sidebar link (▦ icon); auto-refresh every 30s
+
+## Phase 32 — Cluster-wide K8s Events Feed ✓
+- [x] `K8sService.get_cluster_events()` — `list_event_for_all_namespaces()` or scoped to namespace; filtered by type, sorted newest-first, capped at 200
+- [x] `GET /api/v1/events/` — params: `namespace`, `event_type`, `limit`; returns `ClusterEvent` list
+- [x] `ClusterEvent` schema: namespace, type, reason, message, object_kind, object_name, count, first_time, last_time
+- [x] Events page: summary cards (total, warnings, normal, namespace count), namespace dropdown filter, Warning/Normal type pills, live/paused toggle (15s auto-refresh)
+- [x] Table: Age, Type badge (Warning amber / Normal blue), Reason, Namespace+Object, Message, Count; Warning rows tinted amber
+- [x] "Events" sidebar link (⊜ icon)
+
+## Phase 33 — Namespace Management ✓
+- [x] `K8sService`: `list_namespaces()`, `create_namespace(name)`, `delete_namespace(name)`
+- [x] `GET /api/v1/namespaces/` — list all K8s namespaces with status, created_at, labels (kubernetes.io/* filtered out)
+- [x] `POST /api/v1/namespaces/` — create namespace (admin); protected set: default, kube-system, kube-public, kube-node-lease, monitoring, argocd
+- [x] `DELETE /api/v1/namespaces/{name}` — delete namespace (admin); same protection
+- [x] `NamespaceInfo` and `NamespaceCreate` (pattern-validated) schemas
+- [x] Namespaces page: summary cards, create form with validation, sortable table with Active/Terminating badges, system tag, inline delete confirmation
+- [x] WorkloadsPage: namespace filter pills (All ns + unique namespaces from loaded workloads); shown only when 2+ distinct namespaces exist
+- [x] "Namespaces" sidebar link (⊟ icon); version bumped to Phase 33
