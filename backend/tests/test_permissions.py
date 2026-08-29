@@ -2,8 +2,7 @@
 Comprehensive permission matrix tests.
 
 Verifies that:
-- Viewers can access read-only (GET) endpoints
-- Viewers are blocked from all write operations (POST/PATCH/PUT/DELETE)
+- Viewers are blocked from ALL cluster/infrastructure endpoints (GET and write)
 - Unauthenticated requests to protected routes get 401 or 403
 - Admins can perform all operations
 """
@@ -19,62 +18,7 @@ SSH_PATCH = "app.services.ssh_service.ssh_service.exec_command"
 
 
 # ===========================================================================
-# VIEWER — allowed (GET endpoints that require auth)
-# ===========================================================================
-
-@pytest.mark.asyncio
-async def test_viewer_can_list_workloads(client, viewer_headers):
-    with patch(K8S_WORKLOADS) as MockK8s:
-        MockK8s.return_value.get_ready_replicas.return_value = 0
-        r = await client.get("/api/v1/workloads/", headers=viewer_headers)
-    assert r.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_viewer_can_list_nodes(client, viewer_headers):
-    r = await client.get("/api/v1/nodes/", headers=viewer_headers)
-    assert r.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_viewer_can_list_namespaces(client, viewer_headers):
-    with patch(K8S_NAMESPACES) as MockK8s:
-        MockK8s.return_value.list_namespaces.return_value = []
-        r = await client.get("/api/v1/namespaces/", headers=viewer_headers)
-    assert r.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_viewer_can_list_configmaps(client, viewer_headers):
-    with patch(K8S_CONFIGMAPS) as MockK8s:
-        MockK8s.return_value.list_configmaps.return_value = []
-        r = await client.get("/api/v1/configmaps/", headers=viewer_headers)
-    assert r.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_viewer_can_read_audit_log(client, viewer_headers):
-    """Audit log requires authentication but not admin — viewers are allowed."""
-    r = await client.get("/api/v1/audit/", headers=viewer_headers)
-    assert r.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_viewer_can_read_alert_history(client, viewer_headers):
-    r = await client.get("/api/v1/alert-history/", headers=viewer_headers)
-    assert r.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_viewer_can_list_cluster_events(client, viewer_headers):
-    with patch("app.api.v1.events.K8sService") as MockK8s:
-        MockK8s.return_value.get_cluster_events.return_value = []
-        r = await client.get("/api/v1/events/", headers=viewer_headers)
-    assert r.status_code == 200
-
-
-# ===========================================================================
-# VIEWER — forbidden (write operations)
+# VIEWER — forbidden from ALL cluster/infrastructure endpoints
 # ===========================================================================
 
 @pytest.mark.asyncio
