@@ -16,7 +16,6 @@ import {
   scaleWorkload,
   uncordonNode,
   updateWorkloadImage,
-  updateWorkloadProbes,
 } from "../api/workloads";
 import EnvModal from "../components/EnvModal";
 import EventsModal from "../components/EventsModal";
@@ -593,6 +592,18 @@ export default function WorkloadsPage() {
                   <td>
                     <div className="wl-row-actions">
                       <button
+                        className="wl-btn-logs"
+                        onClick={() => setLogsTarget(w)}
+                      >
+                        Logs
+                      </button>
+                      <button
+                        className="wl-btn-terminal"
+                        onClick={() => setTerminalTarget(w)}
+                      >
+                        Terminal
+                      </button>
+                      <button
                         className="wl-btn-pods"
                         onClick={() => setPodsTarget(w)}
                       >
@@ -603,6 +614,12 @@ export default function WorkloadsPage() {
                         onClick={() => setMetricsTarget(w.name)}
                       >
                         Metrics
+                      </button>
+                      <button
+                        className="wl-btn-events"
+                        onClick={() => setEventsTarget(w.name)}
+                      >
+                        Events
                       </button>
                       <button
                         className="wl-btn-env"
@@ -623,18 +640,6 @@ export default function WorkloadsPage() {
                         Probes
                       </button>
                       <button
-                        className="wl-btn-events"
-                        onClick={() => setEventsTarget(w.name)}
-                      >
-                        Events
-                      </button>
-                      <button
-                        className="wl-btn-logs"
-                        onClick={() => setLogsTarget(w)}
-                      >
-                        Logs
-                      </button>
-                      <button
                         className="wl-btn-restart"
                         onClick={() => handleRestart(w.name)}
                         disabled={restarting === w.name}
@@ -646,12 +651,6 @@ export default function WorkloadsPage() {
                         onClick={() => setHpaTarget(w)}
                       >
                         HPA
-                      </button>
-                      <button
-                        className="wl-btn-terminal"
-                        onClick={() => setTerminalTarget(w)}
-                      >
-                        Terminal
                       </button>
                       <button
                         className="wl-btn-history"

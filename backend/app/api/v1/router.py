@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from app.api.v1 import alert_history, alerts, audit, auth, cluster, configmaps, cronjobs, events, exec, helm, health, namespaces, nodes, notifications, objects, pods, rbac, secrets, services, storage, users, workloads
+from app.api.v1 import alert_history, alerts, audit, auth, cluster, configmaps, cronjobs, events, exec, helm, health, jobs, namespaces, nodes, notifications, objects, pods, prom_rules, quotas, rbac, secrets, services, storage, users, workloads
 from app.auth.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/v1")
@@ -32,3 +32,6 @@ router.include_router(objects.router, dependencies=[Depends(get_current_user)])
 router.include_router(helm.router, dependencies=[Depends(get_current_user)])
 router.include_router(rbac.router, dependencies=[Depends(get_current_user)])
 router.include_router(pods.router, dependencies=[Depends(get_current_user)])
+router.include_router(jobs.router, dependencies=[Depends(get_current_user)])
+router.include_router(quotas.router, dependencies=[Depends(get_current_user)])
+router.include_router(prom_rules.router, dependencies=[Depends(get_current_user)])

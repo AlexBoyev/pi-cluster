@@ -3,15 +3,18 @@ import "./App.css";
 import { getAllHealth } from "./api/health";
 import { useAuth } from "./context/AuthContext";
 import AlertHistoryPage from "./pages/AlertHistoryPage";
+import AlertRulesPage from "./pages/AlertRulesPage";
 import AuditPage from "./pages/AuditPage";
 import CapacityPage from "./pages/CapacityPage";
 import ConfigMapsPage from "./pages/ConfigMapsPage";
 import CronJobsPage from "./pages/CronJobsPage";
 import EventsPage from "./pages/EventsPage";
+import JobsPage from "./pages/JobsPage";
 import NamespacesPage from "./pages/NamespacesPage";
 import HelmPage from "./pages/HelmPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import ObjectsPage from "./pages/ObjectsPage";
+import QuotasPage from "./pages/QuotasPage";
 import RBACPage from "./pages/RBACPage";
 import SecretsPage from "./pages/SecretsPage";
 import ServicesPage from "./pages/ServicesPage";
@@ -22,7 +25,7 @@ import { NodeDetailView } from "./pages/NodesPage";
 import WorkloadsPage from "./pages/WorkloadsPage";
 import type { NodeHealth } from "./types/node";
 
-type Page = "dashboard" | "workloads" | "capacity" | "events" | "namespaces" | "audit" | "alert-history" | "users" | "configmaps" | "secrets" | "services" | "cronjobs" | "storage" | "notifications" | "objects" | "helm" | "rbac";
+type Page = "dashboard" | "workloads" | "capacity" | "events" | "namespaces" | "audit" | "alert-history" | "users" | "configmaps" | "secrets" | "services" | "cronjobs" | "storage" | "notifications" | "objects" | "helm" | "rbac" | "jobs" | "quotas" | "alert-rules";
 
 const POLL_MS  = 30_000;
 const CTRL_IP  = "10.100.102.10";
@@ -357,6 +360,30 @@ export default function App() {
             <span className="sb-icon">⛵</span>
             Helm
           </a>
+          <a
+            href="#"
+            className={`sb-link${page === "jobs" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); setPage("jobs"); }}
+          >
+            <span className="sb-icon">⊙</span>
+            Jobs
+          </a>
+          <a
+            href="#"
+            className={`sb-link${page === "quotas" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); setPage("quotas"); }}
+          >
+            <span className="sb-icon">⊠</span>
+            Quotas
+          </a>
+          <a
+            href="#"
+            className={`sb-link${page === "alert-rules" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); setPage("alert-rules"); }}
+          >
+            <span className="sb-icon">⊛</span>
+            Alert Rules
+          </a>
 
           <div className="sb-section">Admin</div>
           <a
@@ -404,7 +431,7 @@ export default function App() {
           </div>
           <button className="sb-logout" onClick={logout}>Sign out</button>
           <div className="sb-foot-label" style={{ marginTop: "0.8rem" }}>Version</div>
-          <div className="sb-foot-val">v0.1.0 · Phase 45</div>
+          <div className="sb-foot-val">v0.1.0 · Phase 50</div>
           <div className="sb-foot-label" style={{ marginTop: "0.4rem" }}>Cluster</div>
           <div className="sb-foot-val">4 nodes · arm64 · 10.100.102.0/24</div>
         </div>
@@ -418,7 +445,7 @@ export default function App() {
               <span /><span /><span />
             </button>
             <h1 className="page-title">
-              {page === "workloads" ? "Workloads" : page === "capacity" ? "Capacity" : page === "events" ? "Events" : page === "namespaces" ? "Namespaces" : page === "audit" ? "Audit Log" : page === "alert-history" ? "Alert History" : page === "users" ? "Users" : page === "configmaps" ? "ConfigMaps" : page === "secrets" ? "Secrets" : page === "services" ? "Services & Ingresses" : page === "cronjobs" ? "CronJobs" : page === "storage" ? "Storage" : page === "notifications" ? "Notifications" : page === "objects" ? "Objects" : page === "helm" ? "Helm Releases" : page === "rbac" ? "RBAC Explorer" : "Dashboard"}
+              {page === "workloads" ? "Workloads" : page === "capacity" ? "Capacity" : page === "events" ? "Events" : page === "namespaces" ? "Namespaces" : page === "audit" ? "Audit Log" : page === "alert-history" ? "Alert History" : page === "users" ? "Users" : page === "configmaps" ? "ConfigMaps" : page === "secrets" ? "Secrets" : page === "services" ? "Services & Ingresses" : page === "cronjobs" ? "CronJobs" : page === "storage" ? "Storage" : page === "notifications" ? "Notifications" : page === "objects" ? "Objects" : page === "helm" ? "Helm Releases" : page === "rbac" ? "RBAC Explorer" : page === "jobs" ? "Batch Jobs" : page === "quotas" ? "Quotas & Limits" : page === "alert-rules" ? "Alert Rules" : "Dashboard"}
             </h1>
           </div>
           <div className="tb-right">
@@ -465,6 +492,12 @@ export default function App() {
             <HelmPage />
           ) : page === "rbac" ? (
             <RBACPage />
+          ) : page === "jobs" ? (
+            <JobsPage />
+          ) : page === "quotas" ? (
+            <QuotasPage />
+          ) : page === "alert-rules" ? (
+            <AlertRulesPage />
           ) : selectedNode ? (
             <NodeDetailView node={selectedNode} onBack={() => setSelectedNode(null)} />
           ) : (

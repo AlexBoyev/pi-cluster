@@ -178,7 +178,7 @@
 
 .wl-row-actions { display: flex; gap: 0.4rem; align-items: center; }
 
-.wl-btn-logs, .wl-btn-events, .wl-btn-env, .wl-btn-resources, .wl-btn-probes, .wl-btn-pods, .wl-btn-restart, .wl-btn-metrics, .wl-btn-history, .wl-btn-hpa, .wl-btn-terminal {
+.wl-btn-events, .wl-btn-env, .wl-btn-resources, .wl-btn-probes, .wl-btn-pods, .wl-btn-restart, .wl-btn-metrics, .wl-btn-history, .wl-btn-hpa {
   padding: 0.3rem 0.75rem;
   background: transparent;
   border: 1px solid var(--border);
@@ -187,9 +187,28 @@
   color: var(--t3); cursor: pointer;
   transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
-.wl-btn-logs:hover {
-  background: rgba(29,78,216,0.08); color: var(--blue); border-color: var(--blue-ring);
+
+.wl-btn-logs {
+  padding: 0.3rem 0.75rem;
+  background: var(--blue); color: #fff;
+  border: 1px solid var(--blue);
+  border-radius: var(--rs);
+  font-size: 0.75rem; font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
 }
+.wl-btn-logs:hover { background: var(--blue-mid); border-color: var(--blue-mid); }
+
+.wl-btn-terminal {
+  padding: 0.3rem 0.75rem;
+  background: #1e293b; color: #94a3b8;
+  border: 1px solid #334155;
+  border-radius: var(--rs);
+  font-size: 0.75rem; font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.wl-btn-terminal:hover { background: #0f172a; color: #e2e8f0; }
 .wl-btn-events:hover {
   background: var(--amber-bg); color: var(--amber); border-color: var(--amber-bd);
 }
@@ -216,9 +235,6 @@
 }
 .wl-btn-hpa:hover {
   background: rgba(5,150,105,0.08); color: #059669; border-color: #6ee7b7;
-}
-.wl-btn-terminal:hover {
-  background: rgba(15,23,42,0.08); color: #334155; border-color: #94a3b8;
 }
 
 /* ── Delete button ──────────────────────────────────────────────────────── */

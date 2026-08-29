@@ -856,6 +856,109 @@ class K8sService:
         result.sort(key=lambda x: x["start_time"] or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
         return result[:limit]
 
+    def list_jobs(self, namespace: str | None = None) -> list[dict]:
+        from datetime import datetime, timezone
+        batch = self._batch()
+        items = (
+            batch.list_namespaced_job(namespace=namespace).items
+            if namespace
+            else batch.list_job_for_all_namespaces().items
+        )
+        result = []
+        for job in items:
+            st = job.status
+            meta = job.metadata
+            owner_refs = meta.owner_references or []
+            cron_job = next((r.name for r in owner_refs if r.kind == "CronJob"), None)
+            active = st.active or 0
+            succeeded = st.succeeded or 0
+            failed = st.failed or 0
+            if active > 0:
+                state = "running"
+            elif failed > 0 and succeeded == 0:
+                state = "failed"
+            elif succeeded > 0:
+                state = "succeeded"
+            else:
+                state = "unknown"
+            result.append({
+                "name": meta.name,
+                "namespace": meta.namespace,
+                "state": state,
+                "active": active,
+                "succeeded": succeeded,
+                "failed": failed,
+                "cron_job": cron_job,
+                "start_time": st.start_time,
+                "completion_time": st.completion_time,
+                "created_at": meta.creation_timestamp,
+            })
+        result.sort(
+            key=lambda x: x["created_at"] or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
+        return result
+
+    def list_resource_quotas(self, namespace: str | None = None) -> list[dict]:
+        core = self._core()
+        items = (
+            core.list_namespaced_resource_quota(namespace=namespace).items
+            if namespace
+            else core.list_resource_quota_for_all_namespaces().items
+        )
+        result = []
+        for rq in items:
+            hard = (rq.status.hard or {}) if rq.status else {}
+            used = (rq.status.used or {}) if rq.status else {}
+            resources = sorted(
+                [{"resource": r, "hard": str(v), "used": str(used.get(r, "0"))} for r, v in hard.items()],
+                key=lambda x: x["resource"],
+            )
+            result.append({
+                "name": rq.metadata.name,
+                "namespace": rq.metadata.namespace,
+                "resources": resources,
+                "created_at": rq.metadata.creation_timestamp,
+            })
+        result.sort(key=lambda x: (x["namespace"], x["name"]))
+        return result
+
+    def list_limit_ranges(self, namespace: str | None = None) -> list[dict]:
+        core = self._core()
+        items = (
+            core.list_namespaced_limit_range(namespace=namespace).items
+            if namespace
+            else core.list_limit_range_for_all_namespaces().items
+        )
+        result = []
+        for lr in items:
+            limits = []
+            for limit in (lr.spec.limits or []):
+                limit_type = limit.type or "Container"
+                all_res: set[str] = set()
+                for d in [limit.max or {}, limit.min or {}, limit.default or {}, limit.default_request or {}]:
+                    all_res.update(d.keys())
+                for resource in sorted(all_res):
+                    def _s(d: dict, k: str) -> str | None:
+                        v = d.get(k)
+                        return str(v) if v is not None else None
+                    limits.append({
+                        "type": limit_type,
+                        "resource": resource,
+                        "max": _s(limit.max or {}, resource),
+                        "min": _s(limit.min or {}, resource),
+                        "default": _s(limit.default or {}, resource),
+                        "default_request": _s(limit.default_request or {}, resource),
+                    })
+            result.append({
+                "name": lr.metadata.name,
+                "namespace": lr.metadata.namespace,
+                "limits": limits,
+                "created_at": lr.metadata.creation_timestamp,
+            })
+        result.sort(key=lambda x: (x["namespace"], x["name"]))
+        return result
+
     # ── Storage ─────────────────────────────────────────────────────────────
 
     def list_pvcs(self, namespace: str | None = None) -> list[dict]:
