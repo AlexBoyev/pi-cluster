@@ -2,363 +2,310 @@
 
 ## 1. Overview
 
-Pi-Cluster is a DevOps control platform for monitoring and eventually orchestrating a Raspberry Pi cluster.
+Pi-Cluster is a self-hosted DevOps control platform for monitoring, deploying, and managing containerised workloads on a Raspberry Pi cluster.
 
 The architecture separates:
 
-* Web UI
-* API
-* business logic
-* persistent data
-* cache and distributed coordination
-* monitoring
-* infrastructure access
-* orchestration
-
-The system should remain modular so individual components can evolve without requiring a complete rewrite.
+- Web UI
+- REST API
+- Business logic
+- Persistent data
+- Cache and distributed coordination
+- Metrics collection and visualisation
+- Alerting
+- CI/CD delivery
+- Kubernetes orchestration
+- GitOps manifest management
 
 ---
 
-# 2. High-Level Architecture
+## 2. Physical Infrastructure
 
-```text
-                    ┌─────────────────────┐
-                    │   React Dashboard   │
-                    │   TypeScript / Vite │
-                    └──────────┬──────────┘
-                               │
-                               │ HTTP / REST
-                               ▼
-                    ┌─────────────────────┐
-                    │      FastAPI        │
-                    │      Backend        │
-                    └──────────┬──────────┘
-                               │
-              ┌────────────────┼────────────────┐
-              │                │                │
-              ▼                ▼                ▼
-       ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-       │ PostgreSQL  │  │    Redis    │  │ Monitoring  │
-       │ Persistent  │  │ Cache/Locks │  │   Service   │
-       │ State       │  │             │  │             │
-       └─────────────┘  └─────────────┘  └──────┬──────┘
-                                                │
-                                                ▼
-                                         ┌─────────────┐
-                                         │ Prometheus  │
-                                         └──────┬──────┘
-                                                │
-                                                ▼
-                                         ┌─────────────┐
-                                         │   Grafana   │
-                                         └─────────────┘
+### Network
 
-                         Infrastructure
-                              │
-             ┌────────────────┼────────────────┐
-             ▼                ▼                ▼
-          Pi Node 1        Pi Node 2        Pi Node N
 ```
-
----
-
-# 3. Frontend
-
-Technology:
-
-* React
-* TypeScript
-* Vite
-
-The frontend is responsible for:
-
-* dashboard presentation
-* navigation
-* cluster visualization
-* node information
-* monitoring charts
-* deployment management in the future
-* orchestration management in the future
-
-The frontend must not:
-
-* contain SSH credentials
-* communicate directly with Raspberry Pis
-* contain infrastructure secrets
-* implement backend business logic
-
-All infrastructure operations go through the backend API.
-
----
-
-# 4. Backend
-
-Technology:
-
-* Python
-* FastAPI
-* Pydantic
-* SQLAlchemy
-* Alembic
-
-The backend is the control plane of Pi-Cluster.
-
-Responsibilities:
-
-* REST API
-* authentication
-* authorization
-* cluster inventory
-* node management
-* SSH operations
-* monitoring integration
-* orchestration
-* deployment management
-* audit logging
-
-Architecture:
-
-```text
-API Routes
-    ↓
-Services
-    ↓
-Repositories
-    ↓
-PostgreSQL
-```
-
-Infrastructure operations are accessed through dedicated services rather than directly from API routes.
-
----
-
-# 5. PostgreSQL
-
-PostgreSQL is the persistent source of truth.
-
-Store:
-
-* users
-* roles
-* clusters
-* nodes
-* network devices
-* deployments
-* configuration
-* audit logs
-
-Do not use PostgreSQL as the primary high-frequency time-series metrics database.
-
----
-
-# 6. Redis
-
-Redis provides fast ephemeral and coordination functionality.
-
-Use Redis for:
-
-* caching
-* sessions
-* rate limiting
-* distributed locks
-* orchestration locks
-* background task coordination
-* temporary state
-
-Redis must not replace PostgreSQL as the persistent source of truth.
-
-Example future lock:
-
-```text
-node:{node_id}:lock
-```
-
-This prevents conflicting operations against the same node.
-
----
-
-# 7. Monitoring
-
-Initial monitoring:
-
-```text
-Raspberry Pi
-     ↓
-SSH Metrics Collector
-     ↓
-Backend Monitoring Service
-     ↓
-Prometheus
-     ↓
-Grafana
-```
-
-Future monitoring:
-
-```text
-Raspberry Pi
-     ↓
-Node Exporter
-     ↓
-Prometheus
-     ↓
-Grafana
-```
-
-The application should use a monitoring abstraction so the metrics provider can change without rewriting the dashboard.
-
----
-
-# 8. SSH
-
-SSH is initially used for:
-
-* health checks
-* CPU information
-* memory information
-* disk information
-* uptime
-* temperature
-* system information
-
-The backend owns SSH credentials.
-
-The frontend must never receive SSH credentials.
-
-Arbitrary shell execution must not be exposed through the API.
-
-Commands should be explicitly defined and controlled by the backend.
-
----
-
-# 9. Current Infrastructure
-
-## Network
-
-```text
 Subnet:  10.100.102.0/24
 Router:  10.100.102.1
 Switch:  10.100.102.200
 ```
 
-## Nodes
+### Nodes
 
-| Node     | IP            | Role          |
-|----------|---------------|---------------|
-| pi-node1 | 10.100.102.10 | Control plane |
-| pi-node2 | 10.100.102.16 | Worker        |
-| pi-node3 | 10.100.102.17 | Worker        |
-| pi-node4 | 10.100.102.12 | Worker        |
+| Node     | IP             | Role                       |
+|----------|----------------|----------------------------|
+| pi-node1 | 10.100.102.10  | Control plane + platform   |
+| pi-node2 | 10.100.102.16  | K3s worker                 |
+| pi-node3 | 10.100.102.17  | K3s worker                 |
+| pi-node4 | 10.100.102.12  | K3s worker                 |
 
-**Control plane (pi-node1)** hosts the full platform stack via Docker Compose:
-FastAPI backend, PostgreSQL, Redis, Prometheus, Grafana.
+**pi-node1** hosts the entire platform stack via Docker Compose. It also runs the K3s control plane (API server, scheduler, controller-manager, etcd).
 
-**Worker nodes (pi-node2/3/4)** run workloads scheduled by the orchestration layer (Phase 5).
+**pi-node2/3/4** run only the K3s agent. They receive and execute workloads scheduled by the K3s control plane.
 
-The node inventory is seeded from configuration at bootstrap and thereafter managed through the database.
+All SSH access to pi-node1 uses key-based authentication (`alex@10.100.102.10`). Password authentication is disabled. Application code lives at `/opt/pi-cluster`.
 
 ---
 
-# 10. Node State
+## 3. High-Level Component Map
 
-Use a common node status model:
-
-```text
-ONLINE
-OFFLINE
-DEGRADED
-UNKNOWN
+```
+  Developer laptop
+        │  git push
+        ▼
+  GitHub (master branch)
+        │
+   ┌────┴─────────────────────┐
+   │                          │
+   │ Jenkins SCM poll (2 min) │ ArgoCD poll (~3 min)
+   ▼                          ▼
+  Jenkins (Docker, :8080)   ArgoCD (K3s, :30443)
+   │                          │
+   │ rsync → docker compose   │ kubectl apply k8s/apps/
+   ▼                          ▼
+  pi-node1 Docker Compose   K3s cluster (all 4 nodes)
 ```
 
-All services should use the same state definitions.
-
-A failure of one node must not cause the entire dashboard or API to fail.
+These are two independent delivery pipelines. Jenkins owns the Docker Compose stack (backend, DB, monitoring). ArgoCD owns K8s manifests in `k8s/apps/` (node-exporter DaemonSet, Traefik DaemonSet).
 
 ---
 
-# 11. Future Orchestration
+## 4. Frontend
 
-The future orchestration layer will manage:
+**Technology:** React + TypeScript + Vite, served via Nginx at `:80`.
 
-* workloads
-* deployments
-* services
-* scheduling
-* node capacity
-* health checks
-* load balancing
+The frontend communicates exclusively with the FastAPI backend. It never:
+- holds SSH credentials
+- communicates directly with Raspberry Pi nodes
+- queries Prometheus, Grafana, or K8s directly
+- contains infrastructure secrets
 
-Conceptual architecture:
+Pages: Dashboard, Workloads, Audit Log.
 
-```text
-API
- ↓
-Orchestration Engine
- ↓
-Scheduler
- ↓
-Capacity Check
- ↓
-Distributed Lock
- ↓
-Selected Node
- ↓
-Deployment Engine
- ↓
-Container Runtime
+---
+
+## 5. Backend
+
+**Technology:** Python + FastAPI + Pydantic + SQLAlchemy (async) + Alembic.
+
+Layered architecture — business logic and data access are strictly separated:
+
+```
+  API Route   ← HTTP, auth dependency, schema validation
+      ↓
+  Service     ← business logic, K8s operations, SSH calls, audit logging
+      ↓
+  Repository  ← SQLAlchemy async queries only, no business logic
+      ↓
+  PostgreSQL
 ```
 
-The initial implementation should not attempt to recreate Kubernetes.
-
-Start with simple, explicit orchestration primitives.
-
----
-
-# 12. Future Load Balancing
-
-Potential technologies:
-
-* Traefik
-* Nginx
-* HAProxy
-
-The final technology should be selected based on the actual deployment requirements.
-
-Do not tightly couple the orchestration layer to one load-balancer implementation.
+The backend also integrates with:
+- **Kubernetes Python client** — all K8s control operations (deploy, scale, update, evict, cordon/drain)
+- **Paramiko** — SSH to Pi nodes for health metrics
+- **Redis** — caching health results (90s TTL), distributed locks
+- **Prometheus HTTP API** — proxying active alert state to the frontend
 
 ---
 
-# 13. Security
+## 6. PostgreSQL
 
-Secrets belong in environment configuration or a proper secrets manager.
+PostgreSQL is the persistent source of truth for:
 
-Never:
+- Users and roles
+- Cluster node inventory
+- Workload records (desired state: image, replicas, resource limits, probe paths, env vars)
+- Audit log
 
-* commit passwords
-* log passwords
-* log access tokens
-* expose SSH credentials
-* place credentials in frontend code
-* expose unrestricted shell execution
-
-Production deployments should eventually use SSH keys rather than password authentication.
+**Not stored in PostgreSQL:** live metrics (those belong in Prometheus), Kubernetes live state (queried directly from K8s).
 
 ---
 
-# 14. Design Principles
+## 7. Redis
 
-Pi-Cluster should follow:
+Redis provides fast ephemeral storage and coordination:
 
-* separation of concerns
-* dependency injection
-* explicit interfaces
-* typed APIs
-* modular services
-* testability
-* reproducible infrastructure
-* minimal coupling
-* incremental development
+- Node health cache — 90s TTL per node, prevents SSH spam on every dashboard load
+- Distributed locks — prevent concurrent conflicting operations on the same node
 
-Avoid premature abstraction.
+Redis is not the persistent source of truth and cannot replace PostgreSQL.
 
-Do not build future features before they are required.
+---
+
+## 8. Metrics — Prometheus + node-exporter
+
+node-exporter runs as a DaemonSet on all four K3s nodes (managed by ArgoCD). It exposes hardware metrics on port 9100.
+
+Prometheus (Docker Compose, `:9090`) scrapes node-exporter on all four nodes every 15 seconds with a `node_name` label per node.
+
+The backend also exposes a `/metrics` endpoint (prometheus-fastapi-instrumentator) for API-level metrics.
+
+```
+  node-exporter (:9100) on each node
+        │  scrape every 15s
+        ▼
+  Prometheus (:9090)
+        │
+        ├── evaluate alert rules → AlertManager (:9093)
+        │                                │
+        │                                └── /api/v1/alerts → dashboard
+        │
+        └── query API → Grafana (:3000)
+```
+
+**Custom Prometheus Gauges** (from SSH, for per-node health cards):
+`node_cpu_percent`, `node_ram_percent`, `node_disk_percent`, `node_temp_celsius`, `node_uptime_seconds`.
+
+**Grafana** is auto-provisioned (datasource + dashboard) and shows 10 panels: CPU, RAM, Disk, Temperature, Network Rx/Tx — all per node, all from node-exporter metrics.
+
+---
+
+## 9. Alerting — Prometheus Rules + AlertManager
+
+Alerting rules are defined in `prometheus/alerts.yml` and evaluated by Prometheus.
+
+| Rule | Severity | Condition |
+|---|---|---|
+| NodeDown | critical | node-exporter unreachable > 2 min |
+| HighCPU | warning | CPU% > 85% sustained 5 min |
+| HighMemory | warning | RAM% > 80% sustained 5 min |
+| HighDisk | warning | Disk% > 85% sustained 5 min |
+| HighTemperature | warning | Temp > 70°C sustained 5 min |
+
+AlertManager (`:9093`) handles grouping and repeat intervals. The backend proxies the Prometheus alert state to the frontend via `GET /api/v1/alerts` — the frontend never queries Prometheus directly.
+
+---
+
+## 10. SSH
+
+SSH (via Paramiko) is used for node health checks only:
+
+- CPU usage percent
+- Memory usage percent
+- Disk usage percent
+- CPU temperature
+- Uptime seconds
+
+SSH credentials are held exclusively in backend environment variables. The frontend never sees them. Arbitrary shell execution is not exposed through the API — all SSH commands are explicitly defined in `SSHService`.
+
+The primary SSH target for platform operations is `alex@10.100.102.10` using key-based auth.
+
+---
+
+## 11. CI/CD — Jenkins
+
+Jenkins runs as a Docker container on pi-node1 (`:8080`). It polls GitHub every 2 minutes and triggers the pipeline on any push to `master`.
+
+Pipeline stages:
+
+1. **Checkout** — clone `master` from GitHub
+2. **Sync** — rsync workspace to `/opt/pi-cluster` on pi-node1
+3. **Deploy** — `docker compose up -d --build backend frontend`
+4. **Migrate** — `alembic upgrade head` inside the backend container
+5. **Health Check** — `curl -sf http://10.100.102.10:8000/health`
+
+Jenkins has direct LAN access to all nodes and is not exposed to the internet.
+
+---
+
+## 12. Kubernetes — K3s
+
+K3s runs the container orchestration layer:
+
+- **Control plane** on pi-node1 (API server, scheduler, controller-manager, etcd)
+- **Agents** on pi-node2/3/4
+
+The FastAPI backend communicates with K3s via the Kubernetes Python client using a kubeconfig file stored on pi-node1.
+
+Workload operations performed through the backend:
+- Create/delete Deployment, Service, Ingress
+- Patch Deployment (scale, image, env, resources, probes, restartedAt annotation)
+- List pods, read logs, list events
+- Cordon/uncordon nodes, drain nodes (eviction API)
+- Read node capacity (allocatable vs requested)
+
+---
+
+## 13. GitOps — ArgoCD
+
+ArgoCD (K3s, NodePort `:30443`) watches the `k8s/apps/` directory in the GitHub repository and automatically applies changes to the K3s cluster.
+
+```
+k8s/
+└── apps/
+    ├── node-exporter.yaml    ← prometheus/node-exporter DaemonSet on all 4 nodes
+    └── traefik.yaml          ← Traefik DaemonSet + RBAC
+```
+
+ArgoCD does **not** manage the Docker Compose stack — that is Jenkins's responsibility.
+
+**Sync policy:** automated with `prune: true` and `selfHeal: true`. Any change to `k8s/apps/` in Git is applied within ~3 minutes. Manual `kubectl apply` is not needed for resources in this directory.
+
+---
+
+## 14. Ingress — Traefik
+
+Traefik runs as a DaemonSet on all K3s nodes (managed by ArgoCD), binding ports 80 and 443 via HostPort.
+
+When a workload is deployed with a `container_port`, the backend creates:
+1. A K8s `Service` targeting `container_port`
+2. A Traefik `Ingress` with host `<name>.pi-cluster.local`
+3. TLS termination via Traefik's built-in self-signed certificate
+
+The frontend shows the ingress URL as a clickable link in the workloads table.
+
+---
+
+## 15. Audit Logging
+
+Every mutating operation is recorded in the `audit_logs` table:
+
+| Field | Description |
+|---|---|
+| action | e.g. `workload.create`, `node.drain`, `workload.scale` |
+| resource_type | `workload` or `node` |
+| resource_name | name of the affected resource |
+| actor | username from the authenticated JWT |
+| status | `success` or `failure` |
+| detail | human-readable outcome or error message |
+| created_at | UTC timestamp |
+
+Audit writes use best-effort semantics — a failed audit write never breaks the underlying operation.
+
+The `GET /api/v1/audit` endpoint supports server-side filtering by `status` and `resource_type`, plus `limit`/`offset` pagination.
+
+---
+
+## 16. Node State Model
+
+Nodes report one of four health states, derived from SSH metric collection:
+
+```
+ONLINE    ← all metrics collected successfully
+DEGRADED  ← metrics collected but values indicate a problem
+OFFLINE   ← SSH connection failed or timed out
+UNKNOWN   ← not yet polled
+```
+
+Health polling runs as a background asyncio task every 30 seconds. A single node being OFFLINE or DEGRADED does not affect the dashboard or API for other nodes.
+
+---
+
+## 17. Security
+
+- JWT tokens for all authenticated endpoints; admin role required for all mutating operations
+- SSH credentials in backend `.env` only — never logged, never sent to the frontend
+- No arbitrary shell execution through the API — all SSH commands are explicit and predefined
+- Secrets in `.env`, excluded from Git via `.gitignore`
+- SSH key auth required for pi-node1; password auth disabled
+- Audit log provides a non-repudiation trail for every cluster operation
+
+---
+
+## 18. Design Principles
+
+- Separation of concerns: API routes own HTTP; services own logic; repositories own data access
+- Dependency injection: services and repositories are injected, not instantiated in routes
+- Typed APIs: Pydantic for Python, strict TypeScript for the frontend
+- Incremental development: one phase at a time, no premature abstraction
+- Testability: services are independently testable without HTTP or DB dependencies
+- Node failure isolation: one node being unreachable never breaks the dashboard for others
