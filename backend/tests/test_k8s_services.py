@@ -7,7 +7,8 @@ MOCK_SERVICE = {
     "namespace": "pi-apps",
     "type": "ClusterIP",
     "cluster_ip": "10.43.0.100",
-    "ports": [{"port": 80, "target_port": 8080, "protocol": "TCP"}],
+    "external_ip": None,
+    "ports": [{"port": 80, "target_port": "8080", "node_port": None, "protocol": "TCP"}],
     "selector": {"app": "my-app"},
     "created_at": "2026-01-01T00:00:00Z",
 }
@@ -15,8 +16,9 @@ MOCK_SERVICE = {
 MOCK_INGRESS = {
     "name": "my-app",
     "namespace": "pi-apps",
-    "rules": [{"host": "my-app.pi-cluster.local", "paths": [{"path": "/", "service": "my-app", "port": 80}]}],
-    "tls": [],
+    "rules": [{"host": "my-app.pi-cluster.local", "paths": [{"path": "/", "backend_service": "my-app", "backend_port": 80}]}],
+    "tls_hosts": [],
+    "ingress_class": None,
     "created_at": "2026-01-01T00:00:00Z",
 }
 
