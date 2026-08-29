@@ -126,6 +126,8 @@ export default function WorkloadsPage() {
   const [restarting, setRestarting] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "running" | "pending" | "failed">("all");
+  const [sortField, setSortField] = useState<"name" | "status" | "replicas" | "created_at">("created_at");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
   const [refreshAge, setRefreshAge] = useState<number>(0);
 
@@ -279,6 +281,29 @@ export default function WorkloadsPage() {
     return matchName && matchStatus;
   });
   const isFiltered = search !== "" || statusFilter !== "all";
+
+  function toggleSort(field: typeof sortField) {
+    if (sortField === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir("asc");
+    }
+  }
+
+  const sorted = [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sortField === "name") cmp = a.name.localeCompare(b.name);
+    else if (sortField === "status") cmp = a.status.localeCompare(b.status);
+    else if (sortField === "replicas") cmp = a.replicas - b.replicas;
+    else cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
+  function sortIcon(field: typeof sortField) {
+    if (sortField !== field) return <span className="wl-sort-icon wl-sort-idle">↕</span>;
+    return <span className="wl-sort-icon wl-sort-active">{sortDir === "asc" ? "↑" : "↓"}</span>;
+  }
 
   return (
     <div className="wl-page">
@@ -480,19 +505,19 @@ export default function WorkloadsPage() {
           <table className="wl-table">
             <thead>
               <tr>
-                <th>Name</th>
+                <th className="wl-th-sort" onClick={() => toggleSort("name")}>Name {sortIcon("name")}</th>
                 <th>Image</th>
                 <th>Namespace</th>
-                <th>Replicas</th>
+                <th className="wl-th-sort" onClick={() => toggleSort("replicas")}>Replicas {sortIcon("replicas")}</th>
                 <th>Node</th>
                 <th>Ingress</th>
-                <th>Status</th>
-                <th>Created</th>
+                <th className="wl-th-sort" onClick={() => toggleSort("status")}>Status {sortIcon("status")}</th>
+                <th className="wl-th-sort" onClick={() => toggleSort("created_at")}>Created {sortIcon("created_at")}</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((w) => (
+              {sorted.map((w) => (
                 <tr key={w.id} className={updatingImage === w.name ? "wl-row-updating" : ""}>
                   <td className="wl-name">{w.name}</td>
                   <td>

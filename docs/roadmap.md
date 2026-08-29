@@ -158,3 +158,7 @@
 ## Phase 22 — Workload Search & Filter ✓
 - [x] Name search input (case-insensitive substring match) above the workloads table
 - [x] Status filter pills: All / Running / Pending / Failed — active pill adopts the status colour; section header shows "X of Y" when a filter is active
+
+## Phase 23 — Workload Table Sorting ✓
+- [x] Clickable column headers for Name, Replicas, Status, Created — click once to sort ascending, again to flip to descending
+- [x] Active sort column shows a blue directional arrow; inactive columns show a faded ↕ idle indicator; default sort is Created descending (newest first)

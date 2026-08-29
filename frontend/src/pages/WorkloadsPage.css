@@ -20,6 +20,18 @@
 .wl-live-label.wl-live-paused { color: var(--t3); }
 .wl-live-age { font-size: 0.72rem; color: var(--t3); }
 
+/* ── Sortable headers ───────────────────────────────────────────────────── */
+
+.wl-th-sort {
+  cursor: pointer; user-select: none;
+  white-space: nowrap;
+}
+.wl-th-sort:hover { color: var(--t1); }
+
+.wl-sort-icon { font-size: 0.65rem; margin-left: 0.25rem; }
+.wl-sort-idle   { color: var(--t3); opacity: 0.5; }
+.wl-sort-active { color: var(--blue); }
+
 /* ── Filter bar ─────────────────────────────────────────────────────────── */
 
 .wl-filter-bar {
