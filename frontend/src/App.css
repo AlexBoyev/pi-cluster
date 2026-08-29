@@ -356,6 +356,16 @@ main { flex: 1; padding: 1.75rem 2rem 3rem; max-width: 1440px; width: 100%; marg
   background: rgba(29,78,216,0.03); border-top: 1px solid var(--border);
   font-family: var(--mono);
 }
+.card-foot-btns {
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.card-ssh-btn {
+  background: transparent; border: none; padding: 0;
+  font-size: 0.67rem; font-weight: 600; font-family: var(--mono);
+  color: var(--t3); cursor: pointer;
+  transition: color 0.12s;
+}
+.card-ssh-btn:hover { color: var(--blue); }
 .card-detail-btn {
   background: transparent; border: none; padding: 0;
   font-size: 0.67rem; font-weight: 600; font-family: var(--mono);

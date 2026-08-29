@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { getAllHealth } from "../api/health";
-import { getNodeMetricsHistory } from "../api/nodes";
+import { getNodeMetricsHistory, restartNode, shutdownNode } from "../api/nodes";
+import ConfirmDialog from "../components/ConfirmDialog";
+import NodeSSHModal from "../components/NodeSSHModal";
 import type { MetricPoint, NodeHealth, NodeMetricsHistory } from "../types/node";
 import "./NodesPage.css";
 
@@ -139,37 +141,81 @@ function ChartCard({
 function NodeListCard({ h, onSelect }: { h: NodeHealth; onSelect: () => void }) {
   const m = h.metrics;
   const isCtrl = h.ip_address === CTRL_IP;
+  const [sshOpen, setSshOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"restart" | "shutdown" | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+
+  async function handleConfirm() {
+    if (!confirmAction) return;
+    setActionBusy(true);
+    try {
+      if (confirmAction === "restart") {
+        await restartNode(h.node_id);
+      } else {
+        await shutdownNode(h.node_id);
+      }
+    } catch {
+      // ignore — node may go offline immediately
+    } finally {
+      setActionBusy(false);
+      setConfirmAction(null);
+    }
+  }
 
   return (
-    <div className={`nd-card s-${h.status}`}>
-      <div className="nd-card-bar" style={{ background: `var(--status-${h.status.toLowerCase()})` }} />
-      <div className="nd-card-head">
-        <div>
-          <div className="nd-card-name">{h.node_name}</div>
-          <div className="nd-card-ip">{h.ip_address}</div>
-        </div>
-        <div className="nd-card-badges">
-          {isCtrl && <span className="nd-badge nd-badge-ctrl">CTRL</span>}
-          <span className={`nd-badge nd-badge-status s-${h.status}`}>{h.status}</span>
-        </div>
-      </div>
-      {m ? (
-        <div className="nd-card-stats">
-          <div className="nd-stat"><span className="nd-stat-label">CPU</span><span className="nd-stat-val">{m.cpu_load_1m.toFixed(2)}</span></div>
-          <div className="nd-stat"><span className="nd-stat-label">RAM</span><span className="nd-stat-val">{m.memory_percent.toFixed(0)}%</span></div>
-          <div className="nd-stat"><span className="nd-stat-label">Disk</span><span className="nd-stat-val">{m.disk_percent.toFixed(0)}%</span></div>
-          <div className="nd-stat">
-            <span className="nd-stat-label">Temp</span>
-            <span className="nd-stat-val">
-              {m.temperature_celsius !== null ? `${m.temperature_celsius.toFixed(0)}°C` : "—"}
-            </span>
+    <>
+      <div className={`nd-card s-${h.status}`}>
+        <div className="nd-card-bar" style={{ background: `var(--status-${h.status.toLowerCase()})` }} />
+        <div className="nd-card-head">
+          <div>
+            <div className="nd-card-name">{h.node_name}</div>
+            <div className="nd-card-ip">{h.ip_address}</div>
+          </div>
+          <div className="nd-card-badges">
+            {isCtrl && <span className="nd-badge nd-badge-ctrl">CTRL</span>}
+            <span className={`nd-badge nd-badge-status s-${h.status}`}>{h.status}</span>
           </div>
         </div>
-      ) : (
-        <div className="nd-card-offline">{h.error ?? "Node unreachable"}</div>
+        {m ? (
+          <div className="nd-card-stats">
+            <div className="nd-stat"><span className="nd-stat-label">CPU</span><span className="nd-stat-val">{m.cpu_load_1m.toFixed(2)}</span></div>
+            <div className="nd-stat"><span className="nd-stat-label">RAM</span><span className="nd-stat-val">{m.memory_percent.toFixed(0)}%</span></div>
+            <div className="nd-stat"><span className="nd-stat-label">Disk</span><span className="nd-stat-val">{m.disk_percent.toFixed(0)}%</span></div>
+            <div className="nd-stat">
+              <span className="nd-stat-label">Temp</span>
+              <span className="nd-stat-val">
+                {m.temperature_celsius !== null ? `${m.temperature_celsius.toFixed(0)}°C` : "—"}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="nd-card-offline">{h.error ?? "Node unreachable"}</div>
+        )}
+        <div className="nd-card-actions">
+          <button className="nd-details-btn" onClick={onSelect}>Details →</button>
+          <button className="nd-ssh-btn" onClick={() => setSshOpen(true)}>SSH</button>
+          <button className="nd-restart-btn" onClick={() => setConfirmAction("restart")}>Restart</button>
+          <button className="nd-shutdown-btn" onClick={() => setConfirmAction("shutdown")}>Shutdown</button>
+        </div>
+      </div>
+
+      {sshOpen && <NodeSSHModal node={h} onClose={() => setSshOpen(false)} />}
+
+      {confirmAction && (
+        <ConfirmDialog
+          title={confirmAction === "restart" ? `Restart ${h.node_name}?` : `Shut down ${h.node_name}?`}
+          message={
+            confirmAction === "restart"
+              ? `This will reboot ${h.node_name} (${h.ip_address}). It will be temporarily unreachable.`
+              : `This will power off ${h.node_name} (${h.ip_address}). It will need to be manually powered on.`
+          }
+          confirmLabel={actionBusy ? "Please wait…" : confirmAction === "restart" ? "Restart" : "Shut Down"}
+          dangerous
+          onConfirm={handleConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
       )}
-      <button className="nd-details-btn" onClick={onSelect}>Details →</button>
-    </div>
+    </>
   );
 }
 
@@ -180,6 +226,9 @@ export function NodeDetailView({ node, onBack }: { node: NodeHealth; onBack: () 
   const [history, setHistory] = useState<NodeMetricsHistory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sshOpen, setSshOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"restart" | "shutdown" | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
   const m = node.metrics;
   const isCtrl = node.ip_address === CTRL_IP;
 
@@ -194,62 +243,105 @@ export function NodeDetailView({ node, onBack }: { node: NodeHealth; onBack: () 
     return () => { cancelled = true; };
   }, [node.node_id, period]);
 
+  async function handleConfirm() {
+    if (!confirmAction) return;
+    setActionBusy(true);
+    try {
+      if (confirmAction === "restart") {
+        await restartNode(node.node_id);
+      } else {
+        await shutdownNode(node.node_id);
+      }
+    } catch {
+      // ignore — node may go offline immediately
+    } finally {
+      setActionBusy(false);
+      setConfirmAction(null);
+    }
+  }
+
   const pct = (v: number) => v.toFixed(1);
   const temp = (v: number) => v.toFixed(1);
 
   return (
-    <div className="nd-detail">
-      <div className="nd-detail-top">
-        <button className="nd-back-btn" onClick={onBack}>← Back</button>
-        <div className="nd-detail-header">
-          <div className="nd-detail-title">
-            <span className="nd-detail-name">{node.node_name}</span>
-            <span className="nd-detail-ip">{node.ip_address}</span>
-            <div className="nd-card-badges">
-              {isCtrl && <span className="nd-badge nd-badge-ctrl">CTRL</span>}
-              <span className={`nd-badge nd-badge-status s-${node.status}`}>{node.status}</span>
+    <>
+      <div className="nd-detail">
+        <div className="nd-detail-top">
+          <button className="nd-back-btn" onClick={onBack}>&#8592; Back</button>
+          <div className="nd-detail-header">
+            <div className="nd-detail-title">
+              <span className="nd-detail-name">{node.node_name}</span>
+              <span className="nd-detail-ip">{node.ip_address}</span>
+              <div className="nd-card-badges">
+                {isCtrl && <span className="nd-badge nd-badge-ctrl">CTRL</span>}
+                <span className={`nd-badge nd-badge-status s-${node.status}`}>{node.status}</span>
+              </div>
             </div>
+
+            {m && (
+              <div className="nd-snapshot">
+                <div className="nd-snap-item"><span className="nd-snap-label">CPU load</span><span className="nd-snap-val">{m.cpu_load_1m.toFixed(2)}</span></div>
+                <div className="nd-snap-item"><span className="nd-snap-label">Memory</span><span className="nd-snap-val">{m.memory_percent.toFixed(1)}%</span><span className="nd-snap-sub">{fmtBytes(m.memory_total_bytes - m.memory_available_bytes)} / {fmtBytes(m.memory_total_bytes)}</span></div>
+                <div className="nd-snap-item"><span className="nd-snap-label">Disk</span><span className="nd-snap-val">{m.disk_percent.toFixed(1)}%</span><span className="nd-snap-sub">{fmtBytes(m.disk_used_bytes)} / {fmtBytes(m.disk_total_bytes)}</span></div>
+                <div className="nd-snap-item"><span className="nd-snap-label">Temp</span><span className="nd-snap-val">{m.temperature_celsius !== null ? `${m.temperature_celsius.toFixed(1)}°C` : "—"}</span></div>
+                <div className="nd-snap-item"><span className="nd-snap-label">Uptime</span><span className="nd-snap-val">{fmtUptime(m.uptime_seconds)}</span></div>
+              </div>
+            )}
           </div>
 
-          {m && (
-            <div className="nd-snapshot">
-              <div className="nd-snap-item"><span className="nd-snap-label">CPU load</span><span className="nd-snap-val">{m.cpu_load_1m.toFixed(2)}</span></div>
-              <div className="nd-snap-item"><span className="nd-snap-label">Memory</span><span className="nd-snap-val">{m.memory_percent.toFixed(1)}%</span><span className="nd-snap-sub">{fmtBytes(m.memory_total_bytes - m.memory_available_bytes)} / {fmtBytes(m.memory_total_bytes)}</span></div>
-              <div className="nd-snap-item"><span className="nd-snap-label">Disk</span><span className="nd-snap-val">{m.disk_percent.toFixed(1)}%</span><span className="nd-snap-sub">{fmtBytes(m.disk_used_bytes)} / {fmtBytes(m.disk_total_bytes)}</span></div>
-              <div className="nd-snap-item"><span className="nd-snap-label">Temp</span><span className="nd-snap-val">{m.temperature_celsius !== null ? `${m.temperature_celsius.toFixed(1)}°C` : "—"}</span></div>
-              <div className="nd-snap-item"><span className="nd-snap-label">Uptime</span><span className="nd-snap-val">{fmtUptime(m.uptime_seconds)}</span></div>
+          <div className="nd-detail-actions">
+            <div className="nd-period-pills">
+              {(["1h", "6h", "24h"] as Period[]).map((p) => (
+                <button
+                  key={p}
+                  className={`nd-period-pill${period === p ? " nd-period-active" : ""}`}
+                  onClick={() => setPeriod(p)}
+                >
+                  {p}
+                </button>
+              ))}
             </div>
-          )}
+            <div className="nd-power-actions">
+              <button className="nd-ssh-btn" onClick={() => setSshOpen(true)}>SSH</button>
+              <button className="nd-restart-btn" onClick={() => setConfirmAction("restart")}>Restart</button>
+              <button className="nd-shutdown-btn" onClick={() => setConfirmAction("shutdown")}>Shutdown</button>
+            </div>
+          </div>
         </div>
 
-        <div className="nd-period-pills">
-          {(["1h", "6h", "24h"] as Period[]).map((p) => (
-            <button
-              key={p}
-              className={`nd-period-pill${period === p ? " nd-period-active" : ""}`}
-              onClick={() => setPeriod(p)}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
+        {loading ? (
+          <div className="loading"><div className="spinner" /><span>Querying Prometheus…</span></div>
+        ) : error ? (
+          <div className="err-banner">{error}</div>
+        ) : history ? (
+          <div className="nd-charts-grid">
+            <ChartCard label="CPU" points={history.cpu_pct} color="var(--blue)" fmt={pct} unit="%" softMax={100} />
+            <ChartCard label="Memory" points={history.memory_pct} color="var(--green)" fmt={pct} unit="%" softMax={100} />
+            <ChartCard label="Disk" points={history.disk_pct} color="var(--amber)" fmt={pct} unit="%" softMax={100} />
+            <ChartCard label="Temperature" points={history.temperature_c} color="var(--red)" fmt={temp} unit="°C" softMax={85} />
+            <ChartCard label="Network Rx" points={history.net_rx_bps} color="#7c3aed" fmt={fmtBps} unit="" />
+            <ChartCard label="Network Tx" points={history.net_tx_bps} color="#0d9488" fmt={fmtBps} unit="" />
+          </div>
+        ) : null}
       </div>
 
-      {loading ? (
-        <div className="loading"><div className="spinner" /><span>Querying Prometheus…</span></div>
-      ) : error ? (
-        <div className="err-banner">{error}</div>
-      ) : history ? (
-        <div className="nd-charts-grid">
-          <ChartCard label="CPU" points={history.cpu_pct} color="var(--blue)" fmt={pct} unit="%" softMax={100} />
-          <ChartCard label="Memory" points={history.memory_pct} color="var(--green)" fmt={pct} unit="%" softMax={100} />
-          <ChartCard label="Disk" points={history.disk_pct} color="var(--amber)" fmt={pct} unit="%" softMax={100} />
-          <ChartCard label="Temperature" points={history.temperature_c} color="var(--red)" fmt={temp} unit="°C" softMax={85} />
-          <ChartCard label="Network Rx" points={history.net_rx_bps} color="#7c3aed" fmt={fmtBps} unit="" />
-          <ChartCard label="Network Tx" points={history.net_tx_bps} color="#0d9488" fmt={fmtBps} unit="" />
-        </div>
-      ) : null}
-    </div>
+      {sshOpen && <NodeSSHModal node={node} onClose={() => setSshOpen(false)} />}
+
+      {confirmAction && (
+        <ConfirmDialog
+          title={confirmAction === "restart" ? `Restart ${node.node_name}?` : `Shut down ${node.node_name}?`}
+          message={
+            confirmAction === "restart"
+              ? `This will reboot ${node.node_name} (${node.ip_address}). It will be temporarily unreachable.`
+              : `This will power off ${node.node_name} (${node.ip_address}). It will need to be manually powered on.`
+          }
+          confirmLabel={actionBusy ? "Please wait…" : confirmAction === "restart" ? "Restart" : "Shut Down"}
+          dangerous
+          onConfirm={handleConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
+    </>
   );
 }
 

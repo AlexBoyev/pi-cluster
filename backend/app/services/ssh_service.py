@@ -63,5 +63,27 @@ class SSHService:
         import asyncio
         return await asyncio.get_event_loop().run_in_executor(_pool, self._run_sync, host)
 
+    def _exec_sync(self, host: str, command: str) -> str:
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(
+            host,
+            username=settings.ssh_username,
+            password=settings.ssh_password,
+            timeout=settings.ssh_connect_timeout,
+        )
+        try:
+            _, stdout, stderr = client.exec_command(command)
+            stdout.channel.settimeout(settings.ssh_command_timeout)
+            out = stdout.read().decode(errors="replace")
+            err = stderr.read().decode(errors="replace")
+            return (out + err).strip()
+        finally:
+            client.close()
+
+    async def exec_command(self, host: str, command: str) -> str:
+        import asyncio
+        return await asyncio.get_event_loop().run_in_executor(_pool, self._exec_sync, host, command)
+
 
 ssh_service = SSHService()

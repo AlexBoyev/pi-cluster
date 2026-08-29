@@ -186,3 +186,85 @@ async def ws_logs(
         pass
     finally:
         send_task.cancel()
+
+
+@router.websocket("/ws/ssh/{node_ip}")
+async def ws_ssh(
+    websocket: WebSocket,
+    node_ip: str,
+    token: str = Query(...),
+) -> None:
+    try:
+        payload = decode_token(token)
+        if payload.get("type") != "access":
+            await websocket.close(code=4001)
+            return
+    except JWTError:
+        await websocket.close(code=4001)
+        return
+
+    await websocket.accept()
+    loop = asyncio.get_running_loop()
+    out_q: asyncio.Queue[str | None] = asyncio.Queue()
+    in_q: queue.Queue[str] = queue.Queue()
+
+    def run_ssh() -> None:
+        import paramiko as _paramiko
+        from app.config import settings as _s
+        client = _paramiko.SSHClient()
+        client.set_missing_host_key_policy(_paramiko.AutoAddPolicy())
+        try:
+            client.connect(
+                node_ip,
+                username=_s.ssh_username,
+                password=_s.ssh_password,
+                timeout=_s.ssh_connect_timeout,
+            )
+            chan = client.invoke_shell(term="xterm-256color", width=200, height=50)
+            loop.call_soon_threadsafe(
+                out_q.put_nowait,
+                f"[SSH] Connected to {node_ip} as {_s.ssh_username}\r\n",
+            )
+            while True:
+                try:
+                    data = chan.recv(4096)
+                    if not data:
+                        break
+                    loop.call_soon_threadsafe(out_q.put_nowait, data.decode("utf-8", errors="replace"))
+                except Exception:
+                    pass
+                try:
+                    inp = in_q.get_nowait()
+                    chan.send(inp)
+                except queue.Empty:
+                    pass
+                if chan.closed or chan.exit_status_ready():
+                    break
+        except Exception as exc:
+            loop.call_soon_threadsafe(out_q.put_nowait, f"\r\n[SSH error] {exc}\r\n")
+        finally:
+            client.close()
+            loop.call_soon_threadsafe(out_q.put_nowait, None)
+
+    thread = threading.Thread(target=run_ssh, daemon=True)
+    thread.start()
+
+    async def send_output() -> None:
+        while True:
+            data = await out_q.get()
+            if data is None:
+                break
+            try:
+                await websocket.send_text(data)
+            except Exception:
+                break
+
+    send_task = asyncio.create_task(send_output())
+    try:
+        while True:
+            msg = await websocket.receive_text()
+            in_q.put(msg)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        send_task.cancel()

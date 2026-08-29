@@ -1,0 +1,80 @@
+.nssh-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 1rem;
+}
+
+.nssh-modal {
+  background: #0d1117; border: 1px solid #30363d; border-radius: var(--r);
+  box-shadow: 0 24px 72px rgba(0,0,0,0.55); display: flex; flex-direction: column;
+  width: min(820px, 100%); max-height: 80vh; min-height: 400px;
+}
+
+.nssh-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.75rem 1rem; border-bottom: 1px solid #30363d; flex-shrink: 0;
+}
+.nssh-header-left  { display: flex; align-items: center; gap: 0.5rem; }
+.nssh-header-right { display: flex; align-items: center; gap: 0.5rem; }
+
+.nssh-label {
+  font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.1em; color: #8b949e;
+}
+.nssh-name {
+  font-family: var(--mono); font-size: 0.85rem; font-weight: 700; color: #e6edf3;
+}
+.nssh-ip {
+  font-family: var(--mono); font-size: 0.75rem; color: #8b949e;
+  background: #161b22; border: 1px solid #30363d; border-radius: 99px;
+  padding: 0.1rem 0.45rem;
+}
+
+.nssh-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.nssh-dot-on  { background: #3fb950; box-shadow: 0 0 6px #3fb950; }
+.nssh-dot-off { background: #6e7681; }
+
+.nssh-status { font-size: 0.72rem; color: #8b949e; }
+
+.nssh-close {
+  width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid #30363d; border-radius: var(--rs);
+  background: transparent; font-size: 0.75rem; color: #8b949e; cursor: pointer;
+}
+.nssh-close:hover { background: #3d1a1a; color: #f85149; border-color: #6e2626; }
+
+.nssh-error {
+  padding: 0.5rem 1rem; background: rgba(248,81,73,0.1); color: #f85149;
+  font-size: 0.8rem; border-bottom: 1px solid #3d1a1a; flex-shrink: 0;
+}
+
+.nssh-output {
+  flex: 1; overflow-y: auto; padding: 0.75rem 1rem;
+  background: #0d1117; min-height: 0;
+}
+.nssh-pre {
+  margin: 0; font-family: var(--mono); font-size: 0.82rem; line-height: 1.5;
+  color: #c9d1d9; white-space: pre-wrap; word-break: break-all;
+}
+
+.nssh-input-row {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 1rem; border-top: 1px solid #21262d; flex-shrink: 0;
+  background: #161b22;
+}
+.nssh-prompt {
+  font-family: var(--mono); font-size: 0.85rem; color: #3fb950; font-weight: 700; flex-shrink: 0;
+}
+.nssh-input {
+  flex: 1; background: transparent; border: none; outline: none;
+  font-family: var(--mono); font-size: 0.84rem; color: #e6edf3; caret-color: #e6edf3;
+}
+.nssh-input::placeholder { color: #484f58; }
+.nssh-input:disabled { opacity: 0.5; }
+
+.nssh-hint {
+  padding: 0.3rem 1rem; font-size: 0.65rem; color: #484f58;
+  border-top: 1px solid #21262d; flex-shrink: 0; background: #161b22;
+}

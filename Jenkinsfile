@@ -37,6 +37,24 @@ pipeline {
             }
         }
 
+        stage('Test') {
+            steps {
+                sh '''
+                    cd $PROJECT_DIR
+                    docker compose run --rm --no-deps \
+                        -e DATABASE_URL=sqlite+aiosqlite:///./test_ci.db \
+                        -e SECRET_KEY=ci-test-secret \
+                        -e ADMIN_DEFAULT_PASSWORD=adminpass123 \
+                        -e SSH_USERNAME=pi \
+                        -e SSH_PASSWORD=test \
+                        -e K8S_KUBECONFIG_PATH=/tmp/kubeconfig \
+                        -e PROMETHEUS_URL=http://localhost:9090 \
+                        backend \
+                        sh -c "pip install pytest pytest-asyncio httpx aiosqlite --quiet && pytest tests/ -v --tb=short"
+                '''
+            }
+        }
+
         stage('Deploy') {
             steps {
                 sh 'cd $PROJECT_DIR && docker compose up -d --build backend frontend'

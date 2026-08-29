@@ -73,8 +73,14 @@
   padding: 0.25rem 0;
 }
 
+.nd-card-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.1rem;
+}
+
 .nd-details-btn {
-  align-self: flex-start;
   padding: 0.35rem 0.85rem;
   background: transparent;
   border: 1.5px solid var(--border);
@@ -82,12 +88,67 @@
   font-size: 0.76rem; font-weight: 600;
   color: var(--t2); cursor: pointer;
   transition: background 0.12s, color 0.12s, border-color 0.12s;
-  margin-top: 0.1rem;
 }
 .nd-details-btn:hover {
   background: rgba(29,78,216,0.07);
   color: var(--blue);
   border-color: var(--blue-ring);
+}
+
+.nd-ssh-btn {
+  padding: 0.35rem 0.75rem;
+  background: transparent;
+  border: 1.5px solid var(--border);
+  border-radius: var(--rs);
+  font-size: 0.76rem; font-weight: 600;
+  color: var(--t2); cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.nd-ssh-btn:hover {
+  background: rgba(59,130,246,0.08);
+  color: var(--blue);
+  border-color: var(--blue-ring);
+}
+
+.nd-restart-btn {
+  padding: 0.35rem 0.75rem;
+  background: transparent;
+  border: 1.5px solid var(--border);
+  border-radius: var(--rs);
+  font-size: 0.76rem; font-weight: 600;
+  color: var(--amber); cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.nd-restart-btn:hover {
+  background: rgba(245,158,11,0.08);
+  border-color: var(--amber-bd);
+}
+
+.nd-shutdown-btn {
+  padding: 0.35rem 0.75rem;
+  background: transparent;
+  border: 1.5px solid var(--border);
+  border-radius: var(--rs);
+  font-size: 0.76rem; font-weight: 600;
+  color: var(--red); cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.nd-shutdown-btn:hover {
+  background: rgba(239,68,68,0.08);
+  border-color: var(--red-bd);
+}
+
+.nd-detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.nd-power-actions {
+  display: flex;
+  gap: 0.4rem;
 }
 
 /* ── Detail view ─────────────────────────────────────────────────────────── */

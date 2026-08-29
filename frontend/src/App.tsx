@@ -22,6 +22,7 @@ import ServicesPage from "./pages/ServicesPage";
 import StoragePage from "./pages/StoragePage";
 import UsersPage from "./pages/UsersPage";
 import AlertsPanel from "./components/AlertsPanel";
+import NodeSSHModal from "./components/NodeSSHModal";
 import { NodeDetailView } from "./pages/NodesPage";
 import WorkloadsPage from "./pages/WorkloadsPage";
 import type { NodeHealth } from "./types/node";
@@ -130,62 +131,70 @@ function NodeCard({ h, onDetails }: { h: NodeHealth; onDetails: () => void }) {
   const m     = h.metrics;
   const ts    = new Date(h.checked_at).toLocaleTimeString();
   const isCtrl = h.ip_address === CTRL_IP;
+  const [sshOpen, setSshOpen] = useState(false);
 
   return (
-    <div className={`card s-${h.status}`}>
-      <div className={`card-bar b-${h.status}`} />
+    <>
+      <div className={`card s-${h.status}`}>
+        <div className={`card-bar b-${h.status}`} />
 
-      <div className="card-head">
-        <div>
-          <div className="node-name">{h.node_name}</div>
-          <div className="node-ip">{h.ip_address}</div>
+        <div className="card-head">
+          <div>
+            <div className="node-name">{h.node_name}</div>
+            <div className="node-ip">{h.ip_address}</div>
+          </div>
+          <div className="badges">
+            {isCtrl && <span className="badge-ctrl">CTRL</span>}
+            <span className={`badge-status bs-${h.status}`}>
+              <span className="st-dot" />{h.status}
+            </span>
+          </div>
         </div>
-        <div className="badges">
-          {isCtrl && <span className="badge-ctrl">CTRL</span>}
-          <span className={`badge-status bs-${h.status}`}>
-            <span className="st-dot" />{h.status}
-          </span>
+
+        <div className="card-divider" />
+
+        {m ? (
+          <>
+            <div className="rings-row">
+              <Ring
+                pct={m.memory_percent} label="RAM"
+                detail={`${fmtBytes(m.memory_total_bytes - m.memory_available_bytes)} / ${fmtBytes(m.memory_total_bytes)}`}
+              />
+              <Ring
+                pct={m.disk_percent} label="Disk"
+                detail={`${fmtBytes(m.disk_used_bytes)} / ${fmtBytes(m.disk_total_bytes)}`}
+              />
+            </div>
+
+            <div className="stats-row">
+              <StatTile label="CPU Load" value={m.cpu_load_1m.toFixed(2)} />
+              <StatTile label="Uptime"   value={fmtUptime(m.uptime_seconds)} accent="blue" />
+              <StatTile
+                label="Temp"
+                value={m.temperature_celsius !== null ? `${m.temperature_celsius.toFixed(1)}°C` : "—"}
+                bar={m.temperature_celsius !== null ? (m.temperature_celsius / 85) * 100 : undefined}
+                accent={m.temperature_celsius !== null && m.temperature_celsius >= 65 ? "amber" : undefined}
+              />
+            </div>
+          </>
+        ) : (
+          <div className="card-offline">
+            <span className="offline-glyph">&#x2298;</span>
+            <span className="offline-msg">{h.error ?? "Node unreachable"}</span>
+          </div>
+        )}
+
+        <div className="card-foot">
+          <span>checked {ts}</span>
+          <div className="card-foot-btns">
+            <button className="card-ssh-btn" onClick={() => setSshOpen(true)}>SSH</button>
+            <button className="card-detail-btn" onClick={onDetails}>Details &#x2192;</button>
+          </div>
         </div>
       </div>
 
-      <div className="card-divider" />
-
-      {m ? (
-        <>
-          <div className="rings-row">
-            <Ring
-              pct={m.memory_percent} label="RAM"
-              detail={`${fmtBytes(m.memory_total_bytes - m.memory_available_bytes)} / ${fmtBytes(m.memory_total_bytes)}`}
-            />
-            <Ring
-              pct={m.disk_percent} label="Disk"
-              detail={`${fmtBytes(m.disk_used_bytes)} / ${fmtBytes(m.disk_total_bytes)}`}
-            />
-          </div>
-
-          <div className="stats-row">
-            <StatTile label="CPU Load" value={m.cpu_load_1m.toFixed(2)} />
-            <StatTile label="Uptime"   value={fmtUptime(m.uptime_seconds)} accent="blue" />
-            <StatTile
-              label="Temp"
-              value={m.temperature_celsius !== null ? `${m.temperature_celsius.toFixed(1)}°C` : "—"}
-              bar={m.temperature_celsius !== null ? (m.temperature_celsius / 85) * 100 : undefined}
-              accent={m.temperature_celsius !== null && m.temperature_celsius >= 65 ? "amber" : undefined}
-            />
-          </div>
-        </>
-      ) : (
-        <div className="card-offline">
-          <span className="offline-glyph">⊘</span>
-          <span className="offline-msg">{h.error ?? "Node unreachable"}</span>
-        </div>
-      )}
-
-      <div className="card-foot">
-        <span>checked {ts}</span>
-        <button className="card-detail-btn" onClick={onDetails}>Details →</button>
-      </div>
-    </div>
+      {sshOpen && <NodeSSHModal node={h} onClose={() => setSshOpen(false)} />}
+    </>
   );
 }
 
