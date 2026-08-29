@@ -429,11 +429,9 @@ async def test_delete_nonexistent_workload_returns_404(client, auth_headers):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_viewer_can_list_workloads(client, viewer_headers):
-    with patch(K8S_PATCH) as MockK8s:
-        MockK8s.return_value.get_ready_replicas.return_value = 0
-        r = await client.get("/api/v1/workloads/", headers=viewer_headers)
-    assert r.status_code == 200
+async def test_viewer_cannot_list_workloads(client, viewer_headers):
+    r = await client.get("/api/v1/workloads/", headers=viewer_headers)
+    assert r.status_code == 403
 
 
 @pytest.mark.asyncio

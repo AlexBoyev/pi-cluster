@@ -4,10 +4,14 @@ from unittest.mock import patch
 MOCK_RELEASE = {
     "name": "traefik",
     "namespace": "kube-system",
-    "chart": "traefik-28.0.0",
+    "chart": "traefik",
+    "chart_version": "28.0.0",
+    "app_version": "v3.0.0",
     "status": "deployed",
     "revision": 1,
-    "updated": "2026-01-01T00:00:00Z",
+    "description": None,
+    "first_deployed": "2026-01-01T00:00:00Z",
+    "last_deployed": "2026-01-01T00:00:00Z",
 }
 
 K8S_PATCH = "app.api.v1.helm.K8sService"

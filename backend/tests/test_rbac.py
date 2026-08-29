@@ -4,12 +4,14 @@ from unittest.mock import patch
 MOCK_CLUSTER_ROLE = {
     "name": "cluster-admin",
     "rules_count": 1,
+    "rules": [{"api_groups": ["*"], "resources": ["*"], "verbs": ["*"]}],
     "created_at": "2026-01-01T00:00:00Z",
 }
 
 MOCK_CLUSTER_ROLE_BINDING = {
     "name": "cluster-admin-binding",
-    "role_ref": "cluster-admin",
+    "role_kind": "ClusterRole",
+    "role_name": "cluster-admin",
     "subjects": [{"kind": "User", "name": "admin", "namespace": None}],
     "created_at": "2026-01-01T00:00:00Z",
 }
@@ -17,6 +19,7 @@ MOCK_CLUSTER_ROLE_BINDING = {
 MOCK_SERVICE_ACCOUNT = {
     "name": "default",
     "namespace": "pi-apps",
+    "secrets_count": 0,
     "created_at": "2026-01-01T00:00:00Z",
 }
 

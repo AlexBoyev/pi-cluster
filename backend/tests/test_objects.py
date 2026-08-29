@@ -6,7 +6,8 @@ MOCK_STATEFULSET = {
     "namespace": "pi-apps",
     "replicas": 1,
     "ready_replicas": 1,
-    "image": "postgres:16",
+    "service_name": "postgres",
+    "images": ["postgres:16"],
     "created_at": "2026-01-01T00:00:00Z",
 }
 
@@ -14,8 +15,10 @@ MOCK_DAEMONSET = {
     "name": "node-exporter",
     "namespace": "monitoring",
     "desired": 4,
+    "current": 4,
     "ready": 4,
-    "image": "prom/node-exporter:latest",
+    "available": 4,
+    "images": ["prom/node-exporter:latest"],
     "created_at": "2026-01-01T00:00:00Z",
 }
 

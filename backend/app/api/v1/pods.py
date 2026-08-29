@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from starlette.concurrency import run_in_threadpool
 
 from app.services.k8s_service import K8sService
@@ -13,4 +13,7 @@ async def list_pods(namespace: str = Query("default")) -> list[dict]:
 
 @router.get("/{namespace}/{name}")
 async def get_pod_detail(namespace: str, name: str) -> dict:
-    return await run_in_threadpool(K8sService().get_pod_detail, name, namespace)
+    detail = await run_in_threadpool(K8sService().get_pod_detail, name, namespace)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Pod not found")
+    return detail

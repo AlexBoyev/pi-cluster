@@ -3,15 +3,14 @@ from unittest.mock import patch
 
 MOCK_EVENT = {
     "namespace": "pi-apps",
-    "name": "my-app-pod.abc123",
+    "type": "Normal",
     "reason": "Pulled",
     "message": "Successfully pulled image",
-    "event_type": "Normal",
-    "involved_object_kind": "Pod",
-    "involved_object_name": "my-app-pod",
-    "first_time": "2026-01-01T00:00:00Z",
-    "last_time": "2026-01-01T00:01:00Z",
+    "object_kind": "Pod",
+    "object_name": "my-app-pod",
     "count": 1,
+    "first_time": None,
+    "last_time": None,
 }
 
 K8S_PATCH = "app.api.v1.events.K8sService"
@@ -36,6 +35,7 @@ async def test_list_events_returns_data(client, auth_headers):
     assert len(data) == 1
     assert data[0]["namespace"] == "pi-apps"
     assert data[0]["reason"] == "Pulled"
+    assert data[0]["type"] == "Normal"
 
 
 @pytest.mark.asyncio
