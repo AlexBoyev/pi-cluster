@@ -63,7 +63,7 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                sh 'cd $PROJECT_DIR && docker compose up -d backend frontend'
+                sh 'cd $PROJECT_DIR && docker compose up -d'
             }
         }
 
