@@ -20,6 +20,7 @@ import {
 import EnvModal from "../components/EnvModal";
 import EventsModal from "../components/EventsModal";
 import LogsModal from "../components/LogsModal";
+import PodsModal from "../components/PodsModal";
 import ProbesModal from "../components/ProbesModal";
 import ResourcesModal from "../components/ResourcesModal";
 import type { NodeCapacity, Workload } from "../types/workload";
@@ -118,6 +119,7 @@ export default function WorkloadsPage() {
   const [updatingImage, setUpdatingImage] = useState<string | null>(null);
   const [logsTarget, setLogsTarget] = useState<string | null>(null);
   const [eventsTarget, setEventsTarget] = useState<string | null>(null);
+  const [podsTarget, setPodsTarget] = useState<string | null>(null);
   const [envTarget, setEnvTarget] = useState<Workload | null>(null);
   const [resourcesTarget, setResourcesTarget] = useState<Workload | null>(null);
   const [probesTarget, setProbesTarget] = useState<Workload | null>(null);
@@ -158,7 +160,7 @@ export default function WorkloadsPage() {
 
   useEffect(() => { refresh(); }, []);
 
-  const modalOpen = !!(logsTarget || eventsTarget || envTarget || resourcesTarget || probesTarget);
+  const modalOpen = !!(logsTarget || eventsTarget || podsTarget || envTarget || resourcesTarget || probesTarget);
   const refreshRef = useRef(refresh);
   useEffect(() => { refreshRef.current = refresh; });
 
@@ -494,6 +496,12 @@ export default function WorkloadsPage() {
                   <td>
                     <div className="wl-row-actions">
                       <button
+                        className="wl-btn-pods"
+                        onClick={() => setPodsTarget(w.name)}
+                      >
+                        Pods
+                      </button>
+                      <button
                         className="wl-btn-env"
                         onClick={() => setEnvTarget(w)}
                       >
@@ -616,6 +624,9 @@ export default function WorkloadsPage() {
           onClose={() => setProbesTarget(null)}
           onSaved={refresh}
         />
+      )}
+      {podsTarget && (
+        <PodsModal workloadName={podsTarget} onClose={() => setPodsTarget(null)} />
       )}
       {eventsTarget && (
         <EventsModal workloadName={eventsTarget} onClose={() => setEventsTarget(null)} />

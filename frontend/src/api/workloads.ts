@@ -1,4 +1,4 @@
-import type { NodeCapacity, Workload, WorkloadCreate, WorkloadEvent, WorkloadLogs } from "../types/workload";
+import type { NodeCapacity, PodInfo, Workload, WorkloadCreate, WorkloadEvent, WorkloadLogs } from "../types/workload";
 import { apiFetch } from "./client";
 
 export const listWorkloads = () => apiFetch<Workload[]>("/workloads/");
@@ -27,6 +27,8 @@ export const updateWorkloadEnv = (name: string, env_vars: Record<string, string>
     method: "PATCH",
     body: JSON.stringify({ env_vars }),
   });
+export const getWorkloadPods = (name: string) =>
+  apiFetch<PodInfo[]>(`/workloads/${name}/pods`);
 export const getWorkloadEvents = (name: string) =>
   apiFetch<WorkloadEvent[]>(`/workloads/${name}/events`);
 export const getWorkloadLogs = (name: string, tail = 100) =>

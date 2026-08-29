@@ -148,3 +148,9 @@
 - [x] Pulsing green "Live" dot indicator in the section header; switches to grey "Paused" when a modal is open
 - [x] "Xs ago / just now" age counter updates every second; resets on each successful fetch
 - [x] README updated: workload lifecycle diagram, API reference table, DB schema, migration count
+
+## Phase 21 — Pod Status View ✓
+- [x] `GET /workloads/{name}/pods` — lists pods by `app={name}` label selector; returns phase, ready container count, assigned node, pod IP, start time
+- [x] `PodInfo` schema: name, phase, node, pod_ip, ready, total, started_at
+- [x] `PodsModal`: table with Phase badge (Running/Pending/Failed/Succeeded/Unknown), Ready ratio, Node, IP, Age; Refresh button; Esc/overlay to close
+- [x] "Pods" button per workload row (indigo hover); pauses auto-refresh while open

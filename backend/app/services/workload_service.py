@@ -6,7 +6,7 @@ from kubernetes.client.exceptions import ApiException
 
 from app.models.workload import WorkloadStatus
 from app.repositories.workload_repository import WorkloadRepository
-from app.schemas.workload import NodeCapacity, WorkloadCreate, WorkloadEnvUpdate, WorkloadEvent, WorkloadImageUpdate, WorkloadLogs, WorkloadProbeUpdate, WorkloadResourceUpdate, WorkloadResponse
+from app.schemas.workload import NodeCapacity, PodInfo, WorkloadCreate, WorkloadEnvUpdate, WorkloadEvent, WorkloadImageUpdate, WorkloadLogs, WorkloadProbeUpdate, WorkloadResourceUpdate, WorkloadResponse
 from app.services.audit_service import AuditService
 from app.services.k8s_service import K8sService
 
@@ -352,6 +352,27 @@ class WorkloadService:
                 last_time=e.last_timestamp,
             )
             for e in raw
+        ]
+
+    async def get_workload_pods(self, name: str) -> list[PodInfo]:
+        workload = await self._repo.get_by_name(name)
+        if workload is None or workload.status == WorkloadStatus.DELETED:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workload not found")
+        try:
+            pods = await run_in_threadpool(self._k8s.get_pod_list, name, workload.namespace)
+        except ApiException as e:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
+        return [
+            PodInfo(
+                name=p.metadata.name,
+                phase=p.status.phase or "Unknown",
+                node=p.spec.node_name,
+                pod_ip=p.status.pod_ip,
+                ready=sum(1 for cs in (p.status.container_statuses or []) if cs.ready),
+                total=len(p.spec.containers),
+                started_at=p.status.start_time,
+            )
+            for p in pods
         ]
 
     async def get_workload_logs(self, name: str, tail_lines: int = 100) -> WorkloadLogs:

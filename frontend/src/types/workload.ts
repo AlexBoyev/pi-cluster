@@ -45,6 +45,16 @@ export interface WorkloadEvent {
   last_time: string | null;
 }
 
+export interface PodInfo {
+  name: string;
+  phase: string;
+  node: string | null;
+  pod_ip: string | null;
+  ready: number;
+  total: number;
+  started_at: string | null;
+}
+
 export interface WorkloadCreate {
   name: string;
   image: string;

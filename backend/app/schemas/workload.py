@@ -81,6 +81,16 @@ class WorkloadEvent(BaseModel):
     last_time: datetime | None
 
 
+class PodInfo(BaseModel):
+    name: str
+    phase: str
+    node: str | None
+    pod_ip: str | None
+    ready: int
+    total: int
+    started_at: datetime | None
+
+
 class NodeCapacity(BaseModel):
     node_name: str
     cpu_allocatable_m: int

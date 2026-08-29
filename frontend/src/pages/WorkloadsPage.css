@@ -134,7 +134,7 @@
 
 .wl-row-actions { display: flex; gap: 0.4rem; align-items: center; }
 
-.wl-btn-logs, .wl-btn-events, .wl-btn-env, .wl-btn-resources, .wl-btn-probes, .wl-btn-restart {
+.wl-btn-logs, .wl-btn-events, .wl-btn-env, .wl-btn-resources, .wl-btn-probes, .wl-btn-pods, .wl-btn-restart {
   padding: 0.3rem 0.75rem;
   background: transparent;
   border: 1px solid var(--border);
@@ -157,6 +157,9 @@
 }
 .wl-btn-probes:hover {
   background: rgba(13,148,136,0.08); color: #0d9488; border-color: #99f6e4;
+}
+.wl-btn-pods:hover {
+  background: rgba(79,70,229,0.08); color: #4f46e5; border-color: #c7d2fe;
 }
 .wl-btn-restart:hover {
   background: rgba(234,88,12,0.08); color: #ea580c; border-color: #fed7aa;

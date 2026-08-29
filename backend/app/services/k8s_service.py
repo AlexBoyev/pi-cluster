@@ -234,6 +234,9 @@ class K8sService:
             body={"spec": {"template": {"spec": {"containers": [{"name": name, "image": image}]}}}},
         )
 
+    def get_pod_list(self, name: str, namespace: str) -> list:
+        return self._core().list_namespaced_pod(namespace=namespace, label_selector=f"app={name}").items
+
     def get_pod_logs(self, name: str, namespace: str, tail_lines: int = 100) -> tuple[str, str]:
         core = self._core()
         pods = core.list_namespaced_pod(namespace=namespace, label_selector=f"app={name}")
