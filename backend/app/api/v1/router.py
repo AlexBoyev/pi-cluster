@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Depends
 
-from app.api.v1 import alert_history, alerts, audit, auth, cluster, configmaps, cronjobs, events, health, namespaces, nodes, secrets, services, users, workloads
+from app.api.v1 import alert_history, alerts, audit, auth, cluster, configmaps, cronjobs, events, exec, health, namespaces, nodes, notifications, secrets, services, storage, users, workloads
 from app.auth.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/v1")
 
 # Public
 router.include_router(auth.router)
+
+# WebSocket exec — auth handled inside the endpoint via ?token= query param
+router.include_router(exec.router)
 
 # Protected — any authenticated user
 router.include_router(nodes.router, dependencies=[Depends(get_current_user)])
@@ -23,3 +26,5 @@ router.include_router(configmaps.router, dependencies=[Depends(get_current_user)
 router.include_router(secrets.router, dependencies=[Depends(get_current_user)])
 router.include_router(services.router, dependencies=[Depends(get_current_user)])
 router.include_router(cronjobs.router, dependencies=[Depends(get_current_user)])
+router.include_router(storage.router, dependencies=[Depends(get_current_user)])
+router.include_router(notifications.router, dependencies=[Depends(get_current_user)])

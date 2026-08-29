@@ -799,6 +799,71 @@ class K8sService:
         result.sort(key=lambda x: x["start_time"] or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
         return result[:limit]
 
+    # ── Storage ─────────────────────────────────────────────────────────────
+
+    def list_pvcs(self, namespace: str | None = None) -> list[dict]:
+        core = self._core()
+        items = (
+            core.list_namespaced_persistent_volume_claim(namespace=namespace).items
+            if namespace
+            else core.list_persistent_volume_claim_for_all_namespaces().items
+        )
+        result = []
+        for pvc in items:
+            spec = pvc.spec
+            status = pvc.status
+            capacity = (status.capacity or {}).get("storage") if status else None
+            result.append({
+                "name": pvc.metadata.name,
+                "namespace": pvc.metadata.namespace,
+                "status": (status.phase or "Unknown") if status else "Unknown",
+                "capacity": capacity,
+                "storage_class": spec.storage_class_name if spec else None,
+                "access_modes": (spec.access_modes or []) if spec else [],
+                "volume_name": spec.volume_name if spec else None,
+                "created_at": pvc.metadata.creation_timestamp,
+            })
+        result.sort(key=lambda x: (x["namespace"], x["name"]))
+        return result
+
+    def delete_pvc(self, name: str, namespace: str) -> None:
+        try:
+            self._core().delete_namespaced_persistent_volume_claim(name=name, namespace=namespace)
+        except ApiException as e:
+            if e.status != 404:
+                raise
+
+    def list_pvs(self) -> list[dict]:
+        result = []
+        for pv in self._core().list_persistent_volume().items:
+            spec = pv.spec
+            status = pv.status
+            claim_ref = spec.claim_ref if spec else None
+            capacity = (spec.capacity or {}).get("storage") if spec else None
+            result.append({
+                "name": pv.metadata.name,
+                "status": (status.phase or "Unknown") if status else "Unknown",
+                "capacity": capacity,
+                "access_modes": (spec.access_modes or []) if spec else [],
+                "storage_class": spec.storage_class_name if spec else None,
+                "reclaim_policy": spec.persistent_volume_reclaim_policy if spec else None,
+                "claim_namespace": claim_ref.namespace if claim_ref else None,
+                "claim_name": claim_ref.name if claim_ref else None,
+                "created_at": pv.metadata.creation_timestamp,
+            })
+        result.sort(key=lambda x: x["name"])
+        return result
+
+    # ── Pod exec helper ─────────────────────────────────────────────────────
+
+    def get_first_pod_name(self, name: str, namespace: str) -> str | None:
+        pods = self._core().list_namespaced_pod(
+            namespace=namespace, label_selector=f"app={name}"
+        )
+        running = [p for p in pods.items if p.status and p.status.phase == "Running"]
+        pod = running[0] if running else (pods.items[0] if pods.items else None)
+        return pod.metadata.name if pod else None
+
     def rollback_deployment(self, name: str, namespace: str, revision: int) -> str:
         apps = self._apps()
         rs_list = apps.list_namespaced_replica_set(

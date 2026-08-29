@@ -1,0 +1,81 @@
+.st-page { display: flex; flex-direction: column; gap: 0; }
+
+.st-toolbar {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.st-tabs { display: flex; gap: 0.4rem; }
+.st-tab {
+  padding: 0.4rem 1rem;
+  border: 1.5px solid var(--border); border-radius: var(--rs);
+  background: transparent; font-size: 0.82rem; font-weight: 600;
+  color: var(--t2); cursor: pointer; transition: all 0.12s;
+}
+.st-tab.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+.st-tab:not(.active):hover { background: var(--bg); }
+
+.st-ns-wrap { display: flex; align-items: center; gap: 0.5rem; }
+.st-ns-lbl  { font-size: 0.72rem; color: var(--t3); font-weight: 600; }
+.st-ns-select {
+  padding: 0.28rem 0.6rem; border: 1.5px solid var(--border); border-radius: var(--rs);
+  background: var(--bg); color: var(--t1); font-size: 0.8rem; cursor: pointer; outline: none;
+}
+
+.st-empty { color: var(--t3); font-size: 0.85rem; padding: 1rem 0; }
+
+.st-table-wrap {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden;
+}
+.st-table { width: 100%; border-collapse: collapse; }
+.st-table th {
+  padding: 0.55rem 0.9rem; background: var(--bg); border-bottom: 1px solid var(--border);
+  font-size: 0.65rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--t3); text-align: left;
+}
+.st-table td {
+  padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--border);
+  font-size: 0.82rem; color: var(--t1); vertical-align: middle;
+}
+.st-table tr:last-child td { border-bottom: none; }
+
+.st-name { font-weight: 700; }
+.st-mono { font-family: var(--mono); font-size: 0.8rem; color: var(--t2); }
+.st-dim  { color: var(--t3); }
+
+.st-badge {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 0.2rem 0.55rem; border-radius: 99px;
+}
+.st-bound   { background: rgba(22,163,74,0.1); color: var(--green); }
+.st-pending { background: var(--amber-bg); color: var(--amber); }
+.st-avail   { background: rgba(29,78,216,0.08); color: var(--blue); }
+.st-released { background: var(--bg); color: var(--t3); border: 1px solid var(--border); }
+.st-lost    { background: var(--red-bg); color: var(--red); }
+
+.st-modes  { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.st-mode-tag {
+  font-size: 0.68rem; font-family: var(--mono);
+  background: rgba(29,78,216,0.06); border: 1px solid var(--border);
+  padding: 0.12rem 0.4rem; border-radius: 99px; color: var(--blue);
+}
+
+.st-confirm { display: flex; align-items: center; gap: 0.4rem; }
+
+.st-btn-del {
+  padding: 0.28rem 0.6rem; border: 1px solid var(--red-bd); border-radius: var(--rs);
+  background: var(--red-bg); color: var(--red); font-size: 0.75rem; font-weight: 600; cursor: pointer;
+}
+.st-btn-del:hover { background: var(--red); color: #fff; }
+
+.st-btn-del-confirm {
+  padding: 0.28rem 0.6rem; border: none; border-radius: var(--rs);
+  background: var(--red); color: #fff; font-size: 0.75rem; font-weight: 700; cursor: pointer;
+}
+.st-btn-del-confirm:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.st-btn-cancel {
+  padding: 0.28rem 0.55rem; border: 1px solid var(--border); border-radius: var(--rs);
+  background: transparent; font-size: 0.75rem; font-weight: 600; color: var(--t2); cursor: pointer;
+}

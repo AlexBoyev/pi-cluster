@@ -71,6 +71,16 @@ async def _sync_alerts() -> None:
             if key not in open_map:
                 await repo.create_firing(**info)
                 logger.info("Alert history: recorded firing %s node=%s", key[0], key[1])
+                try:
+                    from app.services.notification_service import dispatch_alert_notification
+                    await dispatch_alert_notification(
+                        alert_name=info["alert_name"],
+                        severity=info["severity"],
+                        summary=info.get("summary"),
+                        node_name=info.get("node_name"),
+                    )
+                except Exception as e:
+                    logger.warning("Failed to dispatch notification: %s", e)
 
         # Resolved alerts — stamp resolved_at
         now = datetime.now(timezone.utc)

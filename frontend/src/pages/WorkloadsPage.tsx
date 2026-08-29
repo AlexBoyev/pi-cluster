@@ -27,6 +27,7 @@ import PodsModal from "../components/PodsModal";
 import ProbesModal from "../components/ProbesModal";
 import ResourcesModal from "../components/ResourcesModal";
 import RollbackModal from "../components/RollbackModal";
+import TerminalModal from "../components/TerminalModal";
 import type { NodeCapacity, Workload } from "../types/workload";
 import "./WorkloadsPage.css";
 
@@ -132,6 +133,7 @@ export default function WorkloadsPage() {
   const [metricsTarget, setMetricsTarget] = useState<string | null>(null);
   const [rollbackTarget, setRollbackTarget] = useState<string | null>(null);
   const [hpaTarget, setHpaTarget] = useState<Workload | null>(null);
+  const [terminalTarget, setTerminalTarget] = useState<Workload | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "running" | "pending" | "failed">("all");
   const [nsFilter, setNsFilter] = useState("all");
@@ -173,7 +175,7 @@ export default function WorkloadsPage() {
 
   useEffect(() => { refresh(); }, []);
 
-  const modalOpen = !!(logsTarget || eventsTarget || podsTarget || envTarget || resourcesTarget || probesTarget || metricsTarget || rollbackTarget || hpaTarget);
+  const modalOpen = !!(logsTarget || eventsTarget || podsTarget || envTarget || resourcesTarget || probesTarget || metricsTarget || rollbackTarget || hpaTarget || terminalTarget);
   const refreshRef = useRef(refresh);
   useEffect(() => { refreshRef.current = refresh; });
 
@@ -646,6 +648,12 @@ export default function WorkloadsPage() {
                         HPA
                       </button>
                       <button
+                        className="wl-btn-terminal"
+                        onClick={() => setTerminalTarget(w)}
+                      >
+                        Terminal
+                      </button>
+                      <button
                         className="wl-btn-history"
                         onClick={() => setRollbackTarget(w.name)}
                       >
@@ -773,6 +781,9 @@ export default function WorkloadsPage() {
           onClose={() => setHpaTarget(null)}
           onSaved={refresh}
         />
+      )}
+      {terminalTarget && (
+        <TerminalModal workload={terminalTarget} onClose={() => setTerminalTarget(null)} />
       )}
     </div>
   );

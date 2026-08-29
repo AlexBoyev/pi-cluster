@@ -1,0 +1,115 @@
+.notif-page { display: flex; flex-direction: column; gap: 0; }
+
+.notif-form-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1rem 1.25rem;
+}
+.notif-form { display: flex; align-items: flex-end; gap: 0.75rem; flex-wrap: wrap; }
+
+.notif-field { display: flex; flex-direction: column; gap: 0.3rem; }
+.notif-field-wide  { flex: 1; min-width: 260px; }
+.notif-field-check { justify-content: flex-end; padding-bottom: 0.55rem; }
+.notif-field-submit { justify-content: flex-end; align-self: flex-end; }
+
+.notif-label {
+  font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--t3);
+}
+
+.notif-input {
+  padding: 0.42rem 0.65rem; border: 1.5px solid var(--border); border-radius: var(--rs);
+  background: #fff; color: var(--t1); font-size: 0.85rem; outline: none;
+}
+.notif-input:focus { border-color: var(--blue); }
+.notif-input:disabled { opacity: 0.6; }
+.notif-mono { font-family: var(--mono); font-size: 0.82rem; }
+
+.notif-check { width: 16px; height: 16px; cursor: pointer; accent-color: var(--blue); }
+
+.notif-btn-primary {
+  padding: 0.45rem 1.25rem; border: none; border-radius: var(--rs);
+  background: var(--blue); color: #fff; font-size: 0.84rem; font-weight: 700; cursor: pointer;
+}
+.notif-btn-primary:hover:not(:disabled) { background: var(--blue-mid); }
+.notif-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.notif-empty { color: var(--t3); font-size: 0.85rem; padding: 1rem 0; }
+
+.notif-table-wrap {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden;
+}
+.notif-table { width: 100%; border-collapse: collapse; }
+.notif-table th {
+  padding: 0.55rem 0.9rem; background: var(--bg); border-bottom: 1px solid var(--border);
+  font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--t3); text-align: left;
+}
+.notif-table td {
+  padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--border);
+  font-size: 0.82rem; color: var(--t1); vertical-align: middle;
+}
+.notif-table tr:last-child td { border-bottom: none; }
+.notif-row-disabled { opacity: 0.6; }
+
+.notif-name { font-weight: 700; }
+.notif-mono { font-family: var(--mono); font-size: 0.78rem; color: var(--t2); }
+.notif-url  { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notif-date { font-size: 0.78rem; color: var(--t3); }
+
+.notif-status-badge {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  padding: 0.2rem 0.55rem; border-radius: 99px;
+}
+.nsb-active   { background: rgba(22,163,74,0.1); color: var(--green); }
+.nsb-disabled { background: var(--bg); color: var(--t3); border: 1px solid var(--border); }
+
+.notif-actions { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.notif-confirm { display: flex; align-items: center; gap: 0.4rem; }
+
+.notif-btn-toggle {
+  padding: 0.28rem 0.6rem; border: 1px solid var(--amber-bd); border-radius: var(--rs);
+  background: var(--amber-bg); color: var(--amber); font-size: 0.75rem; font-weight: 600; cursor: pointer;
+}
+.notif-btn-toggle:hover { background: var(--amber); color: #fff; }
+.notif-btn-enable { border-color: var(--green-bd); background: var(--green-bg); color: var(--green); }
+.notif-btn-enable:hover { background: var(--green); color: #fff; }
+
+.notif-btn-test {
+  padding: 0.28rem 0.6rem; border: 1px solid var(--border); border-radius: var(--rs);
+  background: transparent; font-size: 0.75rem; font-weight: 600; color: var(--t3); cursor: pointer;
+}
+.notif-btn-test:hover:not(:disabled) { background: var(--bg); color: var(--blue); border-color: var(--blue-ring); }
+.notif-btn-test:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.notif-test-result { font-size: 0.75rem; font-weight: 700; }
+.ntr-ok   { color: var(--green); }
+.ntr-fail { color: var(--red); }
+
+.notif-btn-del {
+  padding: 0.28rem 0.6rem; border: 1px solid var(--red-bd); border-radius: var(--rs);
+  background: var(--red-bg); color: var(--red); font-size: 0.75rem; font-weight: 600; cursor: pointer;
+}
+.notif-btn-del:hover { background: var(--red); color: #fff; }
+
+.notif-btn-del-confirm {
+  padding: 0.28rem 0.6rem; border: none; border-radius: var(--rs);
+  background: var(--red); color: #fff; font-size: 0.75rem; font-weight: 700; cursor: pointer;
+}
+.notif-btn-del-confirm:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.notif-btn-cancel {
+  padding: 0.28rem 0.55rem; border: 1px solid var(--border); border-radius: var(--rs);
+  background: transparent; font-size: 0.75rem; font-weight: 600; color: var(--t2); cursor: pointer;
+}
+
+.notif-help {
+  margin-top: 1.5rem; background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 1rem 1.25rem;
+}
+.notif-help-title { font-size: 0.75rem; font-weight: 700; color: var(--t2); margin-bottom: 0.5rem; }
+.notif-help-pre {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--rs);
+  padding: 0.65rem 0.85rem; font-family: var(--mono); font-size: 0.78rem;
+  color: var(--t1); white-space: pre; overflow-x: auto; margin: 0 0 0.5rem;
+}
+.notif-help-sub { font-size: 0.75rem; color: var(--t3); }

@@ -9,15 +9,17 @@ import ConfigMapsPage from "./pages/ConfigMapsPage";
 import CronJobsPage from "./pages/CronJobsPage";
 import EventsPage from "./pages/EventsPage";
 import NamespacesPage from "./pages/NamespacesPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import SecretsPage from "./pages/SecretsPage";
 import ServicesPage from "./pages/ServicesPage";
+import StoragePage from "./pages/StoragePage";
 import UsersPage from "./pages/UsersPage";
 import AlertsPanel from "./components/AlertsPanel";
 import { NodeDetailView } from "./pages/NodesPage";
 import WorkloadsPage from "./pages/WorkloadsPage";
 import type { NodeHealth } from "./types/node";
 
-type Page = "dashboard" | "workloads" | "capacity" | "events" | "namespaces" | "audit" | "alert-history" | "users" | "configmaps" | "secrets" | "services" | "cronjobs";
+type Page = "dashboard" | "workloads" | "capacity" | "events" | "namespaces" | "audit" | "alert-history" | "users" | "configmaps" | "secrets" | "services" | "cronjobs" | "storage" | "notifications";
 
 const POLL_MS  = 30_000;
 const CTRL_IP  = "10.100.102.10";
@@ -328,6 +330,14 @@ export default function App() {
             <span className="sb-icon">⊙</span>
             CronJobs
           </a>
+          <a
+            href="#"
+            className={`sb-link${page === "storage" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); setPage("storage"); }}
+          >
+            <span className="sb-icon">◫</span>
+            Storage
+          </a>
 
           <div className="sb-section">Admin</div>
           <a
@@ -337,6 +347,14 @@ export default function App() {
           >
             <span className="sb-icon">◉</span>
             Users
+          </a>
+          <a
+            href="#"
+            className={`sb-link${page === "notifications" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); setPage("notifications"); }}
+          >
+            <span className="sb-icon">⊛</span>
+            Notifications
           </a>
 
           <div className="sb-section">Services</div>
@@ -359,7 +377,7 @@ export default function App() {
           </div>
           <button className="sb-logout" onClick={logout}>Sign out</button>
           <div className="sb-foot-label" style={{ marginTop: "0.8rem" }}>Version</div>
-          <div className="sb-foot-val">v0.1.0 · Phase 39</div>
+          <div className="sb-foot-val">v0.1.0 · Phase 42</div>
           <div className="sb-foot-label" style={{ marginTop: "0.4rem" }}>Cluster</div>
           <div className="sb-foot-val">4 nodes · arm64 · 10.100.102.0/24</div>
         </div>
@@ -373,7 +391,7 @@ export default function App() {
               <span /><span /><span />
             </button>
             <h1 className="page-title">
-              {page === "workloads" ? "Workloads" : page === "capacity" ? "Capacity" : page === "events" ? "Events" : page === "namespaces" ? "Namespaces" : page === "audit" ? "Audit Log" : page === "alert-history" ? "Alert History" : page === "users" ? "Users" : page === "configmaps" ? "ConfigMaps" : page === "secrets" ? "Secrets" : page === "services" ? "Services & Ingresses" : page === "cronjobs" ? "CronJobs" : "Dashboard"}
+              {page === "workloads" ? "Workloads" : page === "capacity" ? "Capacity" : page === "events" ? "Events" : page === "namespaces" ? "Namespaces" : page === "audit" ? "Audit Log" : page === "alert-history" ? "Alert History" : page === "users" ? "Users" : page === "configmaps" ? "ConfigMaps" : page === "secrets" ? "Secrets" : page === "services" ? "Services & Ingresses" : page === "cronjobs" ? "CronJobs" : page === "storage" ? "Storage" : page === "notifications" ? "Notifications" : "Dashboard"}
             </h1>
           </div>
           <div className="tb-right">
@@ -410,6 +428,10 @@ export default function App() {
             <ServicesPage />
           ) : page === "cronjobs" ? (
             <CronJobsPage />
+          ) : page === "storage" ? (
+            <StoragePage />
+          ) : page === "notifications" ? (
+            <NotificationsPage />
           ) : selectedNode ? (
             <NodeDetailView node={selectedNode} onBack={() => setSelectedNode(null)} />
           ) : (
