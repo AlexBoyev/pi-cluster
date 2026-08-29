@@ -118,3 +118,11 @@
 - [x] `PATCH /workloads/{name}/env` — replaces env vars, triggers K8s rolling restart, audited
 - [x] `EnvModal`: key/value table editor with add/remove rows, Save & restart pods, Escape/overlay to close
 - [x] "Env" button per workload row (green hover); pre-populated with current vars
+
+## Phase 17 — Resource Limits ✓
+- [x] Migration 0007: `cpu_limit VARCHAR(16)` and `memory_limit VARCHAR(16)` on workloads table (defaults: 500m / 256Mi)
+- [x] `WorkloadCreate` accepts optional `cpu_limit` / `memory_limit`; K8s deployment created with `V1ResourceRequirements`
+- [x] `PATCH /workloads/{name}/resources` — updates K8s container resource limits via rolling patch, audited
+- [x] `ResourcesModal`: shows static requests (fixed at deploy), editable CPU/memory limit inputs, OOM vs throttling hint
+- [x] "Resources" button per workload row (purple hover)
+- [x] Deploy form includes optional CPU limit and memory limit fields

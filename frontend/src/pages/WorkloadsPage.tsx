@@ -12,6 +12,7 @@ import {
 import EnvModal from "../components/EnvModal";
 import EventsModal from "../components/EventsModal";
 import LogsModal from "../components/LogsModal";
+import ResourcesModal from "../components/ResourcesModal";
 import type { NodeCapacity, Workload } from "../types/workload";
 import "./WorkloadsPage.css";
 
@@ -109,6 +110,7 @@ export default function WorkloadsPage() {
   const [logsTarget, setLogsTarget] = useState<string | null>(null);
   const [eventsTarget, setEventsTarget] = useState<string | null>(null);
   const [envTarget, setEnvTarget] = useState<Workload | null>(null);
+  const [resourcesTarget, setResourcesTarget] = useState<Workload | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -117,6 +119,8 @@ export default function WorkloadsPage() {
     namespace: DEFAULT_NS,
     target_node: "",
     container_port: "",
+    cpu_limit: "",
+    memory_limit: "",
   });
 
   const refresh = async () => {
@@ -150,8 +154,10 @@ export default function WorkloadsPage() {
         namespace: form.namespace,
         target_node: form.target_node || null,
         container_port: form.container_port ? parseInt(form.container_port, 10) : null,
+        cpu_limit: form.cpu_limit || undefined,
+        memory_limit: form.memory_limit || undefined,
       });
-      setForm({ name: "", image: "", replicas: "1", namespace: DEFAULT_NS, target_node: "", container_port: "" });
+      setForm({ name: "", image: "", replicas: "1", namespace: DEFAULT_NS, target_node: "", container_port: "", cpu_limit: "", memory_limit: "" });
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create workload");
@@ -323,6 +329,26 @@ export default function WorkloadsPage() {
               disabled={creating}
             />
           </div>
+          <div className="wl-field">
+            <label className="wl-label">CPU limit (optional)</label>
+            <input
+              className="wl-input"
+              placeholder="500m"
+              value={form.cpu_limit}
+              onChange={(e) => setForm((f) => ({ ...f, cpu_limit: e.target.value }))}
+              disabled={creating}
+            />
+          </div>
+          <div className="wl-field">
+            <label className="wl-label">Memory limit (optional)</label>
+            <input
+              className="wl-input"
+              placeholder="256Mi"
+              value={form.memory_limit}
+              onChange={(e) => setForm((f) => ({ ...f, memory_limit: e.target.value }))}
+              disabled={creating}
+            />
+          </div>
           <div className="wl-field wl-field-submit">
             <button className="wl-btn-primary" type="submit" disabled={creating}>
               {creating ? "Deploying…" : "Deploy"}
@@ -399,6 +425,12 @@ export default function WorkloadsPage() {
                         onClick={() => setEnvTarget(w)}
                       >
                         Env
+                      </button>
+                      <button
+                        className="wl-btn-resources"
+                        onClick={() => setResourcesTarget(w)}
+                      >
+                        Resources
                       </button>
                       <button
                         className="wl-btn-events"
@@ -482,6 +514,13 @@ export default function WorkloadsPage() {
           workloadName={envTarget.name}
           initialEnv={envTarget.env_vars}
           onClose={() => setEnvTarget(null)}
+          onSaved={refresh}
+        />
+      )}
+      {resourcesTarget && (
+        <ResourcesModal
+          workload={resourcesTarget}
+          onClose={() => setResourcesTarget(null)}
           onSaved={refresh}
         />
       )}

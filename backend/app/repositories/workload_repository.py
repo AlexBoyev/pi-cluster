@@ -27,6 +27,8 @@ class WorkloadRepository:
             container_port=data.container_port,
             ingress_host=data.ingress_host,
             env_vars=data.env_vars or {},
+            cpu_limit=data.cpu_limit,
+            memory_limit=data.memory_limit,
         )
         self._db.add(workload)
         await self._db.commit()
@@ -56,6 +58,16 @@ class WorkloadRepository:
         if workload is None:
             return None
         workload.image = image
+        await self._db.commit()
+        await self._db.refresh(workload)
+        return workload
+
+    async def update_resources(self, name: str, cpu_limit: str, memory_limit: str) -> Workload | None:
+        workload = await self.get_by_name(name)
+        if workload is None:
+            return None
+        workload.cpu_limit = cpu_limit
+        workload.memory_limit = memory_limit
         await self._db.commit()
         await self._db.refresh(workload)
         return workload

@@ -16,10 +16,17 @@ class WorkloadCreate(BaseModel):
     container_port: int | None = Field(None, ge=1, le=65535)
     ingress_host: str | None = None
     env_vars: dict[str, str] = Field(default_factory=dict)
+    cpu_limit: str = "500m"
+    memory_limit: str = "256Mi"
 
 
 class WorkloadEnvUpdate(BaseModel):
     env_vars: dict[str, str]
+
+
+class WorkloadResourceUpdate(BaseModel):
+    cpu_limit: str = Field(..., min_length=1)
+    memory_limit: str = Field(..., min_length=1)
 
 
 class WorkloadScale(BaseModel):
@@ -41,6 +48,8 @@ class WorkloadResponse(BaseModel):
     container_port: int | None
     ingress_host: str | None
     env_vars: dict[str, str]
+    cpu_limit: str
+    memory_limit: str
     status: WorkloadStatus
     created_at: datetime
 

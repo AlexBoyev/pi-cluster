@@ -27,6 +27,8 @@ class Workload(Base):
     container_port: Mapped[int | None] = mapped_column(Integer, nullable=True)
     ingress_host: Mapped[str | None] = mapped_column(String(255), nullable=True)
     env_vars: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
+    cpu_limit: Mapped[str] = mapped_column(String(16), nullable=False, server_default="500m")
+    memory_limit: Mapped[str] = mapped_column(String(16), nullable=False, server_default="256Mi")
     status: Mapped[WorkloadStatus] = mapped_column(
         Enum(WorkloadStatus, values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,

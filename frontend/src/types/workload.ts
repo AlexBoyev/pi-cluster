@@ -11,6 +11,8 @@ export interface Workload {
   container_port: number | null;
   ingress_host: string | null;
   env_vars: Record<string, string>;
+  cpu_limit: string;
+  memory_limit: string;
   status: WorkloadStatus;
   created_at: string;
 }
@@ -50,4 +52,6 @@ export interface WorkloadCreate {
   container_port?: number | null;
   ingress_host?: string | null;
   env_vars?: Record<string, string>;
+  cpu_limit?: string;
+  memory_limit?: string;
 }

@@ -17,6 +17,11 @@ export const updateWorkloadImage = (name: string, image: string) =>
     method: "PATCH",
     body: JSON.stringify({ image }),
   });
+export const updateWorkloadResources = (name: string, cpu_limit: string, memory_limit: string) =>
+  apiFetch<Workload>(`/workloads/${name}/resources`, {
+    method: "PATCH",
+    body: JSON.stringify({ cpu_limit, memory_limit }),
+  });
 export const updateWorkloadEnv = (name: string, env_vars: Record<string, string>) =>
   apiFetch<Workload>(`/workloads/${name}/env`, {
     method: "PATCH",

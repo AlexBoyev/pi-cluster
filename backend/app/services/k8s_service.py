@@ -69,6 +69,8 @@ class K8sService:
         cpu_request: str,
         memory_request: str,
         env_vars: dict[str, str] | None = None,
+        cpu_limit: str = "500m",
+        memory_limit: str = "256Mi",
     ) -> None:
         node_selector = {"kubernetes.io/hostname": target_node} if target_node else None
         env = [client.V1EnvVar(name=k, value=v) for k, v in env_vars.items()] if env_vars else None
@@ -87,7 +89,8 @@ class K8sService:
                                 image=image,
                                 env=env,
                                 resources=client.V1ResourceRequirements(
-                                    requests={"cpu": cpu_request, "memory": memory_request}
+                                    requests={"cpu": cpu_request, "memory": memory_request},
+                                    limits={"cpu": cpu_limit, "memory": memory_limit},
                                 ),
                             )
                         ],
@@ -96,6 +99,16 @@ class K8sService:
             ),
         )
         self._apps().create_namespaced_deployment(namespace=namespace, body=deployment)
+
+    def update_deployment_resources(self, name: str, namespace: str, cpu_limit: str, memory_limit: str) -> None:
+        self._apps().patch_namespaced_deployment(
+            name=name,
+            namespace=namespace,
+            body={"spec": {"template": {"spec": {"containers": [{
+                "name": name,
+                "resources": {"limits": {"cpu": cpu_limit, "memory": memory_limit}},
+            }]}}}},
+        )
 
     def update_deployment_env(self, name: str, namespace: str, env_vars: dict[str, str]) -> None:
         env = [{"name": k, "value": v} for k, v in env_vars.items()]

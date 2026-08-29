@@ -6,7 +6,7 @@ from kubernetes.client.exceptions import ApiException
 
 from app.models.workload import WorkloadStatus
 from app.repositories.workload_repository import WorkloadRepository
-from app.schemas.workload import NodeCapacity, WorkloadCreate, WorkloadEnvUpdate, WorkloadEvent, WorkloadImageUpdate, WorkloadLogs, WorkloadResponse
+from app.schemas.workload import NodeCapacity, WorkloadCreate, WorkloadEnvUpdate, WorkloadEvent, WorkloadImageUpdate, WorkloadLogs, WorkloadResourceUpdate, WorkloadResponse
 from app.services.audit_service import AuditService
 from app.services.k8s_service import K8sService
 
@@ -40,6 +40,8 @@ class WorkloadService:
                 container_port=w.container_port,
                 ingress_host=w.ingress_host,
                 env_vars=w.env_vars or {},
+                cpu_limit=w.cpu_limit,
+                memory_limit=w.memory_limit,
                 status=w.status,
                 created_at=w.created_at,
             ))
@@ -63,7 +65,7 @@ class WorkloadService:
                 self._k8s.create_deployment,
                 data.name, data.namespace, data.image, data.replicas,
                 target_node, data.cpu_request, data.memory_request,
-                data.env_vars or None,
+                data.env_vars or None, data.cpu_limit, data.memory_limit,
             )
         except ApiException as e:
             await self._audit.log("workload.create", "workload", data.name, actor, "failure", e.reason)
@@ -103,6 +105,8 @@ class WorkloadService:
             container_port=workload.container_port,
             ingress_host=workload.ingress_host,
             env_vars=workload.env_vars or {},
+            cpu_limit=workload.cpu_limit,
+            memory_limit=workload.memory_limit,
             status=WorkloadStatus.RUNNING,
             created_at=workload.created_at,
         )
@@ -217,6 +221,38 @@ class WorkloadService:
             container_port=workload.container_port,
             ingress_host=workload.ingress_host,
             env_vars=workload.env_vars or {},
+            status=workload.status,
+            created_at=workload.created_at,
+        )
+
+    async def update_workload_resources(self, name: str, cpu_limit: str, memory_limit: str, actor: str = "system") -> WorkloadResponse:
+        workload = await self._repo.get_by_name(name)
+        if workload is None or workload.status == WorkloadStatus.DELETED:
+            await self._audit.log("workload.update_resources", "workload", name, actor, "failure", "Workload not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workload not found")
+
+        try:
+            await run_in_threadpool(self._k8s.update_deployment_resources, name, workload.namespace, cpu_limit, memory_limit)
+        except ApiException as e:
+            await self._audit.log("workload.update_resources", "workload", name, actor, "failure", e.reason)
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
+
+        workload = await self._repo.update_resources(name, cpu_limit, memory_limit)
+        await self._audit.log("workload.update_resources", "workload", name, actor, "success", f"cpu_limit={cpu_limit} memory_limit={memory_limit}")
+
+        return WorkloadResponse(
+            id=workload.id,
+            name=workload.name,
+            namespace=workload.namespace,
+            image=workload.image,
+            replicas=workload.replicas,
+            ready_replicas=0,
+            target_node=workload.target_node,
+            container_port=workload.container_port,
+            ingress_host=workload.ingress_host,
+            env_vars=workload.env_vars or {},
+            cpu_limit=workload.cpu_limit,
+            memory_limit=workload.memory_limit,
             status=workload.status,
             created_at=workload.created_at,
         )

@@ -114,7 +114,7 @@
 
 .wl-row-actions { display: flex; gap: 0.4rem; align-items: center; }
 
-.wl-btn-logs, .wl-btn-events, .wl-btn-env {
+.wl-btn-logs, .wl-btn-events, .wl-btn-env, .wl-btn-resources {
   padding: 0.3rem 0.75rem;
   background: transparent;
   border: 1px solid var(--border);
@@ -131,6 +131,9 @@
 }
 .wl-btn-env:hover {
   background: var(--green-bg); color: var(--green); border-color: var(--green-bd);
+}
+.wl-btn-resources:hover {
+  background: rgba(109,40,217,0.08); color: #7c3aed; border-color: #c4b5fd;
 }
 
 /* ── Delete button ──────────────────────────────────────────────────────── */
