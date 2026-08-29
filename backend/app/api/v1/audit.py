@@ -12,6 +12,10 @@ router = APIRouter(prefix="/audit", tags=["audit"])
 async def list_audit_logs(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
+    status: str | None = Query(None),
+    resource_type: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ) -> list[AuditLogResponse]:
-    return await AuditRepository(db).get_recent(limit=limit, offset=offset)
+    return await AuditRepository(db).get_recent(
+        limit=limit, offset=offset, status=status, resource_type=resource_type
+    )

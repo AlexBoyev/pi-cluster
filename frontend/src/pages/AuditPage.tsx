@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listAuditLogs } from "../api/audit";
 import type { AuditLog } from "../types/audit";
 import "./AuditPage.css";
@@ -6,14 +6,21 @@ import "./AuditPage.css";
 const PAGE_SIZE = 50;
 
 const ACTION_LABELS: Record<string, string> = {
-  "workload.create": "Deploy",
-  "workload.delete": "Delete",
-  "node.cordon":     "Cordon",
-  "node.uncordon":   "Uncordon",
+  "workload.create":       "Deploy",
+  "workload.delete":       "Delete",
+  "workload.scale":        "Scale",
+  "workload.image_update": "Image",
+  "workload.env_update":   "Env",
+  "workload.restart":      "Restart",
+  "workload.probes_update":"Probes",
+  "workload.resources_update": "Resources",
+  "node.cordon":           "Cordon",
+  "node.uncordon":         "Uncordon",
+  "node.drain":            "Drain",
 };
 
 function ActionBadge({ action }: { action: string }) {
-  const cls = action.replace(".", "-");
+  const cls = action.replace(/\./g, "-").replace(/_/g, "-");
   return (
     <span className={`al-badge al-act al-${cls}`}>
       {ACTION_LABELS[action] ?? action}
@@ -37,20 +44,33 @@ function fmtTime(iso: string): string {
   });
 }
 
-export default function AuditPage() {
-  const [logs, setLogs]       = useState<AuditLog[]>([]);
-  const [offset, setOffset]   = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError]     = useState<string | null>(null);
-  const [filter, setFilter]   = useState<string>("all");
+type StatusFilter = "all" | "success" | "failure";
+type ResourceFilter = "all" | "workload" | "node";
 
-  const load = async (off: number, append: boolean) => {
+export default function AuditPage() {
+  const [logs, setLogs]           = useState<AuditLog[]>([]);
+  const [offset, setOffset]       = useState(0);
+  const [hasMore, setHasMore]     = useState(true);
+  const [loading, setLoading]     = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const [statusFilter, setStatusFilter]     = useState<StatusFilter>("all");
+  const [resourceFilter, setResourceFilter] = useState<ResourceFilter>("all");
+
+  const statusRef   = useRef(statusFilter);
+  const resourceRef = useRef(resourceFilter);
+  useEffect(() => { statusRef.current = statusFilter; });
+  useEffect(() => { resourceRef.current = resourceFilter; });
+
+  const loadData = async (off: number, append: boolean, sf: StatusFilter, rf: ResourceFilter) => {
     append ? setLoadingMore(true) : setLoading(true);
     setError(null);
     try {
-      const data = await listAuditLogs(PAGE_SIZE, off);
+      const data = await listAuditLogs(
+        PAGE_SIZE, off,
+        sf !== "all" ? sf : undefined,
+        rf !== "all" ? rf : undefined,
+      );
       setLogs((prev) => append ? [...prev, ...data] : data);
       setHasMore(data.length === PAGE_SIZE);
       setOffset(off + data.length);
@@ -61,19 +81,15 @@ export default function AuditPage() {
     }
   };
 
-  useEffect(() => { load(0, false); }, []);
-
   useEffect(() => {
-    const id = setInterval(() => load(0, false), 30_000);
-    return () => clearInterval(id);
-  }, []);
+    setLogs([]);
+    setOffset(0);
+    setHasMore(true);
+    loadData(0, false, statusFilter, resourceFilter);
+  }, [statusFilter, resourceFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filtered = filter === "all"
-    ? logs
-    : logs.filter((l) => l.action === filter);
-
-  const failures = logs.filter((l) => l.status === "failure").length;
-  const actions  = Array.from(new Set(logs.map((l) => l.action))).sort();
+  const failures    = logs.filter((l) => l.status === "failure").length;
+  const actionTypes = Array.from(new Set(logs.map((l) => l.action))).sort();
 
   return (
     <div className="al-page">
@@ -84,7 +100,7 @@ export default function AuditPage() {
         <div className="summ-card sc-blue">
           <div className="summ-label">Total events</div>
           <div className="summ-value sv-blue">{logs.length}</div>
-          <div className="summ-sub">last {logs.length} operations</div>
+          <div className="summ-sub">loaded in this view</div>
         </div>
         <div className="summ-card sc-green">
           <div className="summ-label">Successful</div>
@@ -98,28 +114,41 @@ export default function AuditPage() {
         </div>
         <div className="summ-card sc-amber">
           <div className="summ-label">Action types</div>
-          <div className="summ-value sv-amber">{actions.length}</div>
+          <div className="summ-value sv-amber">{actionTypes.length}</div>
           <div className="summ-sub">distinct operation types</div>
         </div>
       </div>
 
-      {/* Filter bar */}
-      <div className="section-header" style={{ marginTop: "1.75rem" }}>
-        <span className="section-title">Event log</span>
+      {/* Section header + filter pills */}
+      <div className="section-header" style={{ marginTop: "1.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
+        <span className="section-title">
+          Event log
+          {(statusFilter !== "all" || resourceFilter !== "all") && logs.length > 0 && (
+            <span className="al-filter-count"> — {logs.length} result{logs.length !== 1 ? "s" : ""}</span>
+          )}
+        </span>
         <div className="al-filters">
-          <button
-            className={`al-filter-btn${filter === "all" ? " active" : ""}`}
-            onClick={() => setFilter("all")}
-          >
-            All
-          </button>
-          {actions.map((a) => (
+          <span className="al-filter-label">Status</span>
+          {(["all", "success", "failure"] as StatusFilter[]).map((s) => (
             <button
-              key={a}
-              className={`al-filter-btn al-filter-${a.replace(".", "-")}${filter === a ? " active" : ""}`}
-              onClick={() => setFilter(a)}
+              key={s}
+              className={`al-pill al-pill-status-${s}${statusFilter === s ? " al-pill-active" : ""}`}
+              onClick={() => setStatusFilter(s)}
             >
-              {ACTION_LABELS[a] ?? a}
+              {s === "all" ? "All" : s === "success" ? "Success" : "Failure"}
+            </button>
+          ))}
+
+          <span className="al-filter-sep" />
+
+          <span className="al-filter-label">Type</span>
+          {(["all", "workload", "node"] as ResourceFilter[]).map((r) => (
+            <button
+              key={r}
+              className={`al-pill al-pill-type-${r}${resourceFilter === r ? " al-pill-active" : ""}`}
+              onClick={() => setResourceFilter(r)}
+            >
+              {r === "all" ? "All" : r === "workload" ? "Workload" : "Node"}
             </button>
           ))}
         </div>
@@ -127,8 +156,8 @@ export default function AuditPage() {
 
       {loading ? (
         <div className="loading"><div className="spinner" /><span>Loading audit log…</span></div>
-      ) : filtered.length === 0 ? (
-        <div className="wl-empty">No events recorded yet.</div>
+      ) : logs.length === 0 ? (
+        <div className="wl-empty">No events match the current filter.</div>
       ) : (
         <>
           <div className="al-table-wrap">
@@ -144,7 +173,7 @@ export default function AuditPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((l) => (
+                {logs.map((l) => (
                   <tr key={l.id} className={l.status === "failure" ? "al-row-fail" : ""}>
                     <td className="al-time">{fmtTime(l.created_at)}</td>
                     <td><ActionBadge action={l.action} /></td>
@@ -165,7 +194,7 @@ export default function AuditPage() {
             <div className="al-load-more">
               <button
                 className="wl-btn-primary"
-                onClick={() => load(offset, true)}
+                onClick={() => loadData(offset, true, statusFilter, resourceFilter)}
                 disabled={loadingMore}
               >
                 {loadingMore ? "Loading…" : "Load more"}

@@ -5,32 +5,52 @@
 /* ── Filter bar ─────────────────────────────────────────────── */
 .al-filters {
   display: flex;
+  align-items: center;
   gap: 0.4rem;
   flex-wrap: wrap;
 }
 
-.al-filter-btn {
+.al-filter-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--t3);
+  margin-right: 0.1rem;
+}
+
+.al-filter-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 0.25rem;
+}
+
+.al-filter-count {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--t3);
+}
+
+.al-pill {
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 0.78rem;
+  background: transparent;
+  color: var(--t3);
+  font-size: 0.75rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
+.al-pill:hover { background: var(--bg); color: var(--t2); }
 
-.al-filter-btn:hover { border-color: var(--blue); color: var(--blue); }
+.al-pill-active { background: var(--bg); color: var(--t1); border-color: var(--t2); }
 
-.al-filter-btn.active {
-  background: var(--blue);
-  color: #fff;
-  border-color: var(--blue);
-}
-
-.al-filter-btn.al-filter-workload-delete.active { background: var(--red);   border-color: var(--red); }
-.al-filter-btn.al-filter-node-cordon.active     { background: var(--amber); border-color: var(--amber); color: #000; }
-.al-filter-btn.al-filter-node-uncordon.active   { background: var(--green); border-color: var(--green); }
+.al-pill-status-success.al-pill-active { background: var(--green-bg); color: var(--green); border-color: var(--green-bd); }
+.al-pill-status-failure.al-pill-active { background: var(--red-bg);   color: var(--red);   border-color: var(--red-bd); }
+.al-pill-type-workload.al-pill-active  { background: rgba(29,78,216,0.08); color: var(--blue); border-color: var(--blue-ring); }
+.al-pill-type-node.al-pill-active      { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-bd); }
 
 /* ── Table ──────────────────────────────────────────────────── */
 .al-table-wrap {
@@ -81,10 +101,17 @@
 }
 
 /* action badges */
-.al-workload-create  { background: rgba(59,130,246,0.15);  color: var(--blue); }
-.al-workload-delete  { background: rgba(239,68,68,0.15);   color: var(--red); }
-.al-node-cordon      { background: rgba(245,158,11,0.15);  color: var(--amber); }
-.al-node-uncordon    { background: rgba(34,197,94,0.15);   color: var(--green); }
+.al-workload-create           { background: rgba(59,130,246,0.15);  color: var(--blue); }
+.al-workload-delete           { background: rgba(239,68,68,0.15);   color: var(--red); }
+.al-workload-scale            { background: rgba(139,92,246,0.15);  color: #7c3aed; }
+.al-workload-image-update     { background: rgba(14,165,233,0.15);  color: #0284c7; }
+.al-workload-env-update       { background: rgba(34,197,94,0.15);   color: var(--green); }
+.al-workload-restart          { background: rgba(234,88,12,0.15);   color: #ea580c; }
+.al-workload-probes-update    { background: rgba(13,148,136,0.15);  color: #0d9488; }
+.al-workload-resources-update { background: rgba(109,40,217,0.15);  color: #7c3aed; }
+.al-node-cordon               { background: rgba(245,158,11,0.15);  color: var(--amber); }
+.al-node-uncordon             { background: rgba(34,197,94,0.15);   color: var(--green); }
+.al-node-drain                { background: rgba(239,68,68,0.15);   color: var(--red); }
 
 /* status badges */
 .al-success { background: rgba(34,197,94,0.15);  color: var(--green); }

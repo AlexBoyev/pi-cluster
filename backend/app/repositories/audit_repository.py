@@ -30,8 +30,17 @@ class AuditRepository:
         await self._db.refresh(entry)
         return entry
 
-    async def get_recent(self, limit: int = 100, offset: int = 0) -> list[AuditLog]:
-        result = await self._db.execute(
-            select(AuditLog).order_by(AuditLog.created_at.desc()).offset(offset).limit(limit)
-        )
+    async def get_recent(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        status: str | None = None,
+        resource_type: str | None = None,
+    ) -> list[AuditLog]:
+        q = select(AuditLog).order_by(AuditLog.created_at.desc())
+        if status:
+            q = q.where(AuditLog.status == status)
+        if resource_type:
+            q = q.where(AuditLog.resource_type == resource_type)
+        result = await self._db.execute(q.offset(offset).limit(limit))
         return list(result.scalars().all())

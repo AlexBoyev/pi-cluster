@@ -166,3 +166,10 @@
 ## Phase 24 — Node Drain ✓
 - [x] `POST /workloads/nodes/{name}/drain` — cordons the node then evicts all non-DaemonSet, non-static pods via the K8s Eviction API; returns eviction count; admin-only and audit-logged
 - [x] Drain button (red hover) on each capacity card beside Cordon/Uncordon; disabled while another drain/cordon is in-flight or node is NotReady
+
+## Phase 25 — Audit Log Filtering ✓
+- [x] `GET /api/v1/audit` gains optional `status` and `resource_type` query params; filtering is server-side against the full log
+- [x] `AuditRepository.get_recent()` applies SQLAlchemy `where` clauses on status and resource_type when provided
+- [x] Audit page filter bar replaced: Status pills (All / Success / Failure) and Type pills (All / Workload / Node)
+- [x] Filter change resets pagination and re-fetches from offset 0; Load More carries current filter values
+- [x] Action badge palette extended to cover scale, image-update, env-update, restart, probes-update, resources-update, drain
