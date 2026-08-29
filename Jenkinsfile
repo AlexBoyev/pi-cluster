@@ -61,16 +61,6 @@ pipeline {
             }
         }
 
-        stage('Install Service') {
-            steps {
-                sh '''
-                    sudo cp $PROJECT_DIR/deploy/pi-cluster.service /etc/systemd/system/pi-cluster.service
-                    sudo systemctl daemon-reload
-                    sudo systemctl enable pi-cluster.service
-                '''
-            }
-        }
-
         stage('Deploy') {
             steps {
                 sh 'cd $PROJECT_DIR && docker compose up -d backend frontend'
