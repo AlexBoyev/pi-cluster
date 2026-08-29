@@ -99,3 +99,13 @@ class NodeCapacity(BaseModel):
     memory_requested_mi: int
     ready: bool
     schedulable: bool
+
+
+class WorkloadMetrics(BaseModel):
+    name: str
+    cpu_cores: float
+    cpu_limit_cores: float
+    memory_bytes: int
+    memory_limit_bytes: int
+    pod_count: int
+    available: bool

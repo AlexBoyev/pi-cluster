@@ -173,3 +173,11 @@
 - [x] Audit page filter bar replaced: Status pills (All / Success / Failure) and Type pills (All / Workload / Node)
 - [x] Filter change resets pagination and re-fetches from offset 0; Load More carries current filter values
 - [x] Action badge palette extended to cover scale, image-update, env-update, restart, probes-update, resources-update, drain
+
+## Phase 26 — Live Pod Metrics ✓
+- [x] `GET /workloads/{name}/metrics` — queries Prometheus for actual container CPU (5m rate) and memory (working set) usage
+- [x] `WorkloadMetrics` schema: cpu_cores, cpu_limit_cores, memory_bytes, memory_limit_bytes, pod_count, available flag
+- [x] Parser functions for K8s resource notation (500m → 0.5 cores, 256Mi → bytes) in service layer
+- [x] `MetricsModal`: CPU and memory usage bars (blue/amber/red by % of limit), formatted values, Refresh button
+- [x] "Metrics" button per workload row (cyan hover); pauses auto-refresh while open
+- [x] Graceful degradation: `available=false` shown as a clear message when Prometheus is unreachable or no data collected

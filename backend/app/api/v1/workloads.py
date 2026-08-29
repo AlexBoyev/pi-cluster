@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.user import User
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.workload_repository import WorkloadRepository
-from app.schemas.workload import NodeCapacity, PodInfo, WorkloadCreate, WorkloadEnvUpdate, WorkloadEvent, WorkloadImageUpdate, WorkloadLogs, WorkloadProbeUpdate, WorkloadResourceUpdate, WorkloadResponse, WorkloadScale
+from app.schemas.workload import NodeCapacity, PodInfo, WorkloadCreate, WorkloadEnvUpdate, WorkloadEvent, WorkloadImageUpdate, WorkloadLogs, WorkloadMetrics, WorkloadProbeUpdate, WorkloadResourceUpdate, WorkloadResponse, WorkloadScale
 from app.services.audit_service import AuditService
 from app.services.k8s_service import K8sService
 from app.services.workload_service import WorkloadService
@@ -87,6 +87,15 @@ async def get_workload_pods(
     _: None = Depends(get_current_user),
 ) -> list[PodInfo]:
     return await service.get_workload_pods(name)
+
+
+@router.get("/{name}/metrics", response_model=WorkloadMetrics)
+async def get_workload_metrics(
+    name: str,
+    service: WorkloadService = Depends(get_service),
+    _: None = Depends(get_current_user),
+) -> WorkloadMetrics:
+    return await service.get_workload_metrics(name)
 
 
 @router.get("/{name}/logs", response_model=WorkloadLogs)

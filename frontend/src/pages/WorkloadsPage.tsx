@@ -21,6 +21,7 @@ import {
 import EnvModal from "../components/EnvModal";
 import EventsModal from "../components/EventsModal";
 import LogsModal from "../components/LogsModal";
+import MetricsModal from "../components/MetricsModal";
 import PodsModal from "../components/PodsModal";
 import ProbesModal from "../components/ProbesModal";
 import ResourcesModal from "../components/ResourcesModal";
@@ -126,6 +127,7 @@ export default function WorkloadsPage() {
   const [resourcesTarget, setResourcesTarget] = useState<Workload | null>(null);
   const [probesTarget, setProbesTarget] = useState<Workload | null>(null);
   const [restarting, setRestarting] = useState<string | null>(null);
+  const [metricsTarget, setMetricsTarget] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "running" | "pending" | "failed">("all");
   const [sortField, setSortField] = useState<"name" | "status" | "replicas" | "created_at">("created_at");
@@ -166,7 +168,7 @@ export default function WorkloadsPage() {
 
   useEffect(() => { refresh(); }, []);
 
-  const modalOpen = !!(logsTarget || eventsTarget || podsTarget || envTarget || resourcesTarget || probesTarget);
+  const modalOpen = !!(logsTarget || eventsTarget || podsTarget || envTarget || resourcesTarget || probesTarget || metricsTarget);
   const refreshRef = useRef(refresh);
   useEffect(() => { refreshRef.current = refresh; });
 
@@ -574,6 +576,12 @@ export default function WorkloadsPage() {
                         Pods
                       </button>
                       <button
+                        className="wl-btn-metrics"
+                        onClick={() => setMetricsTarget(w.name)}
+                      >
+                        Metrics
+                      </button>
+                      <button
                         className="wl-btn-env"
                         onClick={() => setEnvTarget(w)}
                       >
@@ -709,6 +717,9 @@ export default function WorkloadsPage() {
       )}
       {podsTarget && (
         <PodsModal workloadName={podsTarget} onClose={() => setPodsTarget(null)} />
+      )}
+      {metricsTarget && (
+        <MetricsModal name={metricsTarget} onClose={() => setMetricsTarget(null)} />
       )}
       {eventsTarget && (
         <EventsModal workloadName={eventsTarget} onClose={() => setEventsTarget(null)} />

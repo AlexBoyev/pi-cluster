@@ -55,6 +55,16 @@ export interface PodInfo {
   started_at: string | null;
 }
 
+export interface WorkloadMetrics {
+  name: string;
+  cpu_cores: number;
+  cpu_limit_cores: number;
+  memory_bytes: number;
+  memory_limit_bytes: number;
+  pod_count: number;
+  available: boolean;
+}
+
 export interface WorkloadCreate {
   name: string;
   image: string;

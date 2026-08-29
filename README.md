@@ -289,6 +289,7 @@ All routes are prefixed `/api/v1/`. Authentication is JWT Bearer token (`Authori
 | PATCH | `/workloads/{name}/probes` | admin | Set liveness/readiness HTTP probe paths |
 | POST | `/workloads/{name}/restart` | admin | Rolling restart (restartedAt annotation) |
 | GET | `/workloads/{name}/pods` | user | List pods with phase, ready count, node, IP |
+| GET | `/workloads/{name}/metrics` | user | Live CPU/memory usage from Prometheus |
 | GET | `/workloads/{name}/logs` | user | Last N pod log lines |
 | GET | `/workloads/{name}/events` | user | K8s events for workload and its pods |
 | DELETE | `/workloads/{name}` | admin | Delete deployment, service, and ingress |

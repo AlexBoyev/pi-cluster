@@ -1,0 +1,139 @@
+.mm-box {
+  width: 420px;
+  max-width: 95vw;
+}
+
+.mm-body {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.mm-unavailable {
+  padding: 1.25rem 1.5rem;
+  color: var(--t3);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.mm-stat-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.mm-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.mm-stat-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--t3);
+}
+
+.mm-stat-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  font-family: var(--mono);
+  color: var(--t1);
+}
+
+.mm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.mm-section-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--t3);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.1rem;
+}
+
+.mm-metric-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.83rem;
+}
+
+.mm-metric-name { color: var(--t2); }
+
+.mm-metric-val {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--t1);
+  font-weight: 600;
+}
+
+/* ── Usage bar ── */
+.mm-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.1rem;
+}
+
+.mm-bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mm-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.mm-bar-ok   { background: linear-gradient(90deg, var(--blue) 0%, var(--blue-ring) 100%); }
+.mm-bar-warn { background: var(--amber); }
+.mm-bar-crit { background: var(--red); }
+
+.mm-bar-pct {
+  font-size: 0.7rem;
+  font-family: var(--mono);
+  color: var(--t3);
+  white-space: nowrap;
+  min-width: 80px;
+  text-align: right;
+}
+
+/* ── Note / footer ── */
+.mm-note {
+  font-size: 0.7rem;
+  color: var(--t3);
+  line-height: 1.4;
+}
+
+.mm-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.modal-cancel-btn {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--rs);
+  font-size: 0.84rem;
+  color: var(--t2);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.modal-cancel-btn:hover { background: var(--bg); }

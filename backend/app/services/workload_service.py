@@ -1,14 +1,48 @@
 import logging
+from asyncio import gather as asyncio_gather
 
+import httpx
 from fastapi import HTTPException, status
 from fastapi.concurrency import run_in_threadpool
 from kubernetes.client.exceptions import ApiException
 
+from app.config import settings
 from app.models.workload import WorkloadStatus
 from app.repositories.workload_repository import WorkloadRepository
-from app.schemas.workload import NodeCapacity, PodInfo, WorkloadCreate, WorkloadEnvUpdate, WorkloadEvent, WorkloadImageUpdate, WorkloadLogs, WorkloadProbeUpdate, WorkloadResourceUpdate, WorkloadResponse
+from app.schemas.workload import NodeCapacity, PodInfo, WorkloadCreate, WorkloadEnvUpdate, WorkloadEvent, WorkloadImageUpdate, WorkloadLogs, WorkloadMetrics, WorkloadProbeUpdate, WorkloadResourceUpdate, WorkloadResponse
 from app.services.audit_service import AuditService
 from app.services.k8s_service import K8sService
+
+
+def _parse_cpu(s: str) -> float:
+    s = s.strip()
+    if s.endswith("m"):
+        return int(s[:-1]) / 1000.0
+    return float(s)
+
+
+def _parse_memory(s: str) -> int:
+    s = s.strip().upper()
+    if s.endswith("GI"):
+        return int(s[:-2]) * 1024 * 1024 * 1024
+    if s.endswith("MI"):
+        return int(s[:-2]) * 1024 * 1024
+    if s.endswith("KI"):
+        return int(s[:-2]) * 1024
+    if s.endswith("G"):
+        return int(s[:-1]) * 1_000_000_000
+    if s.endswith("M"):
+        return int(s[:-1]) * 1_000_000
+    if s.endswith("K"):
+        return int(s[:-1]) * 1_000
+    return int(s)
+
+
+def _extract_scalar(data: dict) -> float:
+    result = data.get("data", {}).get("result", [])
+    if not result:
+        return 0.0
+    return float(result[0]["value"][1])
 
 logger = logging.getLogger(__name__)
 
@@ -419,3 +453,50 @@ class WorkloadService:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
         await self._audit.log("node.drain", "node", node_name, actor, "success", f"evicted={evicted}")
         return evicted
+
+    async def get_workload_metrics(self, name: str) -> WorkloadMetrics:
+        workload = await self._repo.get_by_name(name)
+        if workload is None or workload.status == WorkloadStatus.DELETED:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workload not found")
+
+        cpu_limit_cores = _parse_cpu(workload.cpu_limit or "500m")
+        memory_limit_bytes = _parse_memory(workload.memory_limit or "256Mi")
+
+        cpu_cores = 0.0
+        memory_bytes = 0
+        available = False
+        try:
+            cpu_q = (
+                f'sum(rate(container_cpu_usage_seconds_total'
+                f'{{pod=~"{name}-.*",container!="",container!="POD"}}[5m]))'
+            )
+            mem_q = (
+                f'sum(container_memory_working_set_bytes'
+                f'{{pod=~"{name}-.*",container!="",container!="POD"}})'
+            )
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                cpu_resp, mem_resp = await asyncio_gather(
+                    client.get(f"{settings.prometheus_url}/api/v1/query", params={"query": cpu_q}),
+                    client.get(f"{settings.prometheus_url}/api/v1/query", params={"query": mem_q}),
+                )
+            cpu_cores = _extract_scalar(cpu_resp.json())
+            memory_bytes = int(_extract_scalar(mem_resp.json()))
+            available = True
+        except Exception as e:
+            logger.warning("Prometheus query failed for workload %s: %s", name, e)
+
+        try:
+            pods = await run_in_threadpool(self._k8s.get_pod_list, name, workload.namespace)
+            pod_count = len(pods)
+        except Exception:
+            pod_count = 0
+
+        return WorkloadMetrics(
+            name=name,
+            cpu_cores=cpu_cores,
+            cpu_limit_cores=cpu_limit_cores,
+            memory_bytes=memory_bytes,
+            memory_limit_bytes=memory_limit_bytes,
+            pod_count=pod_count,
+            available=available,
+        )
