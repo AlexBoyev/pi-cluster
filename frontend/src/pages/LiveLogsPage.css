@@ -1,0 +1,103 @@
+.ll-page {
+  display: flex; flex-direction: column; gap: 0.75rem;
+  height: calc(100vh - 52px - 2.5rem);
+}
+
+/* ── Toolbar ────────────────────────────────────────────────────────────── */
+
+.ll-toolbar {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  flex-wrap: wrap; gap: 0.75rem;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 0.85rem 1.1rem; flex-shrink: 0;
+}
+
+.ll-selectors { display: flex; align-items: flex-end; gap: 0.75rem; flex-wrap: wrap; }
+
+.ll-field { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.ll-lbl {
+  font-size: 0.6rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--t3);
+}
+
+.ll-sel {
+  padding: 0.38rem 0.65rem; border: 1.5px solid var(--border); border-radius: var(--rs);
+  background: var(--bg); color: var(--t1); font-size: 0.82rem;
+  cursor: pointer; outline: none; min-width: 140px;
+}
+.ll-sel:focus { border-color: var(--blue); }
+.ll-sel:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.ll-sel-pod  { min-width: 280px; font-family: var(--mono); font-size: 0.78rem; }
+.ll-sel-tail { min-width: 80px; }
+
+.ll-actions { display: flex; align-items: center; gap: 0.65rem; flex-shrink: 0; }
+
+.ll-badge {
+  font-size: 0.68rem; font-weight: 700; padding: 0.22rem 0.65rem;
+  border-radius: 99px; letter-spacing: 0.04em;
+}
+.ll-live { background: rgba(22,163,74,0.12); color: var(--green); }
+.ll-off  { background: var(--bg); color: var(--t3); border: 1px solid var(--border); }
+
+.ll-btn-connect {
+  padding: 0.42rem 1.2rem; background: var(--blue); color: #fff;
+  border: none; border-radius: var(--rs); font-size: 0.84rem; font-weight: 700;
+  cursor: pointer; transition: background 0.12s;
+}
+.ll-btn-connect:hover:not(:disabled) { background: var(--blue-mid); }
+.ll-btn-connect:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ll-btn-disconnect {
+  padding: 0.42rem 1.2rem; background: var(--red); color: #fff;
+  border: none; border-radius: var(--rs); font-size: 0.84rem; font-weight: 700;
+  cursor: pointer; transition: background 0.12s;
+}
+.ll-btn-disconnect:hover { background: #b91c1c; }
+
+/* ── Error ──────────────────────────────────────────────────────────────── */
+
+.ll-error {
+  background: var(--red-bg); color: var(--red); border: 1px solid var(--red-bd);
+  border-radius: var(--rs); padding: 0.5rem 0.8rem; font-size: 0.82rem; flex-shrink: 0;
+}
+
+/* ── Log bar ────────────────────────────────────────────────────────────── */
+
+.ll-log-bar {
+  display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0;
+}
+
+.ll-filter {
+  padding: 0.28rem 0.6rem; border: 1.5px solid var(--border); border-radius: var(--rs);
+  background: var(--bg); color: var(--t1); font-size: 0.78rem; outline: none; width: 200px;
+}
+.ll-filter:focus { border-color: var(--blue); }
+
+.ll-line-count { font-size: 0.72rem; color: var(--t3); }
+
+.ll-autoscroll {
+  display: flex; align-items: center; gap: 0.3rem;
+  font-size: 0.72rem; color: var(--t2); cursor: pointer; white-space: nowrap;
+}
+
+.ll-btn-sm {
+  padding: 0.25rem 0.65rem; border: 1px solid var(--border); border-radius: var(--rs);
+  background: transparent; font-size: 0.75rem; font-weight: 600; color: var(--t2); cursor: pointer;
+}
+.ll-btn-sm:hover { background: var(--bg); color: var(--t1); }
+
+/* ── Log area ───────────────────────────────────────────────────────────── */
+
+.ll-log-wrap {
+  flex: 1; background: #0d1117; border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden; min-height: 300px;
+}
+
+.ll-pre {
+  margin: 0; padding: 0.85rem 1rem;
+  font-family: var(--mono); font-size: 0.74rem; line-height: 1.55;
+  color: #cdd9e5; white-space: pre-wrap; word-break: break-all;
+  height: 100%; overflow-y: auto; box-sizing: border-box;
+}

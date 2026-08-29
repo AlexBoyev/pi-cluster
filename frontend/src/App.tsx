@@ -10,6 +10,7 @@ import ConfigMapsPage from "./pages/ConfigMapsPage";
 import CronJobsPage from "./pages/CronJobsPage";
 import EventsPage from "./pages/EventsPage";
 import JobsPage from "./pages/JobsPage";
+import LiveLogsPage from "./pages/LiveLogsPage";
 import NamespacesPage from "./pages/NamespacesPage";
 import HelmPage from "./pages/HelmPage";
 import NotificationsPage from "./pages/NotificationsPage";
@@ -25,7 +26,7 @@ import { NodeDetailView } from "./pages/NodesPage";
 import WorkloadsPage from "./pages/WorkloadsPage";
 import type { NodeHealth } from "./types/node";
 
-type Page = "dashboard" | "workloads" | "capacity" | "events" | "namespaces" | "audit" | "alert-history" | "users" | "configmaps" | "secrets" | "services" | "cronjobs" | "storage" | "notifications" | "objects" | "helm" | "rbac" | "jobs" | "quotas" | "alert-rules";
+type Page = "dashboard" | "workloads" | "capacity" | "events" | "namespaces" | "audit" | "alert-history" | "users" | "configmaps" | "secrets" | "services" | "cronjobs" | "storage" | "notifications" | "objects" | "helm" | "rbac" | "jobs" | "quotas" | "alert-rules" | "live-logs";
 
 const POLL_MS  = 30_000;
 const CTRL_IP  = "10.100.102.10";
@@ -384,6 +385,14 @@ export default function App() {
             <span className="sb-icon">⊛</span>
             Alert Rules
           </a>
+          <a
+            href="#"
+            className={`sb-link${page === "live-logs" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); setPage("live-logs"); }}
+          >
+            <span className="sb-icon">▶</span>
+            Live Logs
+          </a>
 
           <div className="sb-section">Admin</div>
           <a
@@ -445,7 +454,7 @@ export default function App() {
               <span /><span /><span />
             </button>
             <h1 className="page-title">
-              {page === "workloads" ? "Workloads" : page === "capacity" ? "Capacity" : page === "events" ? "Events" : page === "namespaces" ? "Namespaces" : page === "audit" ? "Audit Log" : page === "alert-history" ? "Alert History" : page === "users" ? "Users" : page === "configmaps" ? "ConfigMaps" : page === "secrets" ? "Secrets" : page === "services" ? "Services & Ingresses" : page === "cronjobs" ? "CronJobs" : page === "storage" ? "Storage" : page === "notifications" ? "Notifications" : page === "objects" ? "Objects" : page === "helm" ? "Helm Releases" : page === "rbac" ? "RBAC Explorer" : page === "jobs" ? "Batch Jobs" : page === "quotas" ? "Quotas & Limits" : page === "alert-rules" ? "Alert Rules" : "Dashboard"}
+              {page === "workloads" ? "Workloads" : page === "capacity" ? "Capacity" : page === "events" ? "Events" : page === "namespaces" ? "Namespaces" : page === "audit" ? "Audit Log" : page === "alert-history" ? "Alert History" : page === "users" ? "Users" : page === "configmaps" ? "ConfigMaps" : page === "secrets" ? "Secrets" : page === "services" ? "Services & Ingresses" : page === "cronjobs" ? "CronJobs" : page === "storage" ? "Storage" : page === "notifications" ? "Notifications" : page === "objects" ? "Objects" : page === "helm" ? "Helm Releases" : page === "rbac" ? "RBAC Explorer" : page === "jobs" ? "Batch Jobs" : page === "quotas" ? "Quotas & Limits" : page === "alert-rules" ? "Alert Rules" : page === "live-logs" ? "Live Logs" : "Dashboard"}
             </h1>
           </div>
           <div className="tb-right">
@@ -498,6 +507,8 @@ export default function App() {
             <QuotasPage />
           ) : page === "alert-rules" ? (
             <AlertRulesPage />
+          ) : page === "live-logs" ? (
+            <LiveLogsPage />
           ) : selectedNode ? (
             <NodeDetailView node={selectedNode} onBack={() => setSelectedNode(null)} />
           ) : (

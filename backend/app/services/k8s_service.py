@@ -1014,7 +1014,20 @@ class K8sService:
         result.sort(key=lambda x: x["name"])
         return result
 
-    # ── Pod exec helper ─────────────────────────────────────────────────────
+    # ── Pod helpers ──────────────────────────────────────────────────────────
+
+    def list_pods_in_namespace(self, namespace: str) -> list[dict]:
+        pods = self._core().list_namespaced_pod(namespace)
+        result = []
+        for p in pods.items:
+            containers = [c.name for c in (p.spec.containers or [])]
+            result.append({
+                "name": p.metadata.name,
+                "phase": p.status.phase or "Unknown",
+                "containers": containers,
+            })
+        result.sort(key=lambda x: x["name"])
+        return result
 
     def get_first_pod_name(self, name: str, namespace: str) -> str | None:
         pods = self._core().list_namespaced_pod(

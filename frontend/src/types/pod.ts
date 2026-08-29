@@ -1,3 +1,9 @@
+export interface PodBasic {
+  name: string;
+  phase: string;
+  containers: string[];
+}
+
 export interface PodContainer {
   name: string;
   image: string;
