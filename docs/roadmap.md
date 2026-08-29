@@ -287,3 +287,37 @@
 - [x] `DELETE /api/v1/configmaps/{name}` — delete ConfigMap (admin-only)
 - [x] ConfigMaps page: namespace selector (populates from live namespace list), summary cards, create form with textarea (KEY=value lines), key-tag pills per row, edit modal with textarea editor, delete confirmation
 - [x] "ConfigMaps" sidebar link (⊞ icon); version bumped to Phase 36
+
+## Phase 37 — Secret Management ✓
+- [x] `K8sService`: `list_secrets()` (filters service-account tokens and Helm secrets), `get_secret()` (base64-decodes values to UTF-8), `create_secret()`, `update_secret()`, `delete_secret()`
+- [x] `SecretSummary` and `SecretDetail` schemas; `SecretCreate` (name-validated, type field), `SecretUpdate`
+- [x] All secret endpoints admin-only (read included); values never logged
+- [x] `GET /api/v1/secrets/` — list secrets in namespace (keys only, no values)
+- [x] `GET /api/v1/secrets/{name}` — get secret with decoded values
+- [x] `POST /api/v1/secrets/` — create with key=value data, type (Opaque/tls/dockerconfigjson)
+- [x] `PUT /api/v1/secrets/{name}` — replace data
+- [x] `DELETE /api/v1/secrets/{name}` — delete
+- [x] Secrets page: namespace selector, create form with type dropdown, key-tag pills per row, View/Edit modal showing per-key "Reveal"/"Hide" toggle (values masked by default), textarea editor for updates, delete confirmation
+- [x] "Secrets" sidebar link (⊕ icon); namespace selector populates from live list
+
+## Phase 38 — Services & Ingress Visibility ✓
+- [x] `K8sService`: `list_services()` (all namespaces or scoped), `list_ingresses()` using NetworkingV1Api
+- [x] `ServicePort`, `ServiceInfo`, `IngressPath`, `IngressRule`, `IngressInfo` schemas
+- [x] `GET /api/v1/services` — cluster-wide or namespace-scoped service list
+- [x] `GET /api/v1/ingresses` — cluster-wide or namespace-scoped ingress list
+- [x] Services & Ingresses page: tab switcher (Services / Ingresses), namespace filter dropdown, summary cards (service count by type, ingress count, unique hosts)
+- [x] Services table: Name, Namespace, Type badge (LoadBalancer green / NodePort amber / ClusterIP blue), ClusterIP, Ports with protocol, Selector labels, Created
+- [x] Ingresses table: Name, Namespace, IngressClass, Rules (host + path → backend), TLS badge, Created
+- [x] "Services" sidebar link (⇌ icon)
+
+## Phase 39 — CronJob Management ✓
+- [x] `K8sService`: `list_cronjobs()`, `create_cronjob()` (builds V1CronJob with container, command, env), `set_cronjob_suspend()`, `delete_cronjob()`, `list_cronjob_jobs()` (recent job runs matched by owner reference)
+- [x] `CronJobInfo`, `CronJobCreate`, `JobRun` schemas
+- [x] `GET /api/v1/cronjobs/` — list all or namespace-scoped CronJobs
+- [x] `POST /api/v1/cronjobs/` — create (admin); schedule as cron expression, image, optional command array, env vars
+- [x] `PATCH /api/v1/cronjobs/{name}/suspend` — suspend (admin)
+- [x] `PATCH /api/v1/cronjobs/{name}/resume` — resume (admin)
+- [x] `GET /api/v1/cronjobs/{name}/jobs` — recent job run history
+- [x] `DELETE /api/v1/cronjobs/{name}` — delete (admin)
+- [x] CronJobs page: namespace filter, summary cards (total/active/suspended), create form (name, namespace, cron schedule, image, command, env vars), table with schedule code badge, Active/Suspended badge, last-run time, Runs modal (job history: status badge, started, duration), Suspend/Resume toggle, delete confirmation
+- [x] "CronJobs" sidebar link (⊙ icon); version bumped to Phase 39

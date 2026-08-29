@@ -561,6 +561,244 @@ class K8sService:
             if e.status != 404:
                 raise
 
+    def _networking(self) -> client.NetworkingV1Api:
+        return client.NetworkingV1Api()
+
+    def _batch(self) -> client.BatchV1Api:
+        return client.BatchV1Api()
+
+    # ── Secrets ──────────────────────────────────────────────────────────────
+
+    _SECRET_SKIP = frozenset({"default-token", "kube-root-ca.crt"})
+
+    def list_secrets(self, namespace: str = "pi-apps") -> list[dict]:
+        result = []
+        for s in self._core().list_namespaced_secret(namespace=namespace).items:
+            name = s.metadata.name or ""
+            if any(name.startswith(p) for p in ("default-token", "sh.helm")):
+                continue
+            result.append({
+                "name": name,
+                "namespace": s.metadata.namespace or namespace,
+                "type": s.type or "Opaque",
+                "data_keys": sorted((s.data or {}).keys()),
+                "created_at": s.metadata.creation_timestamp,
+            })
+        result.sort(key=lambda x: x["name"])
+        return result
+
+    def get_secret(self, name: str, namespace: str) -> dict | None:
+        import base64
+        try:
+            s = self._core().read_namespaced_secret(name=name, namespace=namespace)
+        except ApiException as e:
+            if e.status == 404:
+                return None
+            raise
+        data: dict[str, str] = {}
+        for k, v in (s.data or {}).items():
+            try:
+                data[k] = base64.b64decode(v).decode("utf-8")
+            except Exception:
+                data[k] = "<binary>"
+        return {
+            "name": s.metadata.name,
+            "namespace": s.metadata.namespace or namespace,
+            "type": s.type or "Opaque",
+            "data": data,
+            "created_at": s.metadata.creation_timestamp,
+        }
+
+    def create_secret(self, name: str, namespace: str, data: dict[str, str], secret_type: str = "Opaque") -> None:
+        import base64
+        encoded = {k: base64.b64encode(v.encode()).decode() for k, v in data.items()}
+        self._core().create_namespaced_secret(
+            namespace=namespace,
+            body=client.V1Secret(
+                metadata=client.V1ObjectMeta(name=name, namespace=namespace),
+                type=secret_type,
+                data=encoded,
+            ),
+        )
+
+    def update_secret(self, name: str, namespace: str, data: dict[str, str]) -> None:
+        import base64
+        encoded = {k: base64.b64encode(v.encode()).decode() for k, v in data.items()}
+        self._core().replace_namespaced_secret(
+            name=name,
+            namespace=namespace,
+            body=client.V1Secret(
+                metadata=client.V1ObjectMeta(name=name, namespace=namespace),
+                data=encoded,
+            ),
+        )
+
+    def delete_secret(self, name: str, namespace: str) -> None:
+        try:
+            self._core().delete_namespaced_secret(name=name, namespace=namespace)
+        except ApiException as e:
+            if e.status != 404:
+                raise
+
+    # ── Services & Ingresses ─────────────────────────────────────────────────
+
+    def list_services(self, namespace: str | None = None) -> list[dict]:
+        core = self._core()
+        items = (
+            core.list_namespaced_service(namespace=namespace).items
+            if namespace
+            else core.list_service_for_all_namespaces().items
+        )
+        result = []
+        for svc in items:
+            ports = []
+            for p in (svc.spec.ports or []):
+                ports.append({
+                    "port": p.port,
+                    "target_port": str(p.target_port) if p.target_port else None,
+                    "node_port": p.node_port,
+                    "protocol": p.protocol or "TCP",
+                })
+            result.append({
+                "name": svc.metadata.name,
+                "namespace": svc.metadata.namespace,
+                "type": (svc.spec.type or "ClusterIP"),
+                "cluster_ip": svc.spec.cluster_ip,
+                "external_ip": (svc.spec.external_i_ps or [None])[0],
+                "ports": ports,
+                "selector": svc.spec.selector or {},
+                "created_at": svc.metadata.creation_timestamp,
+            })
+        result.sort(key=lambda x: (x["namespace"], x["name"]))
+        return result
+
+    def list_ingresses(self, namespace: str | None = None) -> list[dict]:
+        net = self._networking()
+        items = (
+            net.list_namespaced_ingress(namespace=namespace).items
+            if namespace
+            else net.list_ingress_for_all_namespaces().items
+        )
+        result = []
+        for ing in items:
+            rules = []
+            for r in (ing.spec.rules or []):
+                paths = []
+                if r.http:
+                    for p in (r.http.paths or []):
+                        paths.append({
+                            "path": p.path or "/",
+                            "backend_service": (p.backend.service.name if p.backend and p.backend.service else None),
+                            "backend_port": (p.backend.service.port.number if p.backend and p.backend.service and p.backend.service.port else None),
+                        })
+                rules.append({"host": r.host, "paths": paths})
+            tls_hosts: list[str] = []
+            for t in (ing.spec.tls or []):
+                tls_hosts.extend(t.hosts or [])
+            result.append({
+                "name": ing.metadata.name,
+                "namespace": ing.metadata.namespace,
+                "rules": rules,
+                "tls_hosts": tls_hosts,
+                "ingress_class": (ing.spec.ingress_class_name or ing.metadata.annotations or {}).get("kubernetes.io/ingress.class") if isinstance((ing.spec.ingress_class_name or ing.metadata.annotations or {}).get("kubernetes.io/ingress.class"), str) else ing.spec.ingress_class_name,
+                "created_at": ing.metadata.creation_timestamp,
+            })
+        result.sort(key=lambda x: (x["namespace"], x["name"]))
+        return result
+
+    # ── CronJobs ─────────────────────────────────────────────────────────────
+
+    def list_cronjobs(self, namespace: str | None = None) -> list[dict]:
+        batch = self._batch()
+        items = (
+            batch.list_namespaced_cron_job(namespace=namespace).items
+            if namespace
+            else batch.list_cron_job_for_all_namespaces().items
+        )
+        result = []
+        for cj in items:
+            spec = cj.spec
+            status = cj.status
+            containers = []
+            if spec and spec.job_template and spec.job_template.spec and spec.job_template.spec.template and spec.job_template.spec.template.spec:
+                containers = spec.job_template.spec.template.spec.containers or []
+            result.append({
+                "name": cj.metadata.name,
+                "namespace": cj.metadata.namespace,
+                "schedule": spec.schedule if spec else "",
+                "suspended": bool(spec.suspend) if spec else False,
+                "active_jobs": len(status.active or []) if status else 0,
+                "last_schedule_time": status.last_schedule_time if status else None,
+                "image": containers[0].image if containers else "",
+                "created_at": cj.metadata.creation_timestamp,
+            })
+        result.sort(key=lambda x: (x["namespace"], x["name"]))
+        return result
+
+    def create_cronjob(self, name: str, namespace: str, schedule: str, image: str, command: list[str], env_vars: dict[str, str]) -> None:
+        env = [client.V1EnvVar(name=k, value=v) for k, v in env_vars.items()]
+        self._batch().create_namespaced_cron_job(
+            namespace=namespace,
+            body=client.V1CronJob(
+                metadata=client.V1ObjectMeta(name=name, namespace=namespace),
+                spec=client.V1CronJobSpec(
+                    schedule=schedule,
+                    job_template=client.V1JobTemplateSpec(
+                        spec=client.V1JobSpec(
+                            template=client.V1PodTemplateSpec(
+                                spec=client.V1PodSpec(
+                                    restart_policy="OnFailure",
+                                    containers=[
+                                        client.V1Container(
+                                            name=name,
+                                            image=image,
+                                            command=command if command else None,
+                                            env=env if env else None,
+                                        )
+                                    ],
+                                )
+                            )
+                        )
+                    ),
+                ),
+            ),
+        )
+
+    def set_cronjob_suspend(self, name: str, namespace: str, suspend: bool) -> None:
+        self._batch().patch_namespaced_cron_job(
+            name=name,
+            namespace=namespace,
+            body={"spec": {"suspend": suspend}},
+        )
+
+    def delete_cronjob(self, name: str, namespace: str) -> None:
+        try:
+            self._batch().delete_namespaced_cron_job(name=name, namespace=namespace)
+        except ApiException as e:
+            if e.status != 404:
+                raise
+
+    def list_cronjob_jobs(self, name: str, namespace: str, limit: int = 10) -> list[dict]:
+        jobs = self._batch().list_namespaced_job(
+            namespace=namespace, label_selector=f"app={name}"
+        )
+        result = []
+        for job in jobs.items:
+            owner_refs = job.metadata.owner_references or []
+            if not any(r.name == name for r in owner_refs):
+                continue
+            status = job.status
+            result.append({
+                "name": job.metadata.name,
+                "succeeded": status.succeeded or 0,
+                "failed": status.failed or 0,
+                "active": status.active or 0,
+                "start_time": status.start_time,
+                "completion_time": status.completion_time,
+            })
+        result.sort(key=lambda x: x["start_time"] or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+        return result[:limit]
+
     def rollback_deployment(self, name: str, namespace: str, revision: int) -> str:
         apps = self._apps()
         rs_list = apps.list_namespaced_replica_set(
