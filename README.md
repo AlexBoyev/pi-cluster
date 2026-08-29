@@ -242,18 +242,26 @@ This means you can manage cluster infrastructure (DaemonSets, RBAC, namespaces) 
 The platform manages the full lifecycle of containerised workloads on K3s:
 
 ```
-  Deploy  ──▶  Scale  ──▶  Update image  ──▶  Set env vars  ──▶  Delete
-     │                                                               │
-     └──▶  View logs  ──▶  View K8s events                          │
-     │                                                               │
-     └──▶  Cordon node (stop scheduling)  ──▶  Uncordon             │
+  Deploy ──▶ Scale ──▶ Update image ──▶ Set env vars ──▶ Set resource limits ──▶ Delete
+     │                                                                                │
+     ├──▶ Configure health probes (liveness + readiness HTTP)                        │
+     │                                                                                │
+     ├──▶ Rolling restart (restartedAt annotation patch)                             │
+     │                                                                                │
+     ├──▶ View pod logs (live, last N lines)                                         │
+     │                                                                                │
+     ├──▶ View K8s events (Warning/Normal, age-sorted)                               │
+     │                                                                                │
+     └──▶  Cordon node (stop scheduling)  ──▶  Uncordon
 ```
 
 Each operation:
 - Is performed via the FastAPI backend using the Kubernetes Python client against the K3s API
 - Updates the PostgreSQL workload record to keep the database in sync
 - Is audit-logged with the actor's username, timestamp, result, and detail
-- Triggers a K8s rolling restart where applicable (image update, env var change)
+- Triggers a K8s rolling restart where applicable (image, env vars, resource limits, probes)
+
+The workloads table auto-refreshes every 15 seconds. The Live indicator pulses green and switches to "Paused" while any modal is open.
 
 ---
 
@@ -307,10 +315,14 @@ Each operation:
                      container_port          created_at
   users              ingress_host
   ─────              env_vars (JSONB)
-  id                 status
-  username           created_at
-  hashed_password
-  role               * live from K8s, not stored
+  id                 cpu_limit
+  username           memory_limit
+  hashed_password    liveness_path
+  role               readiness_path
+                     status
+                     created_at
+
+                     * live from K8s, not stored
 ```
 
 ---
@@ -328,6 +340,9 @@ All routes are prefixed `/api/v1/`. Authentication is JWT Bearer token.
 | PATCH | `/workloads/{name}/scale` | admin | Set replica count (1–10) |
 | PATCH | `/workloads/{name}/image` | admin | Rolling image update |
 | PATCH | `/workloads/{name}/env` | admin | Replace env vars (rolling restart) |
+| PATCH | `/workloads/{name}/resources` | admin | Set CPU/memory limits (rolling patch) |
+| PATCH | `/workloads/{name}/probes` | admin | Set liveness/readiness HTTP probe paths |
+| POST | `/workloads/{name}/restart` | admin | Rolling restart (restartedAt annotation) |
 | GET | `/workloads/{name}/logs` | user | Last N pod log lines |
 | GET | `/workloads/{name}/events` | user | K8s events for workload + pods |
 | DELETE | `/workloads/{name}` | admin | Delete deployment, service, ingress |
@@ -473,7 +488,7 @@ pi-cluster/
 │   │   ├── models/         ← ORM models
 │   │   ├── schemas/        ← Pydantic request/response types
 │   │   └── auth/           ← JWT, dependencies
-│   └── alembic/versions/   ← DB migrations (0001–0006)
+│   └── alembic/versions/   ← DB migrations (0001–0008)
 ├── frontend/
 │   └── src/
 │       ├── pages/          ← full-page views

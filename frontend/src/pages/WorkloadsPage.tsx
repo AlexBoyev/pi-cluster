@@ -1,4 +1,10 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
+
+function fmtAge(s: number): string {
+  if (s < 5) return "just now";
+  if (s < 60) return `${s}s ago`;
+  return `${Math.floor(s / 60)}m ago`;
+}
 import {
   cordonNode,
   createWorkload,
@@ -116,6 +122,8 @@ export default function WorkloadsPage() {
   const [resourcesTarget, setResourcesTarget] = useState<Workload | null>(null);
   const [probesTarget, setProbesTarget] = useState<Workload | null>(null);
   const [restarting, setRestarting] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
+  const [refreshAge, setRefreshAge] = useState<number>(0);
 
   const [form, setForm] = useState({
     name: "",
@@ -139,6 +147,7 @@ export default function WorkloadsPage() {
       setWorkloads(wl);
       setCapacity(cap);
       setError(null);
+      setLastRefresh(Date.now());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load workloads");
     } finally {
@@ -148,6 +157,23 @@ export default function WorkloadsPage() {
   };
 
   useEffect(() => { refresh(); }, []);
+
+  const modalOpen = !!(logsTarget || eventsTarget || envTarget || resourcesTarget || probesTarget);
+  const refreshRef = useRef(refresh);
+  useEffect(() => { refreshRef.current = refresh; });
+
+  useEffect(() => {
+    if (modalOpen) return;
+    const id = setInterval(() => { refreshRef.current(); }, 15_000);
+    return () => clearInterval(id);
+  }, [modalOpen]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setRefreshAge(Math.floor((Date.now() - lastRefresh) / 1000));
+    }, 1_000);
+    return () => clearInterval(id);
+  }, [lastRefresh]);
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
@@ -401,7 +427,13 @@ export default function WorkloadsPage() {
       {/* Workloads table */}
       <div className="section-header" style={{ marginTop: "1.75rem" }}>
         <span className="section-title">Active workloads</span>
-        <span className="section-meta">{workloads.length} total</span>
+        <div className="wl-live-wrap">
+          <span className={`wl-live-dot${modalOpen ? " wl-live-paused" : ""}`} />
+          <span className={`wl-live-label${modalOpen ? " wl-live-paused" : ""}`}>
+            {modalOpen ? "Paused" : "Live"}
+          </span>
+          <span className="wl-live-age">· {fmtAge(refreshAge)}</span>
+        </div>
       </div>
 
       {loading ? (

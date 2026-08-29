@@ -141,3 +141,10 @@
 - [x] "Probes" button per workload row (teal hover)
 - [x] Deploy form includes optional liveness/readiness path fields
 - [x] Fixed: `WorkloadResponse` constructors in scale/image/env responses were missing `cpu_limit`, `memory_limit` — all constructors now complete
+
+## Phase 20 — Live Auto-Refresh ✓
+- [x] Workloads table polls every 15 seconds via `setInterval`; polling pauses automatically when any modal is open
+- [x] `useRef` pattern prevents stale-closure issues with the poll callback
+- [x] Pulsing green "Live" dot indicator in the section header; switches to grey "Paused" when a modal is open
+- [x] "Xs ago / just now" age counter updates every second; resets on each successful fetch
+- [x] README updated: workload lifecycle diagram, API reference table, DB schema, migration count

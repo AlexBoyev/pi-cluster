@@ -1,5 +1,25 @@
 .wl-page { display: flex; flex-direction: column; }
 
+/* ── Live indicator ─────────────────────────────────────────────────────── */
+
+.wl-live-wrap { display: flex; align-items: center; gap: 0.35rem; }
+
+.wl-live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--green);
+  animation: wl-pulse 2s ease-in-out infinite;
+}
+.wl-live-dot.wl-live-paused { background: var(--t3); animation: none; }
+
+@keyframes wl-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+.wl-live-label { font-size: 0.72rem; font-weight: 700; color: var(--green); }
+.wl-live-label.wl-live-paused { color: var(--t3); }
+.wl-live-age { font-size: 0.72rem; color: var(--t3); }
+
 /* ── Form ───────────────────────────────────────────────────────────────── */
 
 .wl-form-card {
