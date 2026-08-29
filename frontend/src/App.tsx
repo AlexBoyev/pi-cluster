@@ -253,6 +253,78 @@ function avgTemp(nodes: NodeHealth[]): string {
   return `${(ts.reduce((a, b) => a + b) / ts.length).toFixed(1)}°C`;
 }
 
+// ── Viewer portal ─────────────────────────────────────────────────────────────
+
+const COMING_SOON = [
+  { icon: "📅", label: "Calendar",    desc: "Shared team calendar" },
+  { icon: "🎮", label: "Games",       desc: "Pi-hosted games" },
+  { icon: "📁", label: "File Share",  desc: "Internal file storage" },
+  { icon: "💬", label: "Chat",        desc: "Team messaging" },
+  { icon: "📊", label: "Dashboard",   desc: "Personal stats" },
+  { icon: "⚙️",  label: "Settings",   desc: "Account preferences" },
+];
+
+function ViewerPortal({ username, logout }: { username: string | null; logout: () => void }) {
+  return (
+    <div className="layout">
+      <aside className="sidebar">
+        <div className="sb-brand">
+          <div className="sb-logo">π</div>
+          <div>
+            <div className="sb-title">Pi Cluster</div>
+            <div className="sb-sub">Portal</div>
+          </div>
+        </div>
+        <nav className="sb-nav">
+          <div className="sb-section">Services</div>
+          {COMING_SOON.map((s) => (
+            <span key={s.label} className="sb-link sb-link-disabled">
+              <span className="sb-icon">{s.icon}</span>
+              {s.label}
+              <span className="sb-ext" style={{ fontSize: "0.6rem", opacity: 0.5 }}>soon</span>
+            </span>
+          ))}
+        </nav>
+        <div className="sb-foot">
+          <div className="sb-user">
+            <span className="sb-user-icon">◉</span>
+            <div>
+              <div className="sb-user-name">{username}</div>
+              <div className="sb-user-role">viewer</div>
+            </div>
+          </div>
+          <button className="sb-logout" onClick={logout}>Sign out</button>
+        </div>
+      </aside>
+
+      <div className="main-area">
+        <header className="topbar">
+          <div className="tb-left">
+            <h1 className="page-title">Portal</h1>
+          </div>
+          <div className="tb-right"><Clock /></div>
+        </header>
+        <main>
+          <div className="portal-welcome">
+            <div className="portal-greeting">Welcome, {username}</div>
+            <div className="portal-sub">Your services will appear here as they become available.</div>
+          </div>
+          <div className="portal-grid">
+            {COMING_SOON.map((s) => (
+              <div key={s.label} className="portal-card portal-card-soon">
+                <div className="portal-card-icon">{s.icon}</div>
+                <div className="portal-card-label">{s.label}</div>
+                <div className="portal-card-desc">{s.desc}</div>
+                <div className="portal-card-badge">Coming soon</div>
+              </div>
+            ))}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -272,7 +344,16 @@ export default function App() {
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
 
-  useEffect(() => { refresh(); const id = setInterval(refresh, POLL_MS); return () => clearInterval(id); }, []);
+  useEffect(() => {
+    if (role !== "admin") return;
+    refresh();
+    const id = setInterval(refresh, POLL_MS);
+    return () => clearInterval(id);
+  }, [role]);
+
+  if (role !== "admin") {
+    return <ViewerPortal username={username} logout={logout} />;
+  }
 
   const sorted  = [...nodes].sort((a, b) =>
     a.node_name.localeCompare(b.node_name, undefined, { numeric: true })

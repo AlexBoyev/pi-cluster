@@ -476,3 +476,48 @@ main { flex: 1; padding: 1.75rem 2rem 3rem; max-width: 1440px; width: 100%; marg
 .sb-logout:hover {
   background: var(--red-bg); color: var(--red); border-color: var(--red-bd);
 }
+
+/* ── Sidebar disabled link (viewer portal) ───────────────────────────────── */
+
+.sb-link-disabled {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.5rem 1rem; border-radius: var(--rs);
+  font-size: 0.82rem; color: var(--t3); cursor: default;
+  opacity: 0.6; user-select: none;
+}
+
+/* ── Viewer portal ───────────────────────────────────────────────────────── */
+
+.portal-welcome {
+  text-align: center; padding: 3rem 1rem 2rem;
+}
+.portal-greeting {
+  font-size: 1.6rem; font-weight: 700; color: var(--t1); margin-bottom: 0.5rem;
+}
+.portal-sub {
+  font-size: 0.9rem; color: var(--t3);
+}
+.portal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.2rem;
+  padding: 0 1.5rem 2rem;
+}
+.portal-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 1.5rem 1.2rem;
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+.portal-card-soon { opacity: 0.65; }
+.portal-card-icon { font-size: 2rem; }
+.portal-card-label { font-size: 0.95rem; font-weight: 700; color: var(--t1); }
+.portal-card-desc  { font-size: 0.75rem; color: var(--t3); }
+.portal-card-badge {
+  margin-top: 0.4rem; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--t3);
+  background: var(--blue-light); border-radius: 20px; padding: 0.15rem 0.6rem;
+}
