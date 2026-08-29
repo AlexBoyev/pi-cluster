@@ -1,0 +1,70 @@
+pipeline {
+    agent any
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        timeout(time: 10, unit: 'MINUTES')
+        disableConcurrentBuilds()
+    }
+
+    triggers {
+        // Polls all branches every 2 minutes — configure a GitHub webhook for faster feedback
+        pollSCM('H/2 * * * *')
+    }
+
+    environment {
+        PROJECT_DIR = '/home/admin/pi-cluster'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/AlexBoyev/pi-cluster',
+                    branch: env.BRANCH_NAME ?: 'master'
+            }
+        }
+
+        stage('Sync') {
+            steps {
+                sh '''
+                    rsync -a --delete \
+                        --exclude='.git' \
+                        --exclude='.env' \
+                        --exclude='__pycache__' \
+                        --exclude='*.pyc' \
+                        --exclude='node_modules' \
+                        $WORKSPACE/ $PROJECT_DIR/
+                '''
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'cd $PROJECT_DIR && docker compose build backend'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh '''
+                    cd $PROJECT_DIR
+                    docker compose run --rm --no-deps \
+                        -e DATABASE_URL=sqlite+aiosqlite:///./test_ci.db \
+                        -e SECRET_KEY=ci-test-secret \
+                        -e ADMIN_DEFAULT_PASSWORD=adminpass123 \
+                        -e SSH_USERNAME=pi \
+                        -e SSH_PASSWORD=test \
+                        -e K8S_KUBECONFIG_PATH=/tmp/kubeconfig \
+                        -e PROMETHEUS_URL=http://localhost:9090 \
+                        backend \
+                        sh -c "pip install pytest pytest-asyncio httpx aiosqlite --quiet && pytest tests/ -v --tb=short"
+                '''
+            }
+        }
+    }
+
+    post {
+        success { echo "Tests passed on branch ${env.BRANCH_NAME ?: 'master'} — safe to merge." }
+        failure { echo "Tests FAILED on branch ${env.BRANCH_NAME ?: 'master'} — do NOT merge." }
+    }
+}
