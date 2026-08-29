@@ -1,6 +1,6 @@
 # Pi-Cluster
 
-A self-hosted DevOps platform for a 4-node Raspberry Pi cluster. Provides a React dashboard for deploying, monitoring, and managing containerised workloads on Kubernetes, with a full CI/CD pipeline, GitOps delivery, Prometheus metrics, and audit logging — all running on the cluster itself.
+A self-hosted DevOps platform for a 4-node Raspberry Pi cluster. Provides a React dashboard for deploying, monitoring, and managing containerised workloads on Kubernetes, with a full CI/CD pipeline, GitOps delivery, Prometheus metrics, audit logging, SSH terminal, and live log streaming — all running on the cluster itself.
 
 ---
 
@@ -95,7 +95,7 @@ A self-hosted DevOps platform for a 4-node Raspberry Pi cluster. Provides a Reac
 | Metrics      | Prometheus + node-exporter        | Time-series metrics scraped from all nodes   |
 | Dashboards   | Grafana                           | Metric visualisation, 10 panels              |
 | Alerting     | Prometheus rules + AlertManager   | NodeDown/HighCPU/RAM/Disk/Temp rules         |
-| CI           | Jenkins                           | Build, migrate, deploy on every git push     |
+| CI           | Jenkins (2 pipelines)             | Pre-merge gate + post-merge deploy           |
 | Orchestration| K3s (Kubernetes)                  | Container scheduling across 4 nodes          |
 | GitOps       | ArgoCD                            | Declarative K8s manifest delivery            |
 | Ingress      | Traefik DaemonSet                 | HTTP/S routing + TLS for workloads           |
@@ -133,27 +133,33 @@ Business logic and database queries are never in API routes. K8s operations alwa
 
 ## CI/CD — Jenkins
 
-Jenkins is the **continuous delivery engine**. Every push to `master` is detected via SCM polling (every 2 minutes) and the pipeline runs automatically.
+Jenkins is the **continuous delivery engine**. Two pipelines are configured:
 
-### Pipeline stages
+### Jenkinsfile — post-merge deploy (master)
+
+Every push to `master` is detected via SCM polling (every 2 minutes) and runs the full pipeline:
 
 ```
-  ┌───────────┐   ┌──────────┐   ┌──────────┐   ┌─────────┐   ┌──────────────┐
-  │ Checkout  │──▶│   Sync   │──▶│  Deploy  │──▶│ Migrate │──▶│ Health Check │
-  └───────────┘   └──────────┘   └──────────┘   └─────────┘   └──────────────┘
-  Clone repo      rsync to        docker compose  alembic        curl /health
-  from GitHub     pi-node1        up --build      upgrade head
+  ┌───────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌─────────┐   ┌──────────────┐
+  │ Checkout  │──▶│   Sync   │──▶│  Build   │──▶│  Test    │──▶│ Deploy  │──▶│   Migrate    │──▶ Health Check
+  └───────────┘   └──────────┘   └──────────┘   └──────────┘   └─────────┘   └──────────────┘
+  Clone repo      rsync to        docker build    pytest          compose up    alembic           curl /health
+  from GitHub     pi-node1        backend image   (32 tests)      --build       upgrade head
 ```
 
 | Stage | What it does |
 |---|---|
 | **Checkout** | Clones `master` from GitHub into the Jenkins workspace |
 | **Sync** | `rsync` copies the workspace to `/opt/pi-cluster` on pi-node1 |
-| **Deploy** | `docker compose up -d --build backend frontend` — rebuilds and restarts containers |
+| **Build** | `docker compose build backend` — builds the backend image |
+| **Test** | `pytest` against all 32 tests using an in-process SQLite DB |
+| **Deploy** | `docker compose up -d --build backend frontend` — restarts containers |
 | **Migrate** | Waits 5 s, then runs `alembic upgrade head` inside the backend container |
 | **Health Check** | Waits 10 s, then `curl -sf http://10.100.102.10:8000/health` |
 
-Jenkins runs as a Docker service on pi-node1 (`:8080`) with direct LAN access to the cluster.
+### Jenkinsfile.test — pre-merge gate (all branches)
+
+Polls all branches every 3 minutes. Runs Checkout → Sync → Build → Test without deploying. Reports "safe to merge" or "do NOT merge" in the build result. Use this to catch failures before merging feature branches.
 
 ---
 
@@ -172,8 +178,20 @@ k8s/
 
 ### Reading the ArgoCD UI
 
-- **SYNC STATUS: Synced** → cluster matches what is in `k8s/apps/` at HEAD. This is the signal you want.
+- **SYNC STATUS: Synced** → cluster matches what is in `k8s/apps/` at HEAD.
 - **Last Sync commit** shows the last commit that changed a file inside `k8s/apps/`. If recent commits only changed `backend/` or `frontend/`, ArgoCD has nothing new to apply — "Synced to HEAD" is correct and expected.
+
+---
+
+## Node management
+
+Each node card on the dashboard exposes:
+
+- **SSH Terminal** — in-browser interactive shell into any cluster node via a WebSocket proxy (backend dials SSH with stored credentials, forwards I/O)
+- **Details** — live Prometheus time-series charts for CPU, RAM, disk, and temperature (1h / 6h / 24h range)
+- **Restart** / **Shutdown** — per-node reboot or poweroff via SSH
+
+The dashboard header provides **Restart All** / **Shutdown All** cluster-wide controls, each guarded by a confirmation dialog.
 
 ---
 
@@ -186,11 +204,17 @@ k8s/
      │                                                                                │
      ├──▶ Rolling restart (restartedAt annotation patch)                             │
      │                                                                                │
+     ├──▶ Rollback (K8s revision history)                                            │
+     │                                                                                │
+     ├──▶ Horizontal Pod Autoscaler (min/max replicas, CPU target)                   │
+     │                                                                                │
      ├──▶ Drain node (cordon + evict all pods)                                       │
      │                                                                                │
-     ├──▶ View pod list (phase, ready count, node, IP, age)                          │
+     ├──▶ View pods (phase, ready count, node, IP, age)                              │
      │                                                                                │
-     ├──▶ View pod logs (live, last N lines)                                         │
+     ├──▶ Live log streaming per pod (WebSocket, last N lines + follow)              │
+     │                                                                                │
+     ├──▶ Pod exec terminal (in-browser shell into running container)                │
      │                                                                                │
      └──▶ View K8s events (Warning/Normal, age-sorted)
 ```
@@ -201,7 +225,24 @@ Every operation:
 - Is audit-logged with actor, timestamp, result, and detail
 - Triggers a K8s rolling restart where applicable (image, env, resources, probes)
 
-The workloads table auto-refreshes every 15 seconds. Polling pauses while any modal is open.
+The workloads table auto-refreshes every 15 seconds. Polling pauses while any modal is open. Columns are sortable. Workloads can be filtered by status or searched by name.
+
+### Other K8s resources managed via the dashboard
+
+| Resource | Operations |
+|---|---|
+| StatefulSets / DaemonSets | List, scale, delete |
+| CronJobs | List, suspend/resume, trigger now |
+| Batch Jobs | List, delete |
+| ConfigMaps | List, create, edit (YAML), delete |
+| Secrets | List, create, delete (values masked) |
+| Services / Ingresses | List, delete |
+| PersistentVolumeClaims | List, create, delete |
+| HPA | List, create (CPU target), delete |
+| RBAC | Explorer: Roles, ClusterRoles, Bindings |
+| Namespaces | List, create, delete (protected namespaces blocked) |
+| Alert Rules | List current Prometheus rules |
+| Helm releases | List (via Helm API) |
 
 ### Ingress
 
@@ -261,20 +302,23 @@ A background poller (30s interval) syncs Prometheus firing alerts to the `alert_
   last_seen          target_node             detail
                      container_port          created_at
   users              ingress_host
-  ─────              env_vars (JSONB)        alert_history
+  ─────              env_vars (JSON)         alert_history
   id                 cpu_limit               ─────────────
   username           memory_limit            id
   hashed_password    liveness_path           alert_name
   role               readiness_path          severity
                      status                  node_name
-                     created_at              instance
-                                             summary
-                     * live from K8s,        labels (JSON)
-                       not stored            fired_at
-                                             resolved_at
+  notification_      created_at              instance
+  channels                                   summary
+  ────────────       * live from K8s,        labels (JSON)
+  id                   not stored            fired_at
+  name                                       resolved_at
+  type (slack/email)
+  config (JSON)
+  enabled
 ```
 
-Migrations: `alembic/versions/` — 0001 through 0009.
+Migrations: `alembic/versions/` — 0001 through 0010.
 
 ---
 
@@ -295,6 +339,7 @@ All routes are prefixed `/api/v1/`. Authentication is JWT Bearer token (`Authori
 | PATCH | `/workloads/{name}/resources` | admin | Set CPU/memory limits |
 | PATCH | `/workloads/{name}/probes` | admin | Set liveness/readiness HTTP probe paths |
 | POST | `/workloads/{name}/restart` | admin | Rolling restart (restartedAt annotation) |
+| POST | `/workloads/{name}/rollback` | admin | Roll back to previous K8s revision |
 | GET | `/workloads/{name}/pods` | user | List pods with phase, ready count, node, IP |
 | GET | `/workloads/{name}/metrics` | user | Live CPU/memory usage from Prometheus |
 | GET | `/workloads/{name}/logs` | user | Last N pod log lines |
@@ -304,23 +349,85 @@ All routes are prefixed `/api/v1/`. Authentication is JWT Bearer token (`Authori
 | DELETE | `/workloads/nodes/{name}/cordon` | admin | Mark node schedulable |
 | POST | `/workloads/nodes/{name}/drain` | admin | Cordon + evict all non-DaemonSet pods |
 
+### Nodes
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/nodes/` | user | Cluster node inventory |
+| GET | `/nodes/{id}` | user | Single node detail |
+| POST | `/nodes/` | admin | Register node |
+| POST | `/nodes/{id}/restart` | admin | SSH reboot of a node |
+| POST | `/nodes/{id}/shutdown` | admin | SSH shutdown of a node |
+| POST | `/nodes/all/restart` | admin | Reboot all nodes simultaneously |
+| POST | `/nodes/all/shutdown` | admin | Shutdown all nodes simultaneously |
+| GET | `/nodes/{id}/metrics/history` | user | Prometheus time-series: CPU/RAM/disk/temp (1h/6h/24h) |
+
+### WebSocket endpoints
+
+| Path | Description |
+|---|---|
+| `/ws/exec/{name}?namespace=&token=` | Interactive shell into first running pod of a workload |
+| `/ws/logs/{name}?namespace=&pod=&container=&tail=&token=` | Live log stream for a pod |
+| `/ws/ssh/{node_ip}?token=` | Interactive SSH session to a cluster node |
+
+### Kubernetes resources
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/cluster/capacity` | user | Cluster-wide CPU/memory: allocatable, requested, used |
+| GET | `/events/` | user | K8s events — params: `namespace`, `event_type`, `limit` |
+| GET | `/namespaces/` | user | List all K8s namespaces |
+| POST | `/namespaces/` | admin | Create namespace |
+| DELETE | `/namespaces/{name}` | admin | Delete namespace |
+| GET | `/pods/` | user | List pods across namespaces |
+| GET | `/configmaps/` | user | List ConfigMaps |
+| POST | `/configmaps/` | admin | Create ConfigMap |
+| PATCH | `/configmaps/{name}` | admin | Update ConfigMap data |
+| DELETE | `/configmaps/{name}` | admin | Delete ConfigMap |
+| GET | `/secrets/` | user | List Secrets (values masked) |
+| POST | `/secrets/` | admin | Create Secret |
+| DELETE | `/secrets/{name}` | admin | Delete Secret |
+| GET | `/services/` | user | List Services and Ingresses |
+| DELETE | `/services/{name}` | admin | Delete Service |
+| GET | `/storage/` | user | List PVCs |
+| POST | `/storage/` | admin | Create PVC |
+| DELETE | `/storage/{name}` | admin | Delete PVC |
+| GET | `/cronjobs/` | user | List CronJobs |
+| PATCH | `/cronjobs/{name}/suspend` | admin | Suspend/resume CronJob |
+| POST | `/cronjobs/{name}/trigger` | admin | Trigger CronJob now |
+| GET | `/jobs/` | user | List batch Jobs |
+| DELETE | `/jobs/{name}` | admin | Delete Job |
+| GET | `/quotas/` | user | List ResourceQuotas |
+| GET | `/helm/` | user | List Helm releases |
+| GET | `/rbac/` | user | List Roles, ClusterRoles, Bindings |
+| GET | `/objects/` | user | StatefulSets and DaemonSets |
+| GET | `/prom-rules/` | user | List current Prometheus rules |
+
+### HPA
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/workloads/{name}/hpa` | user | Get HPA for a workload |
+| POST | `/workloads/{name}/hpa` | admin | Create or update HPA |
+| DELETE | `/workloads/{name}/hpa` | admin | Delete HPA |
+
 ### Other
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | GET | `/health` | none | Liveness check |
-| GET | `/nodes/` | user | Cluster node inventory |
-| GET | `/nodes/{id}/health` | user | SSH-based health metrics (CPU, RAM, disk, temp) |
 | GET | `/alerts/` | user | Active Prometheus alerts (proxied) |
 | GET | `/alert-history/` | user | Persisted alert firings — params: `limit`, `offset`, `severity`, `state` |
 | GET | `/audit/` | user | Audit log — params: `limit`, `offset`, `status`, `resource_type` |
-| GET | `/cluster/capacity` | user | Cluster-wide CPU/memory: allocatable, requested, and actually used (Prometheus) |
-| GET | `/events/` | user | K8s events across all namespaces — params: `namespace`, `event_type`, `limit` |
-| GET | `/namespaces/` | user | List all K8s namespaces with status and labels |
-| POST | `/namespaces/` | admin | Create namespace (protected namespaces blocked) |
-| DELETE | `/namespaces/{name}` | admin | Delete namespace (protected namespaces blocked) |
 | POST | `/auth/login` | none | Exchange credentials for JWT |
 | POST | `/auth/refresh` | user | Refresh JWT token |
+| GET | `/users/` | admin | List users |
+| POST | `/users/` | admin | Create user |
+| DELETE | `/users/{id}` | admin | Delete user |
+| GET | `/notifications/` | admin | List notification channels |
+| POST | `/notifications/` | admin | Create notification channel |
+| DELETE | `/notifications/{id}` | admin | Delete notification channel |
+| POST | `/notifications/{id}/test` | admin | Send test notification |
 
 ---
 
@@ -340,6 +447,21 @@ All routes are prefixed `/api/v1/`. Authentication is JWT Bearer token (`Authori
 | node-exporter | 9100 | internal (K3s pod network) |
 | Traefik HTTP | 80 | K3s HostPort (all nodes) |
 | Traefik HTTPS | 443 | K3s HostPort (all nodes) |
+
+---
+
+## Test suite
+
+The backend has a pytest suite covering all major API surfaces. Tests run against an in-process SQLite database (no external dependencies) with mocked K8s and SSH services.
+
+```bash
+cd backend
+pytest --tb=long -x
+```
+
+Tests live in `backend/tests/` and cover: health, auth, nodes, workloads, namespaces, configmaps, storage, pods, jobs, quotas, audit, and WebSocket log routes (14 test files, 32+ tests). `asyncio_mode = auto` via `pytest-asyncio`.
+
+CI runs the test suite on every commit (both pipelines) and blocks deploy if any test fails.
 
 ---
 
@@ -371,6 +493,8 @@ REDIS_URL=redis://localhost:6379/0
 SECRET_KEY=your-secret-key
 K8S_KUBECONFIG_PATH=/path/to/kubeconfig
 K8S_API_HOST=10.100.102.10
+SSH_USERNAME=admin
+SSH_PASSWORD=your-node-password
 ```
 
 Start services:
@@ -390,6 +514,8 @@ API docs: `http://localhost:8000/docs`
 ## Deployment
 
 Code is deployed automatically by Jenkins on every push to `master`. Manual steps are only needed for first-time setup or emergency hotfixes.
+
+All Docker Compose services are configured with `restart: unless-stopped` — the platform stack starts automatically when the cluster is powered on.
 
 > **SSH key requirement:** All SSH-based operations to pi-node1 (manual deploys, SCP) require key-based authentication. Password auth is disabled. Your SSH key must be loaded in the shell (`ssh-add`) before running any `ssh` or `scp` commands to `alex@10.100.102.10`.
 
@@ -537,7 +663,8 @@ pi-cluster/
 │   │   ├── models/         ← ORM models
 │   │   ├── schemas/        ← Pydantic request/response types
 │   │   └── auth/           ← JWT, dependencies
-│   └── alembic/versions/   ← DB migrations (0001–0008)
+│   ├── alembic/versions/   ← DB migrations (0001–0010)
+│   └── tests/              ← pytest suite (14 files, 32+ tests)
 ├── frontend/
 │   └── src/
 │       ├── pages/          ← full-page views
@@ -560,5 +687,6 @@ pi-cluster/
 │   ├── roadmap.md
 │   └── decisions.md
 ├── docker-compose.yml
-└── Jenkinsfile
+├── Jenkinsfile              ← post-merge: build + test + deploy
+└── Jenkinsfile.test         ← pre-merge: build + test only
 ```
