@@ -5,11 +5,11 @@ import { useAuth } from "./context/AuthContext";
 import AlertHistoryPage from "./pages/AlertHistoryPage";
 import AuditPage from "./pages/AuditPage";
 import AlertsPanel from "./components/AlertsPanel";
-import NodesPage from "./pages/NodesPage";
+import { NodeDetailView } from "./pages/NodesPage";
 import WorkloadsPage from "./pages/WorkloadsPage";
 import type { NodeHealth } from "./types/node";
 
-type Page = "dashboard" | "nodes" | "workloads" | "audit" | "alert-history";
+type Page = "dashboard" | "workloads" | "audit" | "alert-history";
 
 const POLL_MS  = 30_000;
 const CTRL_IP  = "10.100.102.10";
@@ -109,7 +109,7 @@ function StatTile({ label, value, accent, bar: barPct }: {
 
 // ── Node card ─────────────────────────────────────────────────────────────────
 
-function NodeCard({ h }: { h: NodeHealth }) {
+function NodeCard({ h, onDetails }: { h: NodeHealth; onDetails: () => void }) {
   const m     = h.metrics;
   const ts    = new Date(h.checked_at).toLocaleTimeString();
   const isCtrl = h.ip_address === CTRL_IP;
@@ -164,7 +164,10 @@ function NodeCard({ h }: { h: NodeHealth }) {
         </div>
       )}
 
-      <div className="card-foot">checked {ts}</div>
+      <div className="card-foot">
+        <span>checked {ts}</span>
+        <button className="card-detail-btn" onClick={onDetails}>Details →</button>
+      </div>
     </div>
   );
 }
@@ -192,11 +195,12 @@ function avgTemp(nodes: NodeHealth[]): string {
 
 export default function App() {
   const { username, role, logout } = useAuth();
-  const [page,    setPage]    = useState<Page>("dashboard");
-  const [nodes,   setNodes]   = useState<NodeHealth[]>([]);
-  const [error,   setError]   = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [sbOpen,  setSbOpen]  = useState(true);
+  const [page,         setPage]         = useState<Page>("dashboard");
+  const [nodes,        setNodes]        = useState<NodeHealth[]>([]);
+  const [error,        setError]        = useState<string | null>(null);
+  const [loading,      setLoading]      = useState(true);
+  const [sbOpen,       setSbOpen]       = useState(true);
+  const [selectedNode, setSelectedNode] = useState<NodeHealth | null>(null);
 
   const refresh = () =>
     getAllHealth()
@@ -235,14 +239,6 @@ export default function App() {
           >
             <span className="sb-icon">⊞</span>
             Dashboard
-          </a>
-          <a
-            href="#"
-            className={`sb-link${page === "nodes" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("nodes"); }}
-          >
-            <span className="sb-icon">◉</span>
-            Nodes
           </a>
           <a
             href="#"
@@ -303,7 +299,7 @@ export default function App() {
               <span /><span /><span />
             </button>
             <h1 className="page-title">
-              {page === "workloads" ? "Workloads" : page === "audit" ? "Audit Log" : page === "nodes" ? "Nodes" : page === "alert-history" ? "Alert History" : "Dashboard"}
+              {page === "workloads" ? "Workloads" : page === "audit" ? "Audit Log" : page === "alert-history" ? "Alert History" : "Dashboard"}
             </h1>
           </div>
           <div className="tb-right">
@@ -322,10 +318,10 @@ export default function App() {
             <WorkloadsPage />
           ) : page === "audit" ? (
             <AuditPage />
-          ) : page === "nodes" ? (
-            <NodesPage />
           ) : page === "alert-history" ? (
             <AlertHistoryPage />
+          ) : selectedNode ? (
+            <NodeDetailView node={selectedNode} onBack={() => setSelectedNode(null)} />
           ) : (
             <>
               {error && <div className="err-banner">API error: {error}</div>}
@@ -371,7 +367,7 @@ export default function App() {
 
                   <div className="node-grid">
                     {sorted.map((n) => (
-                      <NodeCard key={n.node_id} h={n} />
+                      <NodeCard key={n.node_id} h={n} onDetails={() => setSelectedNode(n)} />
                     ))}
                   </div>
                 </>

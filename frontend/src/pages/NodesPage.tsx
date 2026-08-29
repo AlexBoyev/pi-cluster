@@ -175,7 +175,7 @@ function NodeListCard({ h, onSelect }: { h: NodeHealth; onSelect: () => void }) 
 
 // ── Detail view ───────────────────────────────────────────────────────────────
 
-function NodeDetailView({ node, onBack }: { node: NodeHealth; onBack: () => void }) {
+export function NodeDetailView({ node, onBack }: { node: NodeHealth; onBack: () => void }) {
   const [period, setPeriod] = useState<Period>("1h");
   const [history, setHistory] = useState<NodeMetricsHistory | null>(null);
   const [loading, setLoading] = useState(true);
@@ -200,7 +200,7 @@ function NodeDetailView({ node, onBack }: { node: NodeHealth; onBack: () => void
   return (
     <div className="nd-detail">
       <div className="nd-detail-top">
-        <button className="nd-back-btn" onClick={onBack}>← Back to nodes</button>
+        <button className="nd-back-btn" onClick={onBack}>← Back</button>
         <div className="nd-detail-header">
           <div className="nd-detail-title">
             <span className="nd-detail-name">{node.node_name}</span>
