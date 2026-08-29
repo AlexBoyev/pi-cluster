@@ -24,11 +24,13 @@ from app.repositories.user_repository import UserRepository
 
 TEST_DB_URL = "sqlite+aiosqlite:///./test_ci.db"
 
+
 @pytest.fixture(scope="session")
 def event_loop():
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
+
 
 @pytest_asyncio.fixture(scope="session")
 async def test_engine():
@@ -40,9 +42,11 @@ async def test_engine():
         await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
 
+
 @pytest_asyncio.fixture(scope="session")
 async def test_session_factory(test_engine):
     return async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+
 
 @pytest_asyncio.fixture(scope="session")
 async def admin_token(test_session_factory):
@@ -58,22 +62,50 @@ async def admin_token(test_session_factory):
     token = create_access_token("admin", "admin")
     return token
 
+
 @pytest_asyncio.fixture(scope="session")
-async def client(test_session_factory, admin_token):
+async def viewer_token(test_session_factory):
+    async with test_session_factory() as db:
+        repo = UserRepository(db)
+        existing = await repo.get_by_username("testviewer")
+        if existing is None:
+            await repo.create(
+                username="testviewer",
+                hashed_password=hash_password("Viewpass1!"),
+                role=UserRole.VIEWER,
+            )
+    token = create_access_token("testviewer", "viewer")
+    return token
+
+
+@pytest_asyncio.fixture(scope="session")
+async def client(test_session_factory, admin_token, viewer_token):
     async def override_get_db():
         async with test_session_factory() as session:
             yield session
 
     app.dependency_overrides[get_db] = override_get_db
 
-    # Mock background tasks in lifespan so they don't try to connect to real services
-    with patch("app.services.health_service.poll_health_forever", return_value=asyncio.sleep(9999)):
-        with patch("app.services.alert_history_service.poll_alert_history_forever", return_value=asyncio.sleep(9999)):
+    # Use AsyncMock so that the patched coroutines never actually run
+    with patch(
+        "app.services.health_service.poll_health_forever",
+        new_callable=AsyncMock,
+    ):
+        with patch(
+            "app.services.alert_history_service.poll_alert_history_forever",
+            new_callable=AsyncMock,
+        ):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
                 yield c
 
     app.dependency_overrides.clear()
 
+
 @pytest.fixture
 def auth_headers(admin_token):
     return {"Authorization": f"Bearer {admin_token}"}
+
+
+@pytest.fixture
+def viewer_headers(viewer_token):
+    return {"Authorization": f"Bearer {viewer_token}"}
