@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import "./App.css";
 import { getAllHealth } from "./api/health";
 import { useAuth } from "./context/AuthContext";
+import AlertHistoryPage from "./pages/AlertHistoryPage";
 import AuditPage from "./pages/AuditPage";
 import AlertsPanel from "./components/AlertsPanel";
 import NodesPage from "./pages/NodesPage";
 import WorkloadsPage from "./pages/WorkloadsPage";
 import type { NodeHealth } from "./types/node";
 
-type Page = "dashboard" | "nodes" | "workloads" | "audit";
+type Page = "dashboard" | "nodes" | "workloads" | "audit" | "alert-history";
 
 const POLL_MS  = 30_000;
 const CTRL_IP  = "10.100.102.10";
@@ -259,6 +260,14 @@ export default function App() {
             <span className="sb-icon">≔</span>
             Audit Log
           </a>
+          <a
+            href="#"
+            className={`sb-link${page === "alert-history" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); setPage("alert-history"); }}
+          >
+            <span className="sb-icon">⊛</span>
+            Alert History
+          </a>
 
           <div className="sb-section">Services</div>
           {NAV.map((l) => (
@@ -280,7 +289,7 @@ export default function App() {
           </div>
           <button className="sb-logout" onClick={logout}>Sign out</button>
           <div className="sb-foot-label" style={{ marginTop: "0.8rem" }}>Version</div>
-          <div className="sb-foot-val">v0.1.0 · Phase 29</div>
+          <div className="sb-foot-val">v0.1.0 · Phase 30</div>
           <div className="sb-foot-label" style={{ marginTop: "0.4rem" }}>Cluster</div>
           <div className="sb-foot-val">4 nodes · arm64 · 10.100.102.0/24</div>
         </div>
@@ -294,7 +303,7 @@ export default function App() {
               <span /><span /><span />
             </button>
             <h1 className="page-title">
-              {page === "workloads" ? "Workloads" : page === "audit" ? "Audit Log" : page === "nodes" ? "Nodes" : "Dashboard"}
+              {page === "workloads" ? "Workloads" : page === "audit" ? "Audit Log" : page === "nodes" ? "Nodes" : page === "alert-history" ? "Alert History" : "Dashboard"}
             </h1>
           </div>
           <div className="tb-right">
@@ -315,6 +324,8 @@ export default function App() {
             <AuditPage />
           ) : page === "nodes" ? (
             <NodesPage />
+          ) : page === "alert-history" ? (
+            <AlertHistoryPage />
           ) : (
             <>
               {error && <div className="err-banner">API error: {error}</div>}

@@ -216,3 +216,15 @@
 - [x] 6 SVG area sparkline charts in 2-column grid: CPU% (blue), Memory% (green), Disk% (amber), Temperature (red), Network Rx (purple), Network Tx (teal)
 - [x] Each chart: subtle grid lines at 25%/50%/75%, area fill, polyline, last-value dot, current/min/max labels; no chart library dependency
 - [x] Sidebar version string bumped to Phase 29
+
+## Phase 30 — Alert History ✓
+- [x] Migration 0009: `alert_history` table — alert_name, severity, node_name, instance, summary, labels (JSON text), fired_at, resolved_at (nullable)
+- [x] `AlertHistoryRepository`: `get_open()`, `create_firing()`, `resolve_firing()`, `get_recent()` with severity and state filters
+- [x] Background poller (`poll_alert_history_forever`, 30s interval) — fetches current firing alerts from Prometheus, inserts new episodes, stamps `resolved_at` on cleared alerts; runs alongside the health poller in lifespan
+- [x] `GET /api/v1/alert-history/` — paginated (limit/offset), filterable by `severity` and `state` (active/resolved)
+- [x] `AlertHistoryEntry` Pydantic schema with `from_attributes = True`
+- [x] Alert History page: summary cards (total shown / active / resolved / critical), severity pills (All / Critical / Warning / Info), state pills (All / Active / Resolved)
+- [x] Timeline table: Alert, Severity badge, Node, Summary, Fired (relative age), Duration, State badge
+- [x] Active rows highlighted in faint red; resolved rows show "Resolved" green badge; active rows show "Active" red badge
+- [x] "Alert History" sidebar link (⊛ icon) added between Audit Log and Services
+- [x] Sidebar version string bumped to Phase 30

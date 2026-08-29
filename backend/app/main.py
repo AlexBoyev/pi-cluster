@@ -33,15 +33,19 @@ async def _seed_admin() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.services.alert_history_service import poll_alert_history_forever
     from app.services.health_service import poll_health_forever
     await _seed_admin()
-    task = asyncio.create_task(poll_health_forever())
+    health_task = asyncio.create_task(poll_health_forever())
+    alert_task = asyncio.create_task(poll_alert_history_forever())
     yield
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
+    health_task.cancel()
+    alert_task.cancel()
+    for t in (health_task, alert_task):
+        try:
+            await t
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(title="Pi-Cluster API", version="0.1.0", lifespan=lifespan)

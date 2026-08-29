@@ -103,3 +103,11 @@ This is required because Jenkins, manual deploys, and SCP all use key-based auth
 Application code on pi-node1 lives at `/opt/pi-cluster`. Jenkins rsyncs to this path; Docker Compose is run from there.
 
 The initial deploy used `/home/admin/pi-cluster` but this was moved to `/opt` to follow Linux convention for optional application software and to separate platform code from user home directories. All scripts, documentation, and deployment instructions use `/opt/pi-cluster`.
+
+## Polling-based alert history, not AlertManager webhook receiver
+
+Alert history (Phase 30) is recorded by a background poller that queries Prometheus every 30 seconds, not by configuring AlertManager to POST to a receiver endpoint.
+
+The webhook approach would require exposing an unauthenticated HTTP endpoint that AlertManager can reach, adding receiver configuration to `alertmanager.yml`, and handling webhook delivery retries. The poller approach requires no changes to AlertManager, works with the existing Prometheus API the platform already queries, and is self-contained in the backend lifespan.
+
+The tradeoff is a ±30s recording lag for new firings and resolutions, which is acceptable for operational history. Sub-second precision is not needed for post-mortem analysis. If finer precision or push-based alerting to external systems is needed later, a webhook receiver can be added without replacing the poller.

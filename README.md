@@ -233,6 +233,8 @@ When a workload is deployed with a `container_port`, the backend creates a K8s S
 
 SSH-based metric collection is retained for node health card status (ONLINE/OFFLINE/DEGRADED/UNKNOWN). Grafana and Prometheus use native node-exporter data.
 
+A background poller (30s interval) syncs Prometheus firing alerts to the `alert_history` table — recording each firing episode and stamping `resolved_at` when the alert clears. The **Alert History** page provides a searchable, filterable timeline of all past alert firings with duration and resolution status.
+
 **Alerting rules** (`prometheus/alerts.yml`):
 
 | Rule | Severity | Threshold |
@@ -259,18 +261,20 @@ SSH-based metric collection is retained for node health card status (ONLINE/OFFL
   last_seen          target_node             detail
                      container_port          created_at
   users              ingress_host
-  ─────              env_vars (JSONB)
-  id                 cpu_limit
-  username           memory_limit
-  hashed_password    liveness_path
-  role               readiness_path
-                     status
-                     created_at
-
-                     * live from K8s, not stored
+  ─────              env_vars (JSONB)        alert_history
+  id                 cpu_limit               ─────────────
+  username           memory_limit            id
+  hashed_password    liveness_path           alert_name
+  role               readiness_path          severity
+                     status                  node_name
+                     created_at              instance
+                                             summary
+                     * live from K8s,        labels (JSON)
+                       not stored            fired_at
+                                             resolved_at
 ```
 
-Migrations: `alembic/versions/` — 0001 through 0008.
+Migrations: `alembic/versions/` — 0001 through 0009.
 
 ---
 
@@ -308,6 +312,7 @@ All routes are prefixed `/api/v1/`. Authentication is JWT Bearer token (`Authori
 | GET | `/nodes/` | user | Cluster node inventory |
 | GET | `/nodes/{id}/health` | user | SSH-based health metrics (CPU, RAM, disk, temp) |
 | GET | `/alerts/` | user | Active Prometheus alerts (proxied) |
+| GET | `/alert-history/` | user | Persisted alert firings — params: `limit`, `offset`, `severity`, `state` |
 | GET | `/audit/` | user | Audit log — params: `limit`, `offset`, `status`, `resource_type` |
 | POST | `/auth/login` | none | Exchange credentials for JWT |
 | POST | `/auth/refresh` | user | Refresh JWT token |
