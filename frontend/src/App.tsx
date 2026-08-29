@@ -154,14 +154,12 @@ function NodeCard({ h, onDetails }: { h: NodeHealth; onDetails: () => void }) {
             </span>
             <button
               className="card-node-btn card-node-restart"
-              title="Restart node"
               onClick={() => setNodeAction("restart")}
-            >↺</button>
+            >Restart</button>
             <button
               className="card-node-btn card-node-shutdown"
-              title="Shutdown node"
               onClick={() => setNodeAction("shutdown")}
-            >⏻</button>
+            >Shutdown</button>
           </div>
         </div>
 
