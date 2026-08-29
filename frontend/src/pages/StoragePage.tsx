@@ -38,16 +38,15 @@ export default function StoragePage() {
   async function refresh() {
     setLoading(true);
     setError(null);
-    try {
-      const [p, v, c] = await Promise.all([listPVCs(), listPVs(), listStorageClasses()]);
-      setPvcs(p);
-      setPvs(v);
-      setClasses(c);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load storage");
-    } finally {
-      setLoading(false);
-    }
+    const [pvcRes, pvRes, classRes] = await Promise.allSettled([listPVCs(), listPVs(), listStorageClasses()]);
+    if (pvcRes.status === "fulfilled") setPvcs(pvcRes.value);
+    if (pvRes.status === "fulfilled") setPvs(pvRes.value);
+    if (classRes.status === "fulfilled") setClasses(classRes.value);
+    const errs = [pvcRes, pvRes, classRes]
+      .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+      .map((r) => (r.reason instanceof Error ? r.reason.message : "Request failed"));
+    if (errs.length) setError(errs[0]);
+    setLoading(false);
   }
 
   useEffect(() => { refresh(); }, []);

@@ -57,6 +57,9 @@ class K8sService:
     def _core(self) -> client.CoreV1Api:
         return client.CoreV1Api(_load_api())
 
+    def _storage(self) -> client.StorageV1Api:
+        return client.StorageV1Api(_load_api())
+
     def _networking(self) -> client.NetworkingV1Api:
         return client.NetworkingV1Api(_load_api())
 
@@ -250,6 +253,60 @@ class K8sService:
         pod_name = pod.metadata.name
         logs = core.read_namespaced_pod_log(name=pod_name, namespace=namespace, tail_lines=tail_lines)
         return pod_name, logs or ""
+
+    def get_pod_detail(self, pod_name: str, namespace: str) -> dict:
+        from datetime import datetime, timezone
+        core = self._core()
+        pod = core.read_namespaced_pod(pod_name, namespace)
+        statuses = {cs.name: cs for cs in (pod.status.container_statuses or [])}
+        containers = []
+        for c in pod.spec.containers or []:
+            cs = statuses.get(c.name)
+            res = c.resources
+            req = (res.requests or {}) if res else {}
+            lim = (res.limits or {}) if res else {}
+            containers.append({
+                "name": c.name,
+                "image": c.image or "",
+                "ready": cs.ready if cs else False,
+                "restart_count": cs.restart_count if cs else 0,
+                "cpu_request": str(req["cpu"]) if "cpu" in req else None,
+                "memory_request": str(req["memory"]) if "memory" in req else None,
+                "cpu_limit": str(lim["cpu"]) if "cpu" in lim else None,
+                "memory_limit": str(lim["memory"]) if "memory" in lim else None,
+            })
+        conditions = [
+            {"type": c.type, "status": c.status, "reason": c.reason, "last_transition": c.last_transition_time}
+            for c in (pod.status.conditions or [])
+        ]
+        evts = core.list_namespaced_event(
+            namespace=namespace, field_selector=f"involvedObject.name={pod_name}"
+        )
+        events = []
+        for e in evts.items:
+            events.append({
+                "reason": e.reason or "",
+                "message": e.message or "",
+                "type": e.type or "Normal",
+                "count": e.count or 1,
+                "last_time": e.last_timestamp or e.event_time,
+            })
+        events.sort(
+            key=lambda x: x["last_time"] or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
+        return {
+            "name": pod.metadata.name,
+            "namespace": pod.metadata.namespace,
+            "phase": pod.status.phase or "Unknown",
+            "node": pod.spec.node_name,
+            "pod_ip": pod.status.pod_ip,
+            "qos_class": pod.status.qos_class,
+            "start_time": pod.status.start_time,
+            "containers": containers,
+            "conditions": conditions,
+            "events": events[:20],
+        }
 
     def restart_deployment(self, name: str, namespace: str) -> None:
         from datetime import datetime, timezone
@@ -866,7 +923,7 @@ class K8sService:
 
     def list_storage_classes(self) -> list[dict]:
         result = []
-        for sc in self._core().list_storage_class().items:
+        for sc in self._storage().list_storage_class().items:
             annotations = sc.metadata.annotations or {}
             is_default = annotations.get(
                 "storageclass.kubernetes.io/is-default-class", ""

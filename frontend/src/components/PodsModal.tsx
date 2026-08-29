@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { getWorkloadPods } from "../api/workloads";
+import PodDetailModal from "./PodDetailModal";
 import type { PodInfo } from "../types/workload";
 import "./PodsModal.css";
 
 interface Props {
   workloadName: string;
+  namespace: string;
   onClose: () => void;
 }
 
@@ -25,10 +27,11 @@ function phaseCls(phase: string): string {
   return "pod-phase-unknown";
 }
 
-export default function PodsModal({ workloadName, onClose }: Props) {
-  const [pods, setPods] = useState<PodInfo[]>([]);
+export default function PodsModal({ workloadName, namespace, onClose }: Props) {
+  const [pods, setPods]     = useState<PodInfo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]   = useState<string | null>(null);
+  const [detailPod, setDetailPod] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,61 +48,82 @@ export default function PodsModal({ workloadName, onClose }: Props) {
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (detailPod) setDetailPod(null);
+        else onClose();
+      }
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, detailPod]);
 
   return (
-    <div className="pods-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="pods-modal">
-        <div className="pods-header">
-          <div className="pods-title">
-            <span className="pods-name">{workloadName}</span>
-            <span className="pods-sub">pods</span>
+    <>
+      <div className="pods-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="pods-modal">
+          <div className="pods-header">
+            <div className="pods-title">
+              <span className="pods-name">{workloadName}</span>
+              <span className="pods-sub">pods</span>
+            </div>
+            <div className="pods-header-actions">
+              <button className="pods-btn-refresh" onClick={load} disabled={loading}>
+                {loading ? "…" : "Refresh"}
+              </button>
+              <button className="pods-btn-close" onClick={onClose}>✕</button>
+            </div>
           </div>
-          <div className="pods-header-actions">
-            <button className="pods-btn-refresh" onClick={load} disabled={loading}>
-              {loading ? "…" : "Refresh"}
-            </button>
-            <button className="pods-btn-close" onClick={onClose}>✕</button>
-          </div>
-        </div>
 
-        <div className="pods-body">
-          {error && <div className="pods-error">{error}</div>}
-          {loading && !pods.length ? (
-            <div className="pods-loading"><div className="spinner" /><span>Loading pods…</span></div>
-          ) : pods.length === 0 ? (
-            <div className="pods-empty">No pods found for this workload.</div>
-          ) : (
-            <table className="pods-table">
-              <thead>
-                <tr>
-                  <th>Pod name</th>
-                  <th>Phase</th>
-                  <th>Ready</th>
-                  <th>Node</th>
-                  <th>IP</th>
-                  <th>Age</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pods.map((p) => (
-                  <tr key={p.name}>
-                    <td className="pods-pod-name">{p.name}</td>
-                    <td><span className={`pods-phase ${phaseCls(p.phase)}`}>{p.phase}</span></td>
-                    <td className="pods-mono">{p.ready}/{p.total}</td>
-                    <td className="pods-mono">{p.node ?? "—"}</td>
-                    <td className="pods-mono">{p.pod_ip ?? "—"}</td>
-                    <td className="pods-mono">{age(p.started_at)}</td>
+          <div className="pods-body">
+            {error && <div className="pods-error">{error}</div>}
+            {loading && !pods.length ? (
+              <div className="pods-loading"><div className="spinner" /><span>Loading pods…</span></div>
+            ) : pods.length === 0 ? (
+              <div className="pods-empty">No pods found for this workload.</div>
+            ) : (
+              <table className="pods-table">
+                <thead>
+                  <tr>
+                    <th>Pod name</th>
+                    <th>Phase</th>
+                    <th>Ready</th>
+                    <th>Node</th>
+                    <th>IP</th>
+                    <th>Age</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {pods.map((p) => (
+                    <tr key={p.name}>
+                      <td className="pods-pod-name">{p.name}</td>
+                      <td><span className={`pods-phase ${phaseCls(p.phase)}`}>{p.phase}</span></td>
+                      <td className="pods-mono">{p.ready}/{p.total}</td>
+                      <td className="pods-mono">{p.node ?? "—"}</td>
+                      <td className="pods-mono">{p.pod_ip ?? "—"}</td>
+                      <td className="pods-mono">{age(p.started_at)}</td>
+                      <td>
+                        <button className="pods-btn-detail" onClick={() => setDetailPod(p.name)}>
+                          Detail
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {detailPod && (
+        <PodDetailModal
+          podName={detailPod}
+          namespace={namespace}
+          onClose={() => setDetailPod(null)}
+        />
+      )}
+    </>
   );
 }

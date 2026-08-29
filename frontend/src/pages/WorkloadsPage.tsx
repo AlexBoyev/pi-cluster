@@ -123,9 +123,9 @@ export default function WorkloadsPage() {
   const [cordoning, setCordoning] = useState<string | null>(null);
   const [draining, setDraining] = useState<string | null>(null);
   const [updatingImage, setUpdatingImage] = useState<string | null>(null);
-  const [logsTarget, setLogsTarget] = useState<string | null>(null);
+  const [logsTarget, setLogsTarget] = useState<Workload | null>(null);
   const [eventsTarget, setEventsTarget] = useState<string | null>(null);
-  const [podsTarget, setPodsTarget] = useState<string | null>(null);
+  const [podsTarget, setPodsTarget] = useState<Workload | null>(null);
   const [envTarget, setEnvTarget] = useState<Workload | null>(null);
   const [resourcesTarget, setResourcesTarget] = useState<Workload | null>(null);
   const [probesTarget, setProbesTarget] = useState<Workload | null>(null);
@@ -594,7 +594,7 @@ export default function WorkloadsPage() {
                     <div className="wl-row-actions">
                       <button
                         className="wl-btn-pods"
-                        onClick={() => setPodsTarget(w.name)}
+                        onClick={() => setPodsTarget(w)}
                       >
                         Pods
                       </button>
@@ -630,7 +630,7 @@ export default function WorkloadsPage() {
                       </button>
                       <button
                         className="wl-btn-logs"
-                        onClick={() => setLogsTarget(w.name)}
+                        onClick={() => setLogsTarget(w)}
                       >
                         Logs
                       </button>
@@ -757,7 +757,7 @@ export default function WorkloadsPage() {
         />
       )}
       {podsTarget && (
-        <PodsModal workloadName={podsTarget} onClose={() => setPodsTarget(null)} />
+        <PodsModal workloadName={podsTarget.name} namespace={podsTarget.namespace} onClose={() => setPodsTarget(null)} />
       )}
       {metricsTarget && (
         <MetricsModal name={metricsTarget} onClose={() => setMetricsTarget(null)} />
@@ -766,7 +766,7 @@ export default function WorkloadsPage() {
         <EventsModal workloadName={eventsTarget} onClose={() => setEventsTarget(null)} />
       )}
       {logsTarget && (
-        <LogsModal workloadName={logsTarget} onClose={() => setLogsTarget(null)} />
+        <LogsModal workloadName={logsTarget.name} namespace={logsTarget.namespace} onClose={() => setLogsTarget(null)} />
       )}
       {rollbackTarget && (
         <RollbackModal

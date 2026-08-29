@@ -12,66 +12,78 @@
   border-radius: var(--r);
   box-shadow: 0 20px 60px rgba(0,0,0,0.3);
   display: flex; flex-direction: column;
-  width: min(900px, 100%);
-  max-height: 80vh;
+  width: min(1000px, 100%);
+  max-height: 85vh;
   overflow: hidden;
 }
 
 .lm-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0.9rem 1.25rem;
+  padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border);
-  gap: 1rem;
-  flex-shrink: 0;
+  flex-shrink: 0; gap: 0.75rem; flex-wrap: wrap;
 }
 
-.lm-title { display: flex; align-items: baseline; gap: 0.75rem; }
-.lm-name { font-size: 0.95rem; font-weight: 800; color: var(--t1); }
-.lm-pod  { font-size: 0.72rem; font-family: var(--mono); color: var(--t3); }
+.lm-title { display: flex; align-items: center; gap: 0.6rem; }
+.lm-name  { font-size: 0.92rem; font-weight: 800; color: var(--t1); }
 
-.lm-actions { display: flex; align-items: center; gap: 0.5rem; }
-
-.lm-btn-refresh {
-  padding: 0.3rem 0.8rem;
-  border: 1px solid var(--border);
-  border-radius: var(--rs);
-  background: transparent;
-  font-size: 0.75rem; font-weight: 600;
-  color: var(--t2); cursor: pointer;
-  transition: background 0.1s, color 0.1s;
+.lm-live-badge {
+  font-size: 0.65rem; font-weight: 700; padding: 0.15rem 0.5rem;
+  border-radius: 99px; letter-spacing: 0.04em;
 }
-.lm-btn-refresh:hover:not(:disabled) { background: rgba(29,78,216,0.08); color: var(--blue); border-color: var(--blue-ring); }
-.lm-btn-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+.lm-live { background: rgba(22,163,74,0.12); color: var(--green); }
+.lm-off  { background: var(--bg); color: var(--t3); border: 1px solid var(--border); }
+
+.lm-controls { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+
+.lm-filter {
+  padding: 0.25rem 0.55rem; border: 1px solid var(--border); border-radius: var(--rs);
+  background: var(--bg); color: var(--t1); font-size: 0.78rem; outline: none; width: 130px;
+}
+.lm-filter:focus { border-color: var(--blue); }
+
+.lm-tail-sel {
+  padding: 0.25rem 0.45rem; border: 1px solid var(--border); border-radius: var(--rs);
+  background: var(--bg); color: var(--t2); font-size: 0.75rem; cursor: pointer;
+}
+
+.lm-btn-sm {
+  padding: 0.25rem 0.65rem; border: 1px solid var(--border); border-radius: var(--rs);
+  background: transparent; font-size: 0.75rem; font-weight: 600; color: var(--t2); cursor: pointer;
+}
+.lm-btn-sm:hover { background: var(--bg); }
+
+.lm-scroll-toggle {
+  display: flex; align-items: center; gap: 0.3rem;
+  font-size: 0.72rem; color: var(--t2); cursor: pointer; white-space: nowrap;
+}
 
 .lm-btn-close {
-  width: 28px; height: 28px;
-  display: flex; align-items: center; justify-content: center;
-  border: 1px solid var(--border);
-  border-radius: var(--rs);
-  background: transparent;
-  font-size: 0.8rem; color: var(--t3); cursor: pointer;
-  transition: background 0.1s, color 0.1s;
+  width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: var(--rs);
+  background: transparent; font-size: 0.78rem; color: var(--t3); cursor: pointer;
 }
 .lm-btn-close:hover { background: var(--red-bg); color: var(--red); border-color: var(--red-bd); }
 
 .lm-body {
   flex: 1; overflow: hidden;
-  background: #0f172a;
+  background: #0d1117;
 }
 
 .lm-pre {
-  margin: 0; padding: 1rem 1.25rem;
-  font-family: var(--mono); font-size: 0.76rem; line-height: 1.6;
-  color: #e2e8f0;
+  margin: 0; padding: 0.85rem 1rem;
+  font-family: var(--mono); font-size: 0.74rem; line-height: 1.55;
+  color: #cdd9e5;
   white-space: pre-wrap; word-break: break-all;
   height: 100%; overflow-y: auto;
   box-sizing: border-box;
 }
 
-.lm-loading, .lm-error {
-  padding: 2rem 1.25rem;
-  font-size: 0.84rem;
-  text-align: center;
+.lm-error {
+  padding: 2rem 1.25rem; font-size: 0.84rem; text-align: center; color: var(--red);
 }
-.lm-loading { color: #94a3b8; }
-.lm-error   { color: var(--red); }
+
+.lm-footer {
+  padding: 0.35rem 1rem; border-top: 1px solid var(--border);
+  font-size: 0.68rem; color: var(--t3); flex-shrink: 0;
+}

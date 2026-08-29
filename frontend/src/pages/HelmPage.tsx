@@ -77,7 +77,10 @@ export default function HelmPage() {
       {loading ? (
         <div className="loading"><div className="spinner" /><span>Loading Helm releases…</span></div>
       ) : filtered.length === 0 ? (
-        <div className="helm-empty">No Helm releases found.</div>
+        <div className="helm-empty">
+          No Helm releases found. Releases appear here after running <code>helm install</code>.<br />
+          Applications deployed via ArgoCD or <code>kubectl apply</code> do not create Helm releases.
+        </div>
       ) : (
         <div className="helm-table-wrap">
           <table className="helm-table">
