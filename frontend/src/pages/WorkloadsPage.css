@@ -20,6 +20,38 @@
 .wl-live-label.wl-live-paused { color: var(--t3); }
 .wl-live-age { font-size: 0.72rem; color: var(--t3); }
 
+/* ── Filter bar ─────────────────────────────────────────────────────────── */
+
+.wl-filter-bar {
+  display: flex; align-items: center; gap: 0.75rem;
+  margin-bottom: 0.75rem; flex-wrap: wrap;
+}
+
+.wl-filter-input {
+  padding: 0.42rem 0.7rem;
+  border: 1.5px solid var(--border); border-radius: var(--rs);
+  background: #fff; color: var(--t1);
+  font-size: 0.84rem; font-family: inherit;
+  outline: none; transition: border-color 0.12s;
+  width: 220px;
+}
+.wl-filter-input:focus { border-color: var(--blue); }
+
+.wl-filter-pills { display: flex; gap: 0.35rem; }
+
+.wl-pill {
+  padding: 0.28rem 0.75rem;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: transparent; font-size: 0.75rem; font-weight: 600;
+  color: var(--t3); cursor: pointer; transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.wl-pill:hover { background: var(--bg); color: var(--t2); }
+
+.wl-pill-active { background: var(--bg); color: var(--t1); border-color: var(--t2); }
+.wl-pill-running.wl-pill-active { background: var(--green-bg); color: var(--green); border-color: var(--green-bd); }
+.wl-pill-pending.wl-pill-active { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-bd); }
+.wl-pill-failed.wl-pill-active  { background: var(--red-bg);   color: var(--red);   border-color: var(--red-bd); }
+
 /* ── Form ───────────────────────────────────────────────────────────────── */
 
 .wl-form-card {

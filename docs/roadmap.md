@@ -154,3 +154,7 @@
 - [x] `PodInfo` schema: name, phase, node, pod_ip, ready, total, started_at
 - [x] `PodsModal`: table with Phase badge (Running/Pending/Failed/Succeeded/Unknown), Ready ratio, Node, IP, Age; Refresh button; Esc/overlay to close
 - [x] "Pods" button per workload row (indigo hover); pauses auto-refresh while open
+
+## Phase 22 — Workload Search & Filter ✓
+- [x] Name search input (case-insensitive substring match) above the workloads table
+- [x] Status filter pills: All / Running / Pending / Failed — active pill adopts the status colour; section header shows "X of Y" when a filter is active

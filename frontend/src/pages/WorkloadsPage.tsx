@@ -124,6 +124,8 @@ export default function WorkloadsPage() {
   const [resourcesTarget, setResourcesTarget] = useState<Workload | null>(null);
   const [probesTarget, setProbesTarget] = useState<Workload | null>(null);
   const [restarting, setRestarting] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "running" | "pending" | "failed">("all");
   const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
   const [refreshAge, setRefreshAge] = useState<number>(0);
 
@@ -270,6 +272,13 @@ export default function WorkloadsPage() {
   const running = workloads.filter((w) => w.status === "running").length;
   const failed = workloads.filter((w) => w.status === "failed").length;
   const nodeNames = capacity.map((c) => c.node_name);
+
+  const filtered = workloads.filter((w) => {
+    const matchName = w.name.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === "all" || w.status === statusFilter;
+    return matchName && matchStatus;
+  });
+  const isFiltered = search !== "" || statusFilter !== "all";
 
   return (
     <div className="wl-page">
@@ -434,7 +443,29 @@ export default function WorkloadsPage() {
           <span className={`wl-live-label${modalOpen ? " wl-live-paused" : ""}`}>
             {modalOpen ? "Paused" : "Live"}
           </span>
-          <span className="wl-live-age">· {fmtAge(refreshAge)}</span>
+          <span className="wl-live-age">
+            · {isFiltered ? `${filtered.length} of ${workloads.length}` : `${workloads.length} total`} · {fmtAge(refreshAge)}
+          </span>
+        </div>
+      </div>
+
+      <div className="wl-filter-bar">
+        <input
+          className="wl-filter-input"
+          placeholder="Search by name…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <div className="wl-filter-pills">
+          {(["all", "running", "pending", "failed"] as const).map((s) => (
+            <button
+              key={s}
+              className={`wl-pill${statusFilter === s ? " wl-pill-active wl-pill-" + s : ""}`}
+              onClick={() => setStatusFilter(s)}
+            >
+              {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -442,6 +473,8 @@ export default function WorkloadsPage() {
         <div className="loading"><div className="spinner" /><span>Loading workloads…</span></div>
       ) : workloads.length === 0 ? (
         <div className="wl-empty">No workloads deployed yet.</div>
+      ) : filtered.length === 0 ? (
+        <div className="wl-empty">No workloads match your filter.</div>
       ) : (
         <div className="wl-table-wrap">
           <table className="wl-table">
@@ -459,7 +492,7 @@ export default function WorkloadsPage() {
               </tr>
             </thead>
             <tbody>
-              {workloads.map((w) => (
+              {filtered.map((w) => (
                 <tr key={w.id} className={updatingImage === w.name ? "wl-row-updating" : ""}>
                   <td className="wl-name">{w.name}</td>
                   <td>
