@@ -4,12 +4,14 @@ from unittest.mock import patch
 MOCK_JOB = {
     "name": "batch-import",
     "namespace": "pi-apps",
+    "state": "Complete",
+    "active": 0,
     "succeeded": 1,
     "failed": 0,
-    "active": 0,
+    "cron_job": None,
     "start_time": "2026-01-01T00:00:00Z",
     "completion_time": "2026-01-01T00:05:00Z",
-    "conditions": [],
+    "created_at": "2026-01-01T00:00:00Z",
 }
 
 K8S_PATCH = "app.api.v1.jobs.K8sService"
