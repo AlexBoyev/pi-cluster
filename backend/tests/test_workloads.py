@@ -31,6 +31,6 @@ async def test_create_workload_requires_auth(client):
 @pytest.mark.asyncio
 async def test_get_capacity(client, auth_headers):
     with patch("app.api.v1.workloads.K8sService") as MockK8s:
-        MockK8s.return_value.get_cluster_capacity.return_value = []
+        MockK8s.return_value.get_node_capacities.return_value = []
         r = await client.get("/api/v1/workloads/capacity", headers=auth_headers)
         assert r.status_code == 200

@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch
 
-NS_MOCK = [{"name": "pi-apps", "status": "Active", "age": "30d", "labels": {}}]
+NS_MOCK = [{"name": "pi-apps", "status": "Active", "created_at": None, "labels": {}}]
 
 
 @pytest.mark.asyncio
