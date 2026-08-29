@@ -126,3 +126,9 @@
 - [x] `ResourcesModal`: shows static requests (fixed at deploy), editable CPU/memory limit inputs, OOM vs throttling hint
 - [x] "Resources" button per workload row (purple hover)
 - [x] Deploy form includes optional CPU limit and memory limit fields
+
+## Phase 18 — Workload Restart ✓
+- [x] `POST /workloads/{name}/restart` — patches `kubectl.kubernetes.io/restartedAt` annotation to trigger rolling restart (identical to `kubectl rollout restart`)
+- [x] Admin-only; audited with actor
+- [x] No DB schema change — restart is a live K8s operation only
+- [x] "Restart" button per workload row (orange hover); shows spinner while in-flight

@@ -31,6 +31,8 @@ export const getWorkloadEvents = (name: string) =>
   apiFetch<WorkloadEvent[]>(`/workloads/${name}/events`);
 export const getWorkloadLogs = (name: string, tail = 100) =>
   apiFetch<WorkloadLogs>(`/workloads/${name}/logs?tail=${tail}`);
+export const restartWorkload = (name: string) =>
+  apiFetch<{ restarted: string }>(`/workloads/${name}/restart`, { method: "POST" });
 export const cordonNode = (name: string) =>
   apiFetch<{ cordoned: string }>(`/workloads/nodes/${name}/cordon`, { method: "POST" });
 export const uncordonNode = (name: string) =>

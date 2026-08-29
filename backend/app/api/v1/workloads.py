@@ -100,6 +100,16 @@ async def scale_workload(
     return await service.scale_workload(name, data.replicas, actor=admin.username)
 
 
+@router.post("/{name}/restart", response_model=dict)
+async def restart_workload(
+    name: str,
+    service: WorkloadService = Depends(get_service),
+    admin: User = Depends(require_admin),
+) -> dict:
+    await service.restart_workload(name, actor=admin.username)
+    return {"restarted": name}
+
+
 @router.delete("/{name}", response_model=dict)
 async def delete_workload(
     name: str,

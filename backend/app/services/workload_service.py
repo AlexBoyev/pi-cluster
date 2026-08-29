@@ -257,6 +257,20 @@ class WorkloadService:
             created_at=workload.created_at,
         )
 
+    async def restart_workload(self, name: str, actor: str = "system") -> None:
+        workload = await self._repo.get_by_name(name)
+        if workload is None or workload.status == WorkloadStatus.DELETED:
+            await self._audit.log("workload.restart", "workload", name, actor, "failure", "Workload not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workload not found")
+
+        try:
+            await run_in_threadpool(self._k8s.restart_deployment, name, workload.namespace)
+        except ApiException as e:
+            await self._audit.log("workload.restart", "workload", name, actor, "failure", e.reason)
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
+
+        await self._audit.log("workload.restart", "workload", name, actor, "success")
+
     async def get_workload_events(self, name: str) -> list[WorkloadEvent]:
         workload = await self._repo.get_by_name(name)
         if workload is None or workload.status == WorkloadStatus.DELETED:

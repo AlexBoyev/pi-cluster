@@ -210,6 +210,16 @@ class K8sService:
         logs = core.read_namespaced_pod_log(name=pod_name, namespace=namespace, tail_lines=tail_lines)
         return pod_name, logs or ""
 
+    def restart_deployment(self, name: str, namespace: str) -> None:
+        from datetime import datetime, timezone
+        self._apps().patch_namespaced_deployment(
+            name=name,
+            namespace=namespace,
+            body={"spec": {"template": {"metadata": {"annotations": {
+                "kubectl.kubernetes.io/restartedAt": datetime.now(timezone.utc).isoformat()
+            }}}}},
+        )
+
     def cordon_node(self, node_name: str) -> None:
         self._core().patch_node(node_name, {"spec": {"unschedulable": True}})
 

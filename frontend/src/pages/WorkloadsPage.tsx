@@ -5,6 +5,7 @@ import {
   deleteWorkload,
   getCapacity,
   listWorkloads,
+  restartWorkload,
   scaleWorkload,
   uncordonNode,
   updateWorkloadImage,
@@ -111,6 +112,7 @@ export default function WorkloadsPage() {
   const [eventsTarget, setEventsTarget] = useState<string | null>(null);
   const [envTarget, setEnvTarget] = useState<Workload | null>(null);
   const [resourcesTarget, setResourcesTarget] = useState<Workload | null>(null);
+  const [restarting, setRestarting] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -199,6 +201,18 @@ export default function WorkloadsPage() {
       setError(e instanceof Error ? e.message : "Failed to update image");
     } finally {
       setUpdatingImage(null);
+    }
+  }
+
+  async function handleRestart(name: string) {
+    setRestarting(name);
+    try {
+      await restartWorkload(name);
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to restart workload");
+    } finally {
+      setRestarting(null);
     }
   }
 
@@ -443,6 +457,13 @@ export default function WorkloadsPage() {
                         onClick={() => setLogsTarget(w.name)}
                       >
                         Logs
+                      </button>
+                      <button
+                        className="wl-btn-restart"
+                        onClick={() => handleRestart(w.name)}
+                        disabled={restarting === w.name}
+                      >
+                        {restarting === w.name ? "…" : "Restart"}
                       </button>
                       <button
                         className="wl-btn-del"
