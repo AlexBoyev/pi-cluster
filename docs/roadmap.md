@@ -204,3 +204,15 @@
 - [x] `RollbackModal`: revision list (number, image, age); current revision marked and non-selectable; confirm button disabled until a non-current revision is selected; auto-refresh of workloads table after success
 - [x] "History" button per workload row (indigo hover); pauses auto-refresh while modal open
 - [x] Audit log: `workload.rollback` action with `revision=N image=…` detail; indigo badge on Audit page
+
+## Phase 29 — Node Detail Page ✓
+- [x] `GET /nodes/{node_id}/metrics/history?period=1h|6h|24h` — queries Prometheus range API for 6 metrics per node: CPU%, memory%, disk%, temperature, network Rx/Tx; step auto-selected per period (60s/300s/900s)
+- [x] `NodeMetricsService.get_metrics_history()` — sequential async httpx requests per metric, graceful degradation per query (empty list on failure); node_name resolved from DB via node_id
+- [x] `MetricPoint` (t, v) and `NodeMetricsHistory` schemas; route validated: period must be 1h/6h/24h
+- [x] Prometheus queries use `node_name` label matching prometheus.yml relabeling; temperature via `max(node_thermal_zone_temp{node_name=...})`; network aggregated with `irate` and `sum` across all non-loopback devices
+- [x] `NodesPage` — new sidebar page ("Nodes") between Dashboard and Workloads
+- [x] Node list view: grid of cards showing name, IP, role badge (CTRL/WORKER), status badge, current CPU load/memory%/disk%/temperature snapshot; "Details →" button per card
+- [x] Node detail view: back navigation, header with name/IP/status/role, snapshot row (CPU load, memory with used/total, disk, temp, uptime); 1h/6h/24h period pills
+- [x] 6 SVG area sparkline charts in 2-column grid: CPU% (blue), Memory% (green), Disk% (amber), Temperature (red), Network Rx (purple), Network Tx (teal)
+- [x] Each chart: subtle grid lines at 25%/50%/75%, area fill, polyline, last-value dot, current/min/max labels; no chart library dependency
+- [x] Sidebar version string bumped to Phase 29

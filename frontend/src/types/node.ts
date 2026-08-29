@@ -30,3 +30,19 @@ export interface NodeHealth {
   checked_at: string;
   error: string | null;
 }
+
+export interface MetricPoint {
+  t: number;
+  v: number;
+}
+
+export interface NodeMetricsHistory {
+  node_name: string;
+  period: string;
+  cpu_pct: MetricPoint[];
+  memory_pct: MetricPoint[];
+  disk_pct: MetricPoint[];
+  temperature_c: MetricPoint[];
+  net_rx_bps: MetricPoint[];
+  net_tx_bps: MetricPoint[];
+}

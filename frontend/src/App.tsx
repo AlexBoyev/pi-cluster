@@ -4,10 +4,11 @@ import { getAllHealth } from "./api/health";
 import { useAuth } from "./context/AuthContext";
 import AuditPage from "./pages/AuditPage";
 import AlertsPanel from "./components/AlertsPanel";
+import NodesPage from "./pages/NodesPage";
 import WorkloadsPage from "./pages/WorkloadsPage";
 import type { NodeHealth } from "./types/node";
 
-type Page = "dashboard" | "workloads" | "audit";
+type Page = "dashboard" | "nodes" | "workloads" | "audit";
 
 const POLL_MS  = 30_000;
 const CTRL_IP  = "10.100.102.10";
@@ -175,7 +176,7 @@ function pillState(nodes: NodeHealth[]): { label: string; cls: string } {
   if (!nodes.length)          return { label: "No nodes",     cls: "deg" };
   if (off === nodes.length)   return { label: "All offline",  cls: "crit" };
   if (off > 0 || deg > 0)     return { label: "Degraded",     cls: "deg" };
-  return                             { label: "All systems go", cls: "ok" };
+  return                             { label: "Healthy",         cls: "ok" };
 }
 
 function avgTemp(nodes: NodeHealth[]): string {
@@ -236,6 +237,14 @@ export default function App() {
           </a>
           <a
             href="#"
+            className={`sb-link${page === "nodes" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); setPage("nodes"); }}
+          >
+            <span className="sb-icon">◉</span>
+            Nodes
+          </a>
+          <a
+            href="#"
             className={`sb-link${page === "workloads" ? " active" : ""}`}
             onClick={(e) => { e.preventDefault(); setPage("workloads"); }}
           >
@@ -271,7 +280,7 @@ export default function App() {
           </div>
           <button className="sb-logout" onClick={logout}>Sign out</button>
           <div className="sb-foot-label" style={{ marginTop: "0.8rem" }}>Version</div>
-          <div className="sb-foot-val">v0.1.0 · Phase 11</div>
+          <div className="sb-foot-val">v0.1.0 · Phase 29</div>
           <div className="sb-foot-label" style={{ marginTop: "0.4rem" }}>Cluster</div>
           <div className="sb-foot-val">4 nodes · arm64 · 10.100.102.0/24</div>
         </div>
@@ -285,7 +294,7 @@ export default function App() {
               <span /><span /><span />
             </button>
             <h1 className="page-title">
-              {page === "workloads" ? "Workloads" : page === "audit" ? "Audit Log" : "Dashboard"}
+              {page === "workloads" ? "Workloads" : page === "audit" ? "Audit Log" : page === "nodes" ? "Nodes" : "Dashboard"}
             </h1>
           </div>
           <div className="tb-right">
@@ -304,6 +313,8 @@ export default function App() {
             <WorkloadsPage />
           ) : page === "audit" ? (
             <AuditPage />
+          ) : page === "nodes" ? (
+            <NodesPage />
           ) : (
             <>
               {error && <div className="err-banner">API error: {error}</div>}
