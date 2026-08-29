@@ -1,0 +1,75 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: yes
+
+- name: Install required packages
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - htop
+      - vim
+      - ufw
+      - ntp
+      - python3-pip
+      - open-iscsi
+      - nfs-common
+    state: present
+  become: yes
+
+- name: Enable and start NTP
+  systemd:
+    name: ntp
+    enabled: yes
+    state: started
+  become: yes
+
+- name: Set hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+  become: yes
+
+- name: Disable swap
+  command: swapoff -a
+  become: yes
+  changed_when: false
+
+- name: Remove swap from fstab
+  replace:
+    path: /etc/fstab
+    regexp: '^([^#].*\sswap\s.*)$'
+    replace: '# \1'
+  become: yes
+
+- name: Enable cgroups for K3s (cmdline.txt for Raspberry Pi)
+  lineinfile:
+    path: /boot/cmdline.txt
+    backrefs: yes
+    regexp: '^((?!.*cgroup_enable=cpuset).*)$'
+    line: '\1 cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory'
+  become: yes
+  notify: reboot node
+
+- name: Configure UFW — allow SSH
+  ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+  become: yes
+
+- name: Configure UFW — allow K3s API
+  ufw:
+    rule: allow
+    port: "6443"
+    proto: tcp
+  become: yes
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+    policy: deny
+  become: yes

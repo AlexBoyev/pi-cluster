@@ -66,3 +66,17 @@ Thumbs.db
 
 coverage/
 reports/
+
+# Kubernetes
+kubeconfig
+
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/terraform.tfvars
+
+# Ansible vault / secrets
+ansible/group_vars/all/vault.yml
+ansible/*.retry

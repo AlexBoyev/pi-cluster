@@ -1,0 +1,13 @@
+apiVersion: v2
+name: pi-cluster
+description: Self-hosted DevOps platform for a Raspberry Pi K3s cluster
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Alex
+keywords:
+  - raspberry-pi
+  - k3s
+  - devops
+  - monitoring

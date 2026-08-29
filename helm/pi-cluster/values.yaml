@@ -1,0 +1,62 @@
+replicaCount: 1
+
+namespace: pi-cluster
+
+backend:
+  image:
+    repository: pi-node1:5000/pi-cluster-backend
+    tag: latest
+    pullPolicy: Always
+  port: 8000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+frontend:
+  image:
+    repository: pi-node1:5000/pi-cluster-frontend
+    tag: latest
+    pullPolicy: Always
+  port: 80
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+postgres:
+  image:
+    repository: postgres
+    tag: "15-alpine"
+  port: 5432
+  storage: 5Gi
+  storageClass: local-path
+  database: pi_cluster
+  user: pi_user
+
+redis:
+  image:
+    repository: redis
+    tag: "7-alpine"
+  port: 6379
+  storage: 1Gi
+  storageClass: local-path
+
+ingress:
+  enabled: true
+  className: traefik
+  host: pi-cluster.local
+  tls: false
+
+secrets:
+  # Set via --set or a values override file — never commit real values
+  dbPassword: ""
+  redisPassword: ""
+  jwtSecret: ""
+  prometheusUrl: "http://prometheus:9090"

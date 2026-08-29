@@ -1,0 +1,46 @@
+---
+- name: Check if K3s server is already installed
+  stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Install K3s server
+  shell: >
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION={{ k3s_version }}
+    INSTALL_K3S_EXEC="server
+    --disable traefik
+    --node-name {{ inventory_hostname }}
+    --advertise-address {{ ansible_host }}"
+    sh -
+  become: yes
+  when: not k3s_binary.stat.exists
+
+- name: Wait for K3s to be ready
+  wait_for:
+    port: 6443
+    host: "{{ ansible_host }}"
+    timeout: 60
+
+- name: Fetch K3s node token
+  slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: k3s_token_raw
+  become: yes
+
+- name: Set k3s_token fact for agents
+  set_fact:
+    k3s_token: "{{ k3s_token_raw.content | b64decode | trim }}"
+
+- name: Fetch kubeconfig
+  fetch:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: "{{ playbook_dir }}/../kubeconfig"
+    flat: yes
+  become: yes
+
+- name: Replace localhost with control plane IP in kubeconfig
+  delegate_to: localhost
+  replace:
+    path: "{{ playbook_dir }}/../kubeconfig"
+    regexp: 'https://127\.0\.0\.1:6443'
+    replace: "https://{{ k3s_server_host }}:6443"

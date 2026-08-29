@@ -1,0 +1,7 @@
+# Copy to terraform.tfvars and populate — never commit terraform.tfvars
+kubeconfig_path    = "~/.kube/pi-cluster-config"
+platform_namespace = "pi-cluster"
+db_password        = "change-me"
+redis_password     = "change-me"
+jwt_secret         = "change-me-long-random-string"
+prometheus_url     = "http://prometheus:9090"

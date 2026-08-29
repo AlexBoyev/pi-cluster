@@ -181,3 +181,17 @@
 - [x] `MetricsModal`: CPU and memory usage bars (blue/amber/red by % of limit), formatted values, Refresh button
 - [x] "Metrics" button per workload row (cyan hover); pauses auto-refresh while open
 - [x] Graceful degradation: `available=false` shown as a clear message when Prometheus is unreachable or no data collected
+
+## Phase 27 — Infrastructure as Code ✓
+- [x] Ansible inventory targeting real node IPs (10.100.102.10/16/17/12)
+- [x] `ansible/playbooks/bootstrap.yml` — packages, cgroups, swap off, UFW on all nodes
+- [x] `ansible/playbooks/k3s.yml` — K3s server on pi-node1, agents on pi-node2/3/4; kubeconfig fetched and patched
+- [x] `ansible/playbooks/argocd.yml` — ArgoCD install via kubectl, NodePort 30443, apply k8s/apps/
+- [x] `ansible/playbooks/platform.yml` — Docker install, repo clone, .env templating, compose up + migrate
+- [x] Ansible roles: common, k3s_server, k3s_agent, platform (with Jinja2 env template)
+- [x] Helm chart `helm/pi-cluster/` — backend, frontend, PostgreSQL StatefulSet, Redis, Ingress, Secrets
+- [x] Terraform `main.tf` — pi-cluster + monitoring namespaces, ClusterRole + ClusterRoleBinding for K8s API access
+- [x] Terraform `argocd.tf` — ArgoCD Helm release (argo-helm chart) + ArgoCD Application manifest via kubernetes_manifest
+- [x] Terraform providers: hashicorp/kubernetes ~2.27, hashicorp/helm ~2.13; local backend
+- [x] `terraform.tfvars.example` for safe variable reference; `.gitignore` excludes tfstate, tfvars, .terraform/
+- [x] Secrets never stored in repo — prompted at runtime (Ansible) or passed via --set / tfvars (Helm/Terraform)

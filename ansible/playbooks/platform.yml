@@ -1,0 +1,16 @@
+---
+- name: Deploy pi-cluster platform on pi-node1
+  hosts: platform
+  gather_facts: yes
+  vars_prompt:
+    - name: vault_db_password
+      prompt: "Database password"
+      private: yes
+    - name: vault_redis_password
+      prompt: "Redis password"
+      private: yes
+    - name: vault_jwt_secret
+      prompt: "JWT secret"
+      private: yes
+  roles:
+    - platform

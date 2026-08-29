@@ -1,0 +1,22 @@
+---
+- name: Check if K3s agent is already installed
+  stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Install K3s agent
+  shell: >
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION={{ k3s_version }}
+    K3S_URL=https://{{ k3s_server_host }}:6443
+    K3S_TOKEN={{ hostvars['pi-node1']['k3s_token'] }}
+    INSTALL_K3S_EXEC="agent --node-name {{ inventory_hostname }}"
+    sh -
+  become: yes
+  when: not k3s_binary.stat.exists
+
+- name: Ensure K3s agent service is running
+  systemd:
+    name: k3s-agent
+    enabled: yes
+    state: started
+  become: yes

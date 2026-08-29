@@ -99,6 +99,9 @@ A self-hosted DevOps platform for a 4-node Raspberry Pi cluster. Provides a Reac
 | Orchestration| K3s (Kubernetes)                  | Container scheduling across 4 nodes          |
 | GitOps       | ArgoCD                            | Declarative K8s manifest delivery            |
 | Ingress      | Traefik DaemonSet                 | HTTP/S routing + TLS for workloads           |
+| Config Mgmt  | Ansible                           | Node bootstrap, K3s install, platform deploy |
+| K8s Packaging| Helm                              | Platform chart (backend, frontend, DB, Redis)|
+| IaC          | Terraform (K8s + Helm providers)  | Namespaces, RBAC, ArgoCD Application         |
 
 ---
 
@@ -435,10 +438,87 @@ ssh alex@10.100.102.10 "cd /opt/pi-cluster && docker compose exec backend alembi
 
 ---
 
+## Infrastructure as Code
+
+### Ansible — node provisioning
+
+Ansible automates the full cluster lifecycle from a bare OS install to a running platform.
+
+```bash
+# Install Ansible collections
+ansible-galaxy collection install -r ansible/requirements.yml
+
+# 1. Bootstrap all nodes (packages, cgroups, swap off, UFW)
+ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/bootstrap.yml
+
+# 2. Install K3s (server on pi-node1, agents on pi-node2/3/4)
+ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/k3s.yml
+
+# 3. Install ArgoCD and apply k8s/apps manifests
+ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/argocd.yml
+
+# 4. Deploy the Docker Compose platform stack on pi-node1
+ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/platform.yml
+```
+
+Sensitive values (DB password, JWT secret) are prompted at runtime — never stored in the repo.
+
+### Terraform — Kubernetes resource management
+
+Terraform manages the cluster's Kubernetes-level resources: namespaces, RBAC, and the ArgoCD Application via the Kubernetes and Helm providers.
+
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars   # fill in secrets
+terraform init
+terraform plan
+terraform apply
+```
+
+State is stored locally in `terraform.tfstate` (gitignored). The kubeconfig must be accessible at the path set in `kubeconfig_path`.
+
+### Helm — platform chart
+
+A Helm chart packages the full pi-cluster platform (backend, frontend, PostgreSQL, Redis) for deployment to K3s.
+
+```bash
+# Render templates to inspect output
+helm template pi-cluster helm/pi-cluster/ \
+  --set secrets.dbPassword=... \
+  --set secrets.redisPassword=... \
+  --set secrets.jwtSecret=...
+
+# Install to K3s
+helm upgrade --install pi-cluster helm/pi-cluster/ \
+  --namespace pi-cluster --create-namespace \
+  --set secrets.dbPassword=... \
+  --set secrets.redisPassword=... \
+  --set secrets.jwtSecret=...
+```
+
+---
+
 ## Repository layout
 
 ```
 pi-cluster/
+├── ansible/
+│   ├── inventory/hosts.ini     ← real node IPs
+│   ├── group_vars/all.yml      ← shared variables (no secrets)
+│   ├── playbooks/              ← bootstrap, k3s, argocd, platform
+│   └── roles/                  ← common, k3s_server, k3s_agent, platform
+├── helm/
+│   └── pi-cluster/
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       └── templates/          ← backend, frontend, postgres, redis, ingress
+├── terraform/
+│   ├── providers.tf            ← kubernetes + helm providers
+│   ├── main.tf                 ← namespaces, RBAC ClusterRole/Binding
+│   ├── argocd.tf               ← ArgoCD helm release + Application manifest
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── terraform.tfvars.example
 ├── backend/
 │   ├── app/
 │   │   ├── api/v1/         ← FastAPI routers (no business logic)

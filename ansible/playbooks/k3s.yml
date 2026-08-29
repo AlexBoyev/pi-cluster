@@ -1,0 +1,12 @@
+---
+- name: Install K3s server on control plane
+  hosts: control_plane
+  gather_facts: yes
+  roles:
+    - k3s_server
+
+- name: Install K3s agent on workers
+  hosts: workers
+  gather_facts: yes
+  roles:
+    - k3s_agent

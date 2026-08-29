@@ -1,0 +1,40 @@
+---
+- name: Install ArgoCD on K3s
+  hosts: control_plane
+  gather_facts: no
+  tasks:
+    - name: Create argocd namespace
+      command: kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      become: yes
+
+    - name: Install ArgoCD
+      shell: >
+        kubectl apply -n argocd
+        -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      become: yes
+
+    - name: Wait for ArgoCD server to be ready
+      command: >
+        kubectl rollout status deployment argocd-server
+        -n argocd --timeout=120s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      become: yes
+
+    - name: Patch ArgoCD server service to NodePort 30443
+      shell: >
+        kubectl patch svc argocd-server -n argocd
+        -p '{"spec":{"type":"NodePort","ports":[{"port":443,"targetPort":8080,"nodePort":30443}]}}'
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      become: yes
+
+    - name: Apply ArgoCD Application manifest
+      command: kubectl apply -f /opt/pi-cluster/k8s/apps/
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      become: yes

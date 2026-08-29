@@ -1,0 +1,5 @@
+---
+- name: reboot node
+  reboot:
+    reboot_timeout: 120
+  become: yes

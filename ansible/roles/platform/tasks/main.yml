@@ -1,0 +1,69 @@
+---
+- name: Install Docker
+  shell: curl -fsSL https://get.docker.com | sh
+  become: yes
+  args:
+    creates: /usr/bin/docker
+
+- name: Add alex to docker group
+  user:
+    name: alex
+    groups: docker
+    append: yes
+  become: yes
+
+- name: Install Docker Compose plugin
+  apt:
+    name: docker-compose-plugin
+    state: present
+  become: yes
+
+- name: Create platform directory
+  file:
+    path: "{{ platform_dir }}"
+    state: directory
+    owner: alex
+    group: alex
+    mode: "0755"
+  become: yes
+
+- name: Clone or update pi-cluster repo
+  git:
+    repo: "{{ platform_repo }}"
+    dest: "{{ platform_dir }}"
+    version: "{{ platform_branch }}"
+    force: yes
+  become: yes
+  become_user: alex
+
+- name: Write .env file
+  template:
+    src: env.j2
+    dest: "{{ platform_dir }}/.env"
+    owner: alex
+    group: alex
+    mode: "0600"
+  become: yes
+
+- name: Pull Docker images
+  community.docker.docker_compose_v2:
+    project_src: "{{ platform_dir }}"
+    pull: always
+  become: yes
+  become_user: alex
+
+- name: Run database migrations
+  community.docker.docker_compose_v2:
+    project_src: "{{ platform_dir }}"
+    services:
+      - backend
+    command: alembic upgrade head
+  become: yes
+  become_user: alex
+
+- name: Start platform stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ platform_dir }}"
+    state: present
+  become: yes
+  become_user: alex

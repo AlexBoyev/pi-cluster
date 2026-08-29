@@ -28,6 +28,20 @@ CRA is unmaintained. Vite provides fast HMR, a minimal configuration surface, an
 
 pi-node1 (10.100.102.10) runs the full platform stack via Docker Compose. The other three nodes run only the K3s agent and user workloads.
 
+## Ansible for node provisioning, not cloud Terraform
+
+The cluster is bare metal. There is no cloud provider API. Ansible is the right tool for configuring physical nodes — it connects via SSH and is idempotent. Terraform's cloud provisioning providers (AWS, GCP, etc.) do not apply here.
+
+Terraform is used for the Kubernetes-level layer: namespaces, RBAC, and ArgoCD Application resources via the hashicorp/kubernetes and hashicorp/helm providers. This is the layer Terraform can actually manage declaratively against the K3s API.
+
+## Helm chart targets K3s deployment, not Docker Compose replacement
+
+The Helm chart (`helm/pi-cluster/`) packages the platform as K8s resources. The current production deployment runs Docker Compose on pi-node1 (managed by Jenkins). The Helm chart exists to support a future migration to running the platform itself inside K3s, and to demonstrate chart structure for the workloads the platform manages. It does not replace the current Docker Compose setup.
+
+## Secrets never in repository
+
+Ansible prompts for secrets at runtime. Terraform sensitive variables must be provided via `terraform.tfvars` (gitignored) or environment variables (`TF_VAR_*`). Helm secrets are passed with `--set` or a local values override file. No secret value is ever committed to the repository.
+
 Keeping the control plane on a dedicated node avoids resource contention with scheduled workloads and gives a stable host for the database and monitoring stack.
 
 ## SSH for initial node metrics (replaced by node-exporter)
