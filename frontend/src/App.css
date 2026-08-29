@@ -412,13 +412,19 @@ main { flex: 1; padding: 1.75rem 2rem 3rem; max-width: 1440px; width: 100%; marg
 .card-node-btn {
   padding: 0.2rem 0.55rem;
   display: inline-flex; align-items: center; justify-content: center;
-  background: transparent; border: 1px solid var(--border); border-radius: var(--rs);
+  border-radius: var(--rs);
   font-size: 0.6rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
-  cursor: pointer; color: var(--t3); white-space: nowrap;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  cursor: pointer; white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s, filter 0.12s;
 }
-.card-node-restart:hover  { background: rgba(245,158,11,0.1); color: var(--amber); border-color: var(--amber-bd); }
-.card-node-shutdown:hover { background: rgba(239,68,68,0.1);  color: var(--red);   border-color: var(--red-bd); }
+.card-node-restart {
+  background: rgba(245,158,11,0.12); color: var(--amber); border: 1px solid var(--amber-bd);
+}
+.card-node-restart:hover  { background: rgba(245,158,11,0.25); filter: brightness(1.1); }
+.card-node-shutdown {
+  background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid var(--red-bd);
+}
+.card-node-shutdown:hover { background: rgba(239,68,68,0.25); filter: brightness(1.1); }
 
 /* offline */
 .card-offline {
