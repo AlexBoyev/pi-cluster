@@ -5,9 +5,10 @@ interface Props {
   workloadName: string;
   namespace: string;
   onClose: () => void;
+  podName?: string;
 }
 
-export default function LogsModal({ workloadName, namespace, onClose }: Props) {
+export default function LogsModal({ workloadName, namespace, onClose, podName }: Props) {
   const [lines, setLines]       = useState<string[]>([]);
   const [connected, setConnected] = useState(false);
   const [error, setError]       = useState<string | null>(null);
@@ -23,7 +24,8 @@ export default function LogsModal({ workloadName, namespace, onClose }: Props) {
     setError(null);
     const token = localStorage.getItem("access_token") ?? "";
     const proto = window.location.protocol === "https:" ? "wss" : "ws";
-    const url = `${proto}://${window.location.host}/api/v1/ws/logs/${encodeURIComponent(workloadName)}?namespace=${encodeURIComponent(namespace)}&tail=${tail}&token=${encodeURIComponent(token)}`;
+    const podParam = podName ? `&pod=${encodeURIComponent(podName)}` : "";
+    const url = `${proto}://${window.location.host}/api/v1/ws/logs/${encodeURIComponent(workloadName)}?namespace=${encodeURIComponent(namespace)}&tail=${tail}&token=${encodeURIComponent(token)}${podParam}`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
     ws.onopen  = () => setConnected(true);

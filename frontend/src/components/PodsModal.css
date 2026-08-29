@@ -94,6 +94,13 @@
 .pod-phase-succeeded { background: rgba(29,78,216,0.06); color: var(--blue); border: 1px solid var(--blue-ring); }
 .pod-phase-unknown   { background: var(--bg);        color: var(--t3);     border: 1px solid var(--border); }
 
+.pods-btn-logs {
+  padding: 0.22rem 0.6rem; border: 1px solid var(--blue); border-radius: var(--rs);
+  background: var(--blue); font-size: 0.72rem; font-weight: 700; color: #fff; cursor: pointer;
+  transition: background 0.1s;
+}
+.pods-btn-logs:hover { background: var(--blue-mid); border-color: var(--blue-mid); }
+
 .pods-btn-detail {
   padding: 0.22rem 0.6rem; border: 1px solid var(--border); border-radius: var(--rs);
   background: transparent; font-size: 0.72rem; font-weight: 600; color: var(--t2); cursor: pointer;

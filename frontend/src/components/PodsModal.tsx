@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getWorkloadPods } from "../api/workloads";
+import LogsModal from "./LogsModal";
 import PodDetailModal from "./PodDetailModal";
 import type { PodInfo } from "../types/workload";
 import "./PodsModal.css";
@@ -32,6 +33,7 @@ export default function PodsModal({ workloadName, namespace, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState<string | null>(null);
   const [detailPod, setDetailPod] = useState<string | null>(null);
+  const [logsPod, setLogsPod]     = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,7 +52,8 @@ export default function PodsModal({ workloadName, namespace, onClose }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (detailPod) setDetailPod(null);
+        if (logsPod) setLogsPod(null);
+        else if (detailPod) setDetailPod(null);
         else onClose();
       }
     };
@@ -104,9 +107,14 @@ export default function PodsModal({ workloadName, namespace, onClose }: Props) {
                       <td className="pods-mono">{p.pod_ip ?? "—"}</td>
                       <td className="pods-mono">{age(p.started_at)}</td>
                       <td>
-                        <button className="pods-btn-detail" onClick={() => setDetailPod(p.name)}>
-                          Detail
-                        </button>
+                        <div style={{ display: "flex", gap: "0.4rem" }}>
+                          <button className="pods-btn-logs" onClick={() => setLogsPod(p.name)}>
+                            Logs
+                          </button>
+                          <button className="pods-btn-detail" onClick={() => setDetailPod(p.name)}>
+                            Detail
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -122,6 +130,14 @@ export default function PodsModal({ workloadName, namespace, onClose }: Props) {
           podName={detailPod}
           namespace={namespace}
           onClose={() => setDetailPod(null)}
+        />
+      )}
+      {logsPod && (
+        <LogsModal
+          workloadName={logsPod}
+          namespace={namespace}
+          podName={logsPod}
+          onClose={() => setLogsPod(null)}
         />
       )}
     </>

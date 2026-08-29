@@ -111,6 +111,7 @@ async def ws_logs(
     container: str | None = Query(None),
     tail: int = Query(200),
     token: str = Query(...),
+    pod: str | None = Query(None),
 ) -> None:
     try:
         payload = decode_token(token)
@@ -121,7 +122,10 @@ async def ws_logs(
         await websocket.close(code=4001)
         return
 
-    pod_name = await run_in_threadpool(K8sService().get_first_pod_name, name, namespace)
+    if pod:
+        pod_name = pod
+    else:
+        pod_name = await run_in_threadpool(K8sService().get_first_pod_name, name, namespace)
     if not pod_name:
         await websocket.accept()
         await websocket.send_text(f"[error] No running pod found for {name}\n")
