@@ -255,3 +255,35 @@
 - [x] Namespaces page: summary cards, create form with validation, sortable table with Active/Terminating badges, system tag, inline delete confirmation
 - [x] WorkloadsPage: namespace filter pills (All ns + unique namespaces from loaded workloads); shown only when 2+ distinct namespaces exist
 - [x] "Namespaces" sidebar link (⊟ icon); version bumped to Phase 33
+
+## Phase 34 — User Management ✓
+- [x] `UserRepository`: added `get_all()`, `get_by_id()`, `update_role()`, `update_password()`, `delete()`
+- [x] `UserResponse`, `UserCreate`, `PasswordChange`, `RoleUpdate` Pydantic schemas
+- [x] `GET /api/v1/users/` — list all users (admin-only)
+- [x] `POST /api/v1/users/` — create user with username, password (min 8 chars), role (admin/viewer); 409 if username taken
+- [x] `PATCH /api/v1/users/{id}/role` — change role (admin-only; cannot change own role)
+- [x] `PATCH /api/v1/users/{id}/password` — change password (user for self, admin for anyone)
+- [x] `DELETE /api/v1/users/{id}` — delete user (admin-only; cannot delete self)
+- [x] Users page: summary cards (total/admins/viewers), create form, user table with inline role dropdown, change-password in-row edit, delete with confirmation; current user highlighted with "you" badge
+- [x] "Users" sidebar link (◉ icon) under new "Admin" section
+
+## Phase 35 — Horizontal Pod Autoscaler ✓
+- [x] `K8sService`: `get_hpa()`, `apply_hpa()`, `delete_hpa()` using K8s AutoscalingV2 API
+- [x] `HPAInfo` schema: min_replicas, max_replicas, cpu_target_pct, current_replicas, current_cpu_pct
+- [x] `HPACreate` schema: min_replicas (1–10), max_replicas (1–20), cpu_target_pct (10–100)
+- [x] `GET /workloads/{name}/hpa` — returns current HPA or null (authenticated)
+- [x] `PUT /workloads/{name}/hpa` — create or replace HPA (admin-only)
+- [x] `DELETE /workloads/{name}/hpa` — remove HPA (admin-only)
+- [x] `HpaModal`: on open fetches current HPA, shows status bar (current replicas, CPU utilization, target, range); 3-field form (min, max, CPU target); Enable/Update/Remove HPA buttons; CPU over-target shown in amber
+- [x] "HPA" action button per workload row (green hover); pauses auto-refresh while open
+
+## Phase 36 — ConfigMap Management ✓
+- [x] `K8sService`: `list_configmaps()`, `get_configmap()`, `create_configmap()`, `update_configmap()`, `delete_configmap()`
+- [x] `ConfigMapSummary` and `ConfigMapDetail` schemas; `ConfigMapCreate` (name pattern-validated), `ConfigMapUpdate`
+- [x] `GET /api/v1/configmaps/` — list ConfigMaps in namespace (authenticated)
+- [x] `GET /api/v1/configmaps/{name}` — get full ConfigMap data (authenticated)
+- [x] `POST /api/v1/configmaps/` — create ConfigMap with key=value data (admin-only); 409 if already exists
+- [x] `PUT /api/v1/configmaps/{name}` — replace ConfigMap data (admin-only)
+- [x] `DELETE /api/v1/configmaps/{name}` — delete ConfigMap (admin-only)
+- [x] ConfigMaps page: namespace selector (populates from live namespace list), summary cards, create form with textarea (KEY=value lines), key-tag pills per row, edit modal with textarea editor, delete confirmation
+- [x] "ConfigMaps" sidebar link (⊞ icon); version bumped to Phase 36

@@ -1,0 +1,125 @@
+.hpa-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 1rem;
+}
+
+.hpa-modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  display: flex; flex-direction: column;
+  width: min(560px, 100%);
+}
+
+.hpa-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.hpa-title { display: flex; align-items: baseline; gap: 0.75rem; }
+.hpa-name  { font-size: 0.95rem; font-weight: 800; color: var(--t1); }
+.hpa-sub   { font-size: 0.72rem; color: var(--t3); }
+
+.hpa-btn-close {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: var(--rs);
+  background: transparent; font-size: 0.8rem; color: var(--t3); cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.hpa-btn-close:hover { background: var(--red-bg); color: var(--red); border-color: var(--red-bd); }
+
+.hpa-body { padding: 1.1rem 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+
+.hpa-loading { display: flex; align-items: center; gap: 0.6rem; color: var(--t3); font-size: 0.85rem; }
+
+.hpa-error {
+  background: var(--red-bg); color: var(--red); border: 1px solid var(--red-bd);
+  border-radius: var(--rs); padding: 0.5rem 0.75rem; font-size: 0.82rem;
+}
+
+.hpa-none {
+  font-size: 0.82rem; color: var(--t3);
+  padding: 0.6rem 0.8rem;
+  background: var(--bg); border: 1px dashed var(--border); border-radius: var(--rs);
+}
+
+.hpa-status-bar {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem;
+}
+
+.hpa-stat {
+  display: flex; flex-direction: column; gap: 0.25rem;
+  padding: 0.55rem 0.7rem;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--rs);
+}
+.hpa-stat-lbl { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--t3); }
+.hpa-stat-val { font-size: 0.9rem; font-weight: 800; color: var(--t1); font-family: var(--mono); }
+.hpa-stat-val.hpa-over { color: var(--amber); }
+
+.hpa-hint {
+  font-size: 0.78rem; color: var(--t3); line-height: 1.5;
+  background: rgba(29,78,216,0.04);
+  border: 1px solid var(--border); border-radius: var(--rs);
+  padding: 0.6rem 0.8rem;
+}
+
+.hpa-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; }
+
+.hpa-field { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.hpa-label {
+  font-size: 0.6rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--t3);
+}
+
+.hpa-input {
+  padding: 0.42rem 0.6rem;
+  border: 1.5px solid var(--border); border-radius: var(--rs);
+  background: #fff; color: var(--t1);
+  font-family: var(--mono); font-size: 0.82rem;
+  outline: none; transition: border-color 0.12s;
+}
+.hpa-input:focus { border-color: var(--blue); }
+.hpa-input:disabled { opacity: 0.6; }
+
+.hpa-hint-sm { font-size: 0.68rem; color: var(--t3); }
+
+.hpa-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.9rem 1.25rem;
+  border-top: 1px solid var(--border);
+}
+.hpa-footer-right { display: flex; gap: 0.6rem; }
+
+.hpa-btn-cancel {
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--border); border-radius: var(--rs);
+  background: transparent; font-size: 0.84rem; font-weight: 600;
+  color: var(--t2); cursor: pointer; transition: background 0.1s;
+}
+.hpa-btn-cancel:hover:not(:disabled) { background: var(--bg); }
+.hpa-btn-cancel:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.hpa-btn-save {
+  padding: 0.45rem 1.2rem;
+  border: none; border-radius: var(--rs);
+  background: var(--blue); color: #fff;
+  font-size: 0.84rem; font-weight: 700; cursor: pointer;
+  transition: background 0.1s;
+}
+.hpa-btn-save:hover:not(:disabled) { background: var(--blue-mid); }
+.hpa-btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.hpa-btn-delete {
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--red-bd); border-radius: var(--rs);
+  background: var(--red-bg); color: var(--red);
+  font-size: 0.84rem; font-weight: 600; cursor: pointer;
+  transition: background 0.1s;
+}
+.hpa-btn-delete:hover:not(:disabled) { background: var(--red); color: #fff; }
+.hpa-btn-delete:disabled { opacity: 0.5; cursor: not-allowed; }

@@ -125,3 +125,17 @@ class WorkloadHistory(BaseModel):
 
 class RollbackRequest(BaseModel):
     revision: int = Field(..., ge=1)
+
+
+class HPACreate(BaseModel):
+    min_replicas: int = Field(1, ge=1, le=10)
+    max_replicas: int = Field(5, ge=1, le=20)
+    cpu_target_pct: int = Field(70, ge=10, le=100)
+
+
+class HPAInfo(BaseModel):
+    min_replicas: int | None
+    max_replicas: int | None
+    cpu_target_pct: int | None
+    current_replicas: int | None
+    current_cpu_pct: int | None

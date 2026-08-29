@@ -429,6 +429,138 @@ class K8sService:
     def delete_namespace(self, name: str) -> None:
         self._core().delete_namespace(name=name)
 
+    def _autoscaling(self) -> client.AutoscalingV2Api:
+        return client.AutoscalingV2Api()
+
+    def get_hpa(self, name: str, namespace: str) -> dict | None:
+        try:
+            hpa = self._autoscaling().read_namespaced_horizontal_pod_autoscaler(name=name, namespace=namespace)
+        except ApiException as e:
+            if e.status == 404:
+                return None
+            raise
+        spec = hpa.spec
+        status = hpa.status
+        cpu_target: int | None = None
+        if spec.metrics:
+            for m in spec.metrics:
+                if m.type == "Resource" and m.resource and m.resource.name == "cpu":
+                    if m.resource.target and m.resource.target.average_utilization is not None:
+                        cpu_target = m.resource.target.average_utilization
+                        break
+        current_cpu: int | None = None
+        if status and status.current_metrics:
+            for m in status.current_metrics:
+                if m.type == "Resource" and m.resource and m.resource.name == "cpu":
+                    if m.resource.current and m.resource.current.average_utilization is not None:
+                        current_cpu = m.resource.current.average_utilization
+                        break
+        return {
+            "min_replicas": spec.min_replicas,
+            "max_replicas": spec.max_replicas,
+            "cpu_target_pct": cpu_target,
+            "current_replicas": status.current_replicas if status else None,
+            "current_cpu_pct": current_cpu,
+        }
+
+    def apply_hpa(self, name: str, namespace: str, min_replicas: int, max_replicas: int, cpu_target_pct: int) -> None:
+        autoscaling = self._autoscaling()
+        body = client.V2HorizontalPodAutoscaler(
+            metadata=client.V1ObjectMeta(name=name, namespace=namespace),
+            spec=client.V2HorizontalPodAutoscalerSpec(
+                scale_target_ref=client.V2CrossVersionObjectReference(
+                    api_version="apps/v1",
+                    kind="Deployment",
+                    name=name,
+                ),
+                min_replicas=min_replicas,
+                max_replicas=max_replicas,
+                metrics=[
+                    client.V2MetricSpec(
+                        type="Resource",
+                        resource=client.V2ResourceMetricSource(
+                            name="cpu",
+                            target=client.V2MetricTarget(
+                                type="Utilization",
+                                average_utilization=cpu_target_pct,
+                            ),
+                        ),
+                    )
+                ],
+            ),
+        )
+        try:
+            autoscaling.read_namespaced_horizontal_pod_autoscaler(name=name, namespace=namespace)
+            autoscaling.replace_namespaced_horizontal_pod_autoscaler(name=name, namespace=namespace, body=body)
+        except ApiException as e:
+            if e.status == 404:
+                autoscaling.create_namespaced_horizontal_pod_autoscaler(namespace=namespace, body=body)
+            else:
+                raise
+
+    def delete_hpa(self, name: str, namespace: str) -> None:
+        try:
+            self._autoscaling().delete_namespaced_horizontal_pod_autoscaler(name=name, namespace=namespace)
+        except ApiException as e:
+            if e.status != 404:
+                raise
+
+    def list_configmaps(self, namespace: str = "pi-apps") -> list[dict]:
+        cms = self._core().list_namespaced_config_map(namespace=namespace)
+        result = []
+        for cm in cms.items:
+            name = cm.metadata.name or ""
+            if name == "kube-root-ca.crt":
+                continue
+            result.append({
+                "name": name,
+                "namespace": cm.metadata.namespace or namespace,
+                "data_keys": sorted((cm.data or {}).keys()),
+                "created_at": cm.metadata.creation_timestamp,
+            })
+        result.sort(key=lambda x: x["name"])
+        return result
+
+    def get_configmap(self, name: str, namespace: str) -> dict | None:
+        try:
+            cm = self._core().read_namespaced_config_map(name=name, namespace=namespace)
+        except ApiException as e:
+            if e.status == 404:
+                return None
+            raise
+        return {
+            "name": cm.metadata.name,
+            "namespace": cm.metadata.namespace or namespace,
+            "data": cm.data or {},
+            "created_at": cm.metadata.creation_timestamp,
+        }
+
+    def create_configmap(self, name: str, namespace: str, data: dict[str, str]) -> None:
+        self._core().create_namespaced_config_map(
+            namespace=namespace,
+            body=client.V1ConfigMap(
+                metadata=client.V1ObjectMeta(name=name, namespace=namespace),
+                data=data,
+            ),
+        )
+
+    def update_configmap(self, name: str, namespace: str, data: dict[str, str]) -> None:
+        self._core().replace_namespaced_config_map(
+            name=name,
+            namespace=namespace,
+            body=client.V1ConfigMap(
+                metadata=client.V1ObjectMeta(name=name, namespace=namespace),
+                data=data,
+            ),
+        )
+
+    def delete_configmap(self, name: str, namespace: str) -> None:
+        try:
+            self._core().delete_namespaced_config_map(name=name, namespace=namespace)
+        except ApiException as e:
+            if e.status != 404:
+                raise
+
     def rollback_deployment(self, name: str, namespace: str, revision: int) -> str:
         apps = self._apps()
         rs_list = apps.list_namespaced_replica_set(

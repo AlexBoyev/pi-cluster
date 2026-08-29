@@ -20,6 +20,7 @@ import {
 } from "../api/workloads";
 import EnvModal from "../components/EnvModal";
 import EventsModal from "../components/EventsModal";
+import HpaModal from "../components/HpaModal";
 import LogsModal from "../components/LogsModal";
 import MetricsModal from "../components/MetricsModal";
 import PodsModal from "../components/PodsModal";
@@ -130,6 +131,7 @@ export default function WorkloadsPage() {
   const [restarting, setRestarting] = useState<string | null>(null);
   const [metricsTarget, setMetricsTarget] = useState<string | null>(null);
   const [rollbackTarget, setRollbackTarget] = useState<string | null>(null);
+  const [hpaTarget, setHpaTarget] = useState<Workload | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "running" | "pending" | "failed">("all");
   const [nsFilter, setNsFilter] = useState("all");
@@ -171,7 +173,7 @@ export default function WorkloadsPage() {
 
   useEffect(() => { refresh(); }, []);
 
-  const modalOpen = !!(logsTarget || eventsTarget || podsTarget || envTarget || resourcesTarget || probesTarget || metricsTarget || rollbackTarget);
+  const modalOpen = !!(logsTarget || eventsTarget || podsTarget || envTarget || resourcesTarget || probesTarget || metricsTarget || rollbackTarget || hpaTarget);
   const refreshRef = useRef(refresh);
   useEffect(() => { refreshRef.current = refresh; });
 
@@ -638,6 +640,12 @@ export default function WorkloadsPage() {
                         {restarting === w.name ? "…" : "Restart"}
                       </button>
                       <button
+                        className="wl-btn-hpa"
+                        onClick={() => setHpaTarget(w)}
+                      >
+                        HPA
+                      </button>
+                      <button
                         className="wl-btn-history"
                         onClick={() => setRollbackTarget(w.name)}
                       >
@@ -757,6 +765,13 @@ export default function WorkloadsPage() {
           name={rollbackTarget}
           onClose={() => setRollbackTarget(null)}
           onRolledBack={refresh}
+        />
+      )}
+      {hpaTarget && (
+        <HpaModal
+          workload={hpaTarget}
+          onClose={() => setHpaTarget(null)}
+          onSaved={refresh}
         />
       )}
     </div>

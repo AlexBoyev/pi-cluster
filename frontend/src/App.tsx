@@ -5,14 +5,16 @@ import { useAuth } from "./context/AuthContext";
 import AlertHistoryPage from "./pages/AlertHistoryPage";
 import AuditPage from "./pages/AuditPage";
 import CapacityPage from "./pages/CapacityPage";
+import ConfigMapsPage from "./pages/ConfigMapsPage";
 import EventsPage from "./pages/EventsPage";
 import NamespacesPage from "./pages/NamespacesPage";
+import UsersPage from "./pages/UsersPage";
 import AlertsPanel from "./components/AlertsPanel";
 import { NodeDetailView } from "./pages/NodesPage";
 import WorkloadsPage from "./pages/WorkloadsPage";
 import type { NodeHealth } from "./types/node";
 
-type Page = "dashboard" | "workloads" | "capacity" | "events" | "namespaces" | "audit" | "alert-history";
+type Page = "dashboard" | "workloads" | "capacity" | "events" | "namespaces" | "audit" | "alert-history" | "users" | "configmaps";
 
 const POLL_MS  = 30_000;
 const CTRL_IP  = "10.100.102.10";
@@ -291,6 +293,24 @@ export default function App() {
             <span className="sb-icon">⊛</span>
             Alert History
           </a>
+          <a
+            href="#"
+            className={`sb-link${page === "configmaps" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); setPage("configmaps"); }}
+          >
+            <span className="sb-icon">⊞</span>
+            ConfigMaps
+          </a>
+
+          <div className="sb-section">Admin</div>
+          <a
+            href="#"
+            className={`sb-link${page === "users" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); setPage("users"); }}
+          >
+            <span className="sb-icon">◉</span>
+            Users
+          </a>
 
           <div className="sb-section">Services</div>
           {NAV.map((l) => (
@@ -312,7 +332,7 @@ export default function App() {
           </div>
           <button className="sb-logout" onClick={logout}>Sign out</button>
           <div className="sb-foot-label" style={{ marginTop: "0.8rem" }}>Version</div>
-          <div className="sb-foot-val">v0.1.0 · Phase 33</div>
+          <div className="sb-foot-val">v0.1.0 · Phase 36</div>
           <div className="sb-foot-label" style={{ marginTop: "0.4rem" }}>Cluster</div>
           <div className="sb-foot-val">4 nodes · arm64 · 10.100.102.0/24</div>
         </div>
@@ -326,7 +346,7 @@ export default function App() {
               <span /><span /><span />
             </button>
             <h1 className="page-title">
-              {page === "workloads" ? "Workloads" : page === "capacity" ? "Capacity" : page === "events" ? "Events" : page === "namespaces" ? "Namespaces" : page === "audit" ? "Audit Log" : page === "alert-history" ? "Alert History" : "Dashboard"}
+              {page === "workloads" ? "Workloads" : page === "capacity" ? "Capacity" : page === "events" ? "Events" : page === "namespaces" ? "Namespaces" : page === "audit" ? "Audit Log" : page === "alert-history" ? "Alert History" : page === "users" ? "Users" : page === "configmaps" ? "ConfigMaps" : "Dashboard"}
             </h1>
           </div>
           <div className="tb-right">
@@ -353,6 +373,10 @@ export default function App() {
             <AuditPage />
           ) : page === "alert-history" ? (
             <AlertHistoryPage />
+          ) : page === "users" ? (
+            <UsersPage />
+          ) : page === "configmaps" ? (
+            <ConfigMapsPage />
           ) : selectedNode ? (
             <NodeDetailView node={selectedNode} onBack={() => setSelectedNode(null)} />
           ) : (

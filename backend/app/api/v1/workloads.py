@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.auth.dependencies import get_current_user, require_admin
 from app.database import get_db
 from app.models.user import User
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.workload_repository import WorkloadRepository
-from app.schemas.workload import DeploymentRevision, NodeCapacity, PodInfo, RollbackRequest, WorkloadCreate, WorkloadEnvUpdate, WorkloadEvent, WorkloadHistory, WorkloadImageUpdate, WorkloadLogs, WorkloadMetrics, WorkloadProbeUpdate, WorkloadResourceUpdate, WorkloadResponse, WorkloadScale
+from app.schemas.workload import DeploymentRevision, HPACreate, HPAInfo, NodeCapacity, PodInfo, RollbackRequest, WorkloadCreate, WorkloadEnvUpdate, WorkloadEvent, WorkloadHistory, WorkloadImageUpdate, WorkloadLogs, WorkloadMetrics, WorkloadProbeUpdate, WorkloadResourceUpdate, WorkloadResponse, WorkloadScale
 from app.services.audit_service import AuditService
 from app.services.k8s_service import K8sService
 from app.services.workload_service import WorkloadService
@@ -195,3 +196,38 @@ async def rollback_workload(
     admin: User = Depends(require_admin),
 ) -> WorkloadResponse:
     return await service.rollback_workload(name, data.revision, actor=admin.username)
+
+
+@router.get("/{name}/hpa", response_model=HPAInfo | None)
+async def get_hpa(
+    name: str,
+    namespace: str = "pi-apps",
+    _: User = Depends(get_current_user),
+) -> HPAInfo | None:
+    svc = K8sService()
+    result = await run_in_threadpool(svc.get_hpa, name, namespace)
+    if result is None:
+        return None
+    return HPAInfo(**result)
+
+
+@router.put("/{name}/hpa", response_model=HPAInfo)
+async def apply_hpa(
+    name: str,
+    data: HPACreate,
+    namespace: str = "pi-apps",
+    _: User = Depends(require_admin),
+) -> HPAInfo:
+    svc = K8sService()
+    await run_in_threadpool(svc.apply_hpa, name, namespace, data.min_replicas, data.max_replicas, data.cpu_target_pct)
+    result = await run_in_threadpool(svc.get_hpa, name, namespace)
+    return HPAInfo(**(result or {"min_replicas": data.min_replicas, "max_replicas": data.max_replicas, "cpu_target_pct": data.cpu_target_pct, "current_replicas": None, "current_cpu_pct": None}))
+
+
+@router.delete("/{name}/hpa", status_code=204)
+async def delete_hpa(
+    name: str,
+    namespace: str = "pi-apps",
+    _: User = Depends(require_admin),
+) -> None:
+    await run_in_threadpool(K8sService().delete_hpa, name, namespace)

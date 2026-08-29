@@ -1,4 +1,4 @@
-import type { NodeCapacity, PodInfo, Workload, WorkloadCreate, WorkloadEvent, WorkloadHistory, WorkloadLogs, WorkloadMetrics } from "../types/workload";
+import type { HPACreate, HPAInfo, NodeCapacity, PodInfo, Workload, WorkloadCreate, WorkloadEvent, WorkloadHistory, WorkloadLogs, WorkloadMetrics } from "../types/workload";
 import { apiFetch } from "./client";
 
 export const listWorkloads = () => apiFetch<Workload[]>("/workloads/");
@@ -55,3 +55,12 @@ export const rollbackWorkload = (name: string, revision: number) =>
     method: "POST",
     body: JSON.stringify({ revision }),
   });
+export const getHpa = (name: string, namespace = "pi-apps") =>
+  apiFetch<HPAInfo | null>(`/workloads/${name}/hpa?namespace=${encodeURIComponent(namespace)}`);
+export const applyHpa = (name: string, namespace: string, data: HPACreate) =>
+  apiFetch<HPAInfo>(`/workloads/${name}/hpa?namespace=${encodeURIComponent(namespace)}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+export const deleteHpa = (name: string, namespace = "pi-apps") =>
+  apiFetch<void>(`/workloads/${name}/hpa?namespace=${encodeURIComponent(namespace)}`, { method: "DELETE" });

@@ -77,6 +77,20 @@ export interface WorkloadHistory {
   revisions: DeploymentRevision[];
 }
 
+export interface HPAInfo {
+  min_replicas: number | null;
+  max_replicas: number | null;
+  cpu_target_pct: number | null;
+  current_replicas: number | null;
+  current_cpu_pct: number | null;
+}
+
+export interface HPACreate {
+  min_replicas: number;
+  max_replicas: number;
+  cpu_target_pct: number;
+}
+
 export interface WorkloadCreate {
   name: string;
   image: string;

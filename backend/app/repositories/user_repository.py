@@ -12,6 +12,14 @@ class UserRepository:
         result = await self._db.execute(select(User).where(User.username == username))
         return result.scalar_one_or_none()
 
+    async def get_by_id(self, user_id: int) -> User | None:
+        result = await self._db.execute(select(User).where(User.id == user_id))
+        return result.scalar_one_or_none()
+
+    async def get_all(self) -> list[User]:
+        result = await self._db.execute(select(User).order_by(User.username))
+        return list(result.scalars().all())
+
     async def count(self) -> int:
         result = await self._db.execute(select(func.count()).select_from(User))
         return result.scalar_one()
@@ -22,3 +30,19 @@ class UserRepository:
         await self._db.commit()
         await self._db.refresh(user)
         return user
+
+    async def update_role(self, user: User, role: UserRole) -> User:
+        user.role = role
+        await self._db.commit()
+        await self._db.refresh(user)
+        return user
+
+    async def update_password(self, user: User, hashed_password: str) -> User:
+        user.hashed_password = hashed_password
+        await self._db.commit()
+        await self._db.refresh(user)
+        return user
+
+    async def delete(self, user: User) -> None:
+        await self._db.delete(user)
+        await self._db.commit()
