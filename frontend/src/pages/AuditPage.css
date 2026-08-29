@@ -109,6 +109,7 @@
 .al-workload-restart          { background: rgba(234,88,12,0.15);   color: #ea580c; }
 .al-workload-probes-update    { background: rgba(13,148,136,0.15);  color: #0d9488; }
 .al-workload-resources-update { background: rgba(109,40,217,0.15);  color: #7c3aed; }
+.al-workload-rollback         { background: rgba(99,102,241,0.15);  color: #6366f1; }
 .al-node-cordon               { background: rgba(245,158,11,0.15);  color: var(--amber); }
 .al-node-uncordon             { background: rgba(34,197,94,0.15);   color: var(--green); }
 .al-node-drain                { background: rgba(239,68,68,0.15);   color: var(--red); }

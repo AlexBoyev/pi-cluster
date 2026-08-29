@@ -195,3 +195,12 @@
 - [x] Terraform providers: hashicorp/kubernetes ~2.27, hashicorp/helm ~2.13; local backend
 - [x] `terraform.tfvars.example` for safe variable reference; `.gitignore` excludes tfstate, tfvars, .terraform/
 - [x] Secrets never stored in repo — prompted at runtime (Ansible) or passed via --set / tfvars (Helm/Terraform)
+
+## Phase 28 — Deployment Rollback ✓
+- [x] `GET /workloads/{name}/history` — lists K8s ReplicaSet-based revision history: revision number, image, creation time, is_current flag
+- [x] `POST /workloads/{name}/rollback` — restores the full pod template from the selected ReplicaSet revision; updates DB image field; admin-only and audit-logged (`workload.rollback`)
+- [x] `DeploymentRevision` and `WorkloadHistory` schemas; `RollbackRequest` with revision ge=1
+- [x] K8sService: `get_rollout_history()` reads deployment revision annotation and RS metadata; `rollback_deployment()` patches deployment spec.template from target RS and returns rolled-back image
+- [x] `RollbackModal`: revision list (number, image, age); current revision marked and non-selectable; confirm button disabled until a non-current revision is selected; auto-refresh of workloads table after success
+- [x] "History" button per workload row (indigo hover); pauses auto-refresh while modal open
+- [x] Audit log: `workload.rollback` action with `revision=N image=…` detail; indigo badge on Audit page

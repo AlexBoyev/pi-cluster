@@ -65,6 +65,18 @@ export interface WorkloadMetrics {
   available: boolean;
 }
 
+export interface DeploymentRevision {
+  revision: number;
+  image: string;
+  created_at: string;
+  is_current: boolean;
+}
+
+export interface WorkloadHistory {
+  name: string;
+  revisions: DeploymentRevision[];
+}
+
 export interface WorkloadCreate {
   name: string;
   image: string;

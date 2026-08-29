@@ -14,6 +14,7 @@ const ACTION_LABELS: Record<string, string> = {
   "workload.restart":      "Restart",
   "workload.probes_update":"Probes",
   "workload.resources_update": "Resources",
+  "workload.rollback":     "Rollback",
   "node.cordon":           "Cordon",
   "node.uncordon":         "Uncordon",
   "node.drain":            "Drain",

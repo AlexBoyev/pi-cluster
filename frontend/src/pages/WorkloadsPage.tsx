@@ -25,6 +25,7 @@ import MetricsModal from "../components/MetricsModal";
 import PodsModal from "../components/PodsModal";
 import ProbesModal from "../components/ProbesModal";
 import ResourcesModal from "../components/ResourcesModal";
+import RollbackModal from "../components/RollbackModal";
 import type { NodeCapacity, Workload } from "../types/workload";
 import "./WorkloadsPage.css";
 
@@ -128,6 +129,7 @@ export default function WorkloadsPage() {
   const [probesTarget, setProbesTarget] = useState<Workload | null>(null);
   const [restarting, setRestarting] = useState<string | null>(null);
   const [metricsTarget, setMetricsTarget] = useState<string | null>(null);
+  const [rollbackTarget, setRollbackTarget] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "running" | "pending" | "failed">("all");
   const [sortField, setSortField] = useState<"name" | "status" | "replicas" | "created_at">("created_at");
@@ -168,7 +170,7 @@ export default function WorkloadsPage() {
 
   useEffect(() => { refresh(); }, []);
 
-  const modalOpen = !!(logsTarget || eventsTarget || podsTarget || envTarget || resourcesTarget || probesTarget || metricsTarget);
+  const modalOpen = !!(logsTarget || eventsTarget || podsTarget || envTarget || resourcesTarget || probesTarget || metricsTarget || rollbackTarget);
   const refreshRef = useRef(refresh);
   useEffect(() => { refreshRef.current = refresh; });
 
@@ -619,6 +621,12 @@ export default function WorkloadsPage() {
                         {restarting === w.name ? "…" : "Restart"}
                       </button>
                       <button
+                        className="wl-btn-history"
+                        onClick={() => setRollbackTarget(w.name)}
+                      >
+                        History
+                      </button>
+                      <button
                         className="wl-btn-del"
                         onClick={() => handleDelete(w.name)}
                         disabled={deleting === w.name}
@@ -726,6 +734,13 @@ export default function WorkloadsPage() {
       )}
       {logsTarget && (
         <LogsModal workloadName={logsTarget} onClose={() => setLogsTarget(null)} />
+      )}
+      {rollbackTarget && (
+        <RollbackModal
+          name={rollbackTarget}
+          onClose={() => setRollbackTarget(null)}
+          onRolledBack={refresh}
+        />
       )}
     </div>
   );

@@ -109,3 +109,19 @@ class WorkloadMetrics(BaseModel):
     memory_limit_bytes: int
     pod_count: int
     available: bool
+
+
+class DeploymentRevision(BaseModel):
+    revision: int
+    image: str
+    created_at: datetime
+    is_current: bool
+
+
+class WorkloadHistory(BaseModel):
+    name: str
+    revisions: list[DeploymentRevision]
+
+
+class RollbackRequest(BaseModel):
+    revision: int = Field(..., ge=1)

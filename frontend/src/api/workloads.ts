@@ -1,4 +1,4 @@
-import type { NodeCapacity, PodInfo, Workload, WorkloadCreate, WorkloadEvent, WorkloadLogs, WorkloadMetrics } from "../types/workload";
+import type { NodeCapacity, PodInfo, Workload, WorkloadCreate, WorkloadEvent, WorkloadHistory, WorkloadLogs, WorkloadMetrics } from "../types/workload";
 import { apiFetch } from "./client";
 
 export const listWorkloads = () => apiFetch<Workload[]>("/workloads/");
@@ -48,3 +48,10 @@ export const cordonNode = (name: string) =>
   apiFetch<{ cordoned: string }>(`/workloads/nodes/${name}/cordon`, { method: "POST" });
 export const uncordonNode = (name: string) =>
   apiFetch<{ uncordoned: string }>(`/workloads/nodes/${name}/cordon`, { method: "DELETE" });
+export const getWorkloadHistory = (name: string) =>
+  apiFetch<WorkloadHistory>(`/workloads/${name}/history`);
+export const rollbackWorkload = (name: string, revision: number) =>
+  apiFetch<Workload>(`/workloads/${name}/rollback`, {
+    method: "POST",
+    body: JSON.stringify({ revision }),
+  });

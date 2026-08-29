@@ -178,7 +178,7 @@
 
 .wl-row-actions { display: flex; gap: 0.4rem; align-items: center; }
 
-.wl-btn-logs, .wl-btn-events, .wl-btn-env, .wl-btn-resources, .wl-btn-probes, .wl-btn-pods, .wl-btn-restart, .wl-btn-metrics {
+.wl-btn-logs, .wl-btn-events, .wl-btn-env, .wl-btn-resources, .wl-btn-probes, .wl-btn-pods, .wl-btn-restart, .wl-btn-metrics, .wl-btn-history {
   padding: 0.3rem 0.75rem;
   background: transparent;
   border: 1px solid var(--border);
@@ -210,6 +210,9 @@
 }
 .wl-btn-metrics:hover {
   background: rgba(6,182,212,0.08); color: #0891b2; border-color: #a5f3fc;
+}
+.wl-btn-history:hover {
+  background: rgba(99,102,241,0.08); color: #6366f1; border-color: #a5b4fc;
 }
 
 /* ── Delete button ──────────────────────────────────────────────────────── */

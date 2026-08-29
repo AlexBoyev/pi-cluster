@@ -345,3 +345,53 @@ class K8sService:
 
     def delete_ingress(self, name: str, namespace: str) -> None:
         self._networking().delete_namespaced_ingress(name=name, namespace=namespace)
+
+    def get_rollout_history(self, name: str, namespace: str) -> list[dict]:
+        apps = self._apps()
+        deployment = apps.read_namespaced_deployment(name=name, namespace=namespace)
+        current_revision = int(
+            (deployment.metadata.annotations or {}).get("deployment.kubernetes.io/revision", "0")
+        )
+        rs_list = apps.list_namespaced_replica_set(
+            namespace=namespace, label_selector=f"app={name}"
+        )
+        revisions = []
+        for rs in rs_list.items:
+            annotations = rs.metadata.annotations or {}
+            rev_str = annotations.get("deployment.kubernetes.io/revision")
+            if not rev_str:
+                continue
+            rev = int(rev_str)
+            containers = (rs.spec.template.spec.containers or []) if rs.spec and rs.spec.template and rs.spec.template.spec else []
+            image = containers[0].image if containers else "unknown"
+            revisions.append({
+                "revision": rev,
+                "image": image,
+                "created_at": rs.metadata.creation_timestamp,
+                "is_current": rev == current_revision,
+            })
+        revisions.sort(key=lambda r: r["revision"], reverse=True)
+        return revisions
+
+    def rollback_deployment(self, name: str, namespace: str, revision: int) -> str:
+        apps = self._apps()
+        rs_list = apps.list_namespaced_replica_set(
+            namespace=namespace, label_selector=f"app={name}"
+        )
+        target_rs = None
+        for rs in rs_list.items:
+            annotations = rs.metadata.annotations or {}
+            if annotations.get("deployment.kubernetes.io/revision") == str(revision):
+                target_rs = rs
+                break
+        if target_rs is None:
+            raise ValueError(f"Revision {revision} not found for workload {name}")
+        containers = (target_rs.spec.template.spec.containers or []) if target_rs.spec and target_rs.spec.template and target_rs.spec.template.spec else []
+        target_image = containers[0].image if containers else None
+        template_dict = client.ApiClient().sanitize_for_serialization(target_rs.spec.template)
+        apps.patch_namespaced_deployment(
+            name=name,
+            namespace=namespace,
+            body={"spec": {"template": template_dict}},
+        )
+        return target_image or "unknown"

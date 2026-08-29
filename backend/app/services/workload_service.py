@@ -9,7 +9,7 @@ from kubernetes.client.exceptions import ApiException
 from app.config import settings
 from app.models.workload import WorkloadStatus
 from app.repositories.workload_repository import WorkloadRepository
-from app.schemas.workload import NodeCapacity, PodInfo, WorkloadCreate, WorkloadEnvUpdate, WorkloadEvent, WorkloadImageUpdate, WorkloadLogs, WorkloadMetrics, WorkloadProbeUpdate, WorkloadResourceUpdate, WorkloadResponse
+from app.schemas.workload import DeploymentRevision, NodeCapacity, PodInfo, WorkloadCreate, WorkloadEnvUpdate, WorkloadEvent, WorkloadHistory, WorkloadImageUpdate, WorkloadLogs, WorkloadMetrics, WorkloadProbeUpdate, WorkloadResourceUpdate, WorkloadResponse
 from app.services.audit_service import AuditService
 from app.services.k8s_service import K8sService
 
@@ -499,4 +499,63 @@ class WorkloadService:
             memory_limit_bytes=memory_limit_bytes,
             pod_count=pod_count,
             available=available,
+        )
+
+    async def get_workload_history(self, name: str) -> WorkloadHistory:
+        workload = await self._repo.get_by_name(name)
+        if workload is None or workload.status == WorkloadStatus.DELETED:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workload not found")
+        try:
+            raw = await run_in_threadpool(self._k8s.get_rollout_history, name, workload.namespace)
+        except ApiException as e:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
+        revisions = [
+            DeploymentRevision(
+                revision=r["revision"],
+                image=r["image"],
+                created_at=r["created_at"],
+                is_current=r["is_current"],
+            )
+            for r in raw
+        ]
+        return WorkloadHistory(name=name, revisions=revisions)
+
+    async def rollback_workload(self, name: str, revision: int, actor: str = "system") -> WorkloadResponse:
+        workload = await self._repo.get_by_name(name)
+        if workload is None or workload.status == WorkloadStatus.DELETED:
+            await self._audit.log("workload.rollback", "workload", name, actor, "failure", "Workload not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workload not found")
+        try:
+            rolled_back_image = await run_in_threadpool(
+                self._k8s.rollback_deployment, name, workload.namespace, revision
+            )
+        except ValueError as e:
+            await self._audit.log("workload.rollback", "workload", name, actor, "failure", str(e))
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        except ApiException as e:
+            await self._audit.log("workload.rollback", "workload", name, actor, "failure", e.reason)
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"K8s: {e.reason}")
+
+        workload = await self._repo.update_image(name, rolled_back_image)
+        await self._audit.log(
+            "workload.rollback", "workload", name, actor, "success",
+            f"revision={revision} image={rolled_back_image}"
+        )
+        return WorkloadResponse(
+            id=workload.id,
+            name=workload.name,
+            namespace=workload.namespace,
+            image=workload.image,
+            replicas=workload.replicas,
+            ready_replicas=0,
+            target_node=workload.target_node,
+            container_port=workload.container_port,
+            ingress_host=workload.ingress_host,
+            env_vars=workload.env_vars or {},
+            cpu_limit=workload.cpu_limit,
+            memory_limit=workload.memory_limit,
+            liveness_path=workload.liveness_path,
+            readiness_path=workload.readiness_path,
+            status=workload.status,
+            created_at=workload.created_at,
         )

@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.user import User
 from app.repositories.audit_repository import AuditRepository
 from app.repositories.workload_repository import WorkloadRepository
-from app.schemas.workload import NodeCapacity, PodInfo, WorkloadCreate, WorkloadEnvUpdate, WorkloadEvent, WorkloadImageUpdate, WorkloadLogs, WorkloadMetrics, WorkloadProbeUpdate, WorkloadResourceUpdate, WorkloadResponse, WorkloadScale
+from app.schemas.workload import DeploymentRevision, NodeCapacity, PodInfo, RollbackRequest, WorkloadCreate, WorkloadEnvUpdate, WorkloadEvent, WorkloadHistory, WorkloadImageUpdate, WorkloadLogs, WorkloadMetrics, WorkloadProbeUpdate, WorkloadResourceUpdate, WorkloadResponse, WorkloadScale
 from app.services.audit_service import AuditService
 from app.services.k8s_service import K8sService
 from app.services.workload_service import WorkloadService
@@ -176,3 +176,22 @@ async def uncordon_node(
 ) -> dict:
     await service.uncordon_node(node_name, actor=admin.username)
     return {"uncordoned": node_name}
+
+
+@router.get("/{name}/history", response_model=WorkloadHistory)
+async def get_workload_history(
+    name: str,
+    service: WorkloadService = Depends(get_service),
+    _: None = Depends(get_current_user),
+) -> WorkloadHistory:
+    return await service.get_workload_history(name)
+
+
+@router.post("/{name}/rollback", response_model=WorkloadResponse)
+async def rollback_workload(
+    name: str,
+    data: RollbackRequest,
+    service: WorkloadService = Depends(get_service),
+    admin: User = Depends(require_admin),
+) -> WorkloadResponse:
+    return await service.rollback_workload(name, data.revision, actor=admin.username)

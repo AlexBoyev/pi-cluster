@@ -1,0 +1,116 @@
+.rb-box {
+  width: 520px;
+  max-width: 95vw;
+}
+
+.rb-body {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.rb-hint {
+  font-size: 0.83rem;
+  color: var(--t2);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.rb-empty {
+  padding: 1.25rem 1.5rem;
+  font-size: 0.84rem;
+  color: var(--t3);
+  line-height: 1.5;
+}
+
+/* ── Revision list ── */
+.rb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.rb-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 80px;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--rs);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.rb-row:hover:not(.rb-row-current) {
+  background: rgba(99, 102, 241, 0.06);
+  border-color: #a5b4fc;
+}
+
+.rb-row-current {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.rb-row-selected {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: #818cf8;
+}
+
+.rb-rev-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rb-rev-num {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--t1);
+}
+
+.rb-badge-current {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--green);
+  border: 1px solid var(--green-bd);
+  white-space: nowrap;
+}
+
+.rb-rev-image {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--t2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rb-rev-age {
+  font-size: 0.72rem;
+  color: var(--t3);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ── Footer ── */
+.rb-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.rb-warn {
+  font-size: 0.78rem;
+  color: var(--amber);
+  margin-left: auto;
+}
