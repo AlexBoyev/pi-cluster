@@ -2,8 +2,9 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.api.v1.router import router
@@ -61,6 +62,31 @@ app.add_middleware(
 Instrumentator().instrument(app).expose(app)
 
 app.include_router(router)
+
+
+@app.exception_handler(Exception)
+async def kubernetes_unavailable_handler(request: Request, exc: Exception) -> JSONResponse:
+    # Catch Kubernetes API errors (connection refused, timeout, etc.) that bubble
+    # up when the K3s API server is unreachable and return 503 instead of 500.
+    try:
+        from kubernetes.client.exceptions import ApiException
+        if isinstance(exc, ApiException):
+            logger.warning("K8s API error %s %s: %s", request.method, request.url.path, exc)
+            return JSONResponse(
+                status_code=503,
+                content={"detail": f"Kubernetes API unavailable: {exc.reason}"},
+            )
+    except ImportError:
+        pass
+    from urllib3.exceptions import MaxRetryError, NewConnectionError
+    if isinstance(exc, (MaxRetryError, NewConnectionError, ConnectionRefusedError, OSError)):
+        logger.warning("K8s connection error %s %s: %s", request.method, request.url.path, exc)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Kubernetes API is unreachable. The cluster may be starting up."},
+        )
+    # Re-raise anything else — FastAPI's default handler turns it into a 500.
+    raise exc
 
 
 @app.get("/health")

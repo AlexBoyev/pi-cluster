@@ -73,10 +73,27 @@ class SSHService:
             timeout=settings.ssh_connect_timeout,
         )
         try:
-            _, stdout, stderr = client.exec_command(command)
+            if command.startswith("sudo "):
+                # Feed the SSH password to sudo via stdin so it works without
+                # a TTY and without requiring NOPASSWD in sudoers.
+                stdin, stdout, stderr = client.exec_command("sudo -S " + command[5:])
+                stdin.write(settings.ssh_password + "\n")
+                stdin.flush()
+                stdin.channel.shutdown_write()
+            else:
+                _, stdout, stderr = client.exec_command(command)
             stdout.channel.settimeout(settings.ssh_command_timeout)
-            out = stdout.read().decode(errors="replace")
-            err = stderr.read().decode(errors="replace")
+            try:
+                out = stdout.read().decode(errors="replace")
+                err = stderr.read().decode(errors="replace")
+            except Exception:
+                # Channel closed mid-read because the node is rebooting — that's fine.
+                out, err = "", ""
+            # sudo -S writes the password prompt to stderr; strip it.
+            err = "\n".join(
+                l for l in err.splitlines()
+                if "[sudo]" not in l and "password for" not in l.lower()
+            )
             return (out + err).strip()
         finally:
             client.close()
