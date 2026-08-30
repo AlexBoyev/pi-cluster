@@ -3,7 +3,7 @@ pipeline {
 
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
-        timeout(time: 15, unit: 'MINUTES')
+        timeout(time: 25, unit: 'MINUTES')
         disableConcurrentBuilds()
     }
 
@@ -39,7 +39,11 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'cd $PROJECT_DIR && docker compose build backend frontend'
+                sh '''
+                    cd $PROJECT_DIR
+                    docker compose build backend frontend
+                    docker compose pull nginx
+                '''
             }
         }
 
