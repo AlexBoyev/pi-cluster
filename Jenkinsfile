@@ -41,8 +41,8 @@ pipeline {
             steps {
                 sh '''
                     cd $PROJECT_DIR
-                    docker compose build backend frontend
-                    docker compose pull nginx dnsmasq
+                    docker compose build backend frontend dnsmasq
+                    docker compose pull nginx
                 '''
             }
         }
