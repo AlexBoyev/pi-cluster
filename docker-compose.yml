@@ -84,6 +84,17 @@ services:
       - --storage.path=/alertmanager
     restart: unless-stopped
 
+  dnsmasq:
+    image: andyshinn/dnsmasq:latest
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    volumes:
+      - ./dnsmasq/dnsmasq.conf:/etc/dnsmasq.conf:ro
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+
   nginx:
     image: nginx:alpine
     ports:

@@ -42,7 +42,7 @@ pipeline {
                 sh '''
                     cd $PROJECT_DIR
                     docker compose build backend frontend
-                    docker compose pull nginx
+                    docker compose pull nginx dnsmasq
                 '''
             }
         }
