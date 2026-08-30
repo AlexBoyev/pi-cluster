@@ -32,6 +32,7 @@ pipeline {
                         --exclude='__pycache__' \
                         --exclude='*.pyc' \
                         --exclude='node_modules' \
+                        --exclude='backend/kubeconfig' \
                         $WORKSPACE/ $PROJECT_DIR/
                 '''
             }
