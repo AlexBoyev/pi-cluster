@@ -116,8 +116,8 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
-      GF_SERVER_DOMAIN: grafana.pi-cluster.local
-      GF_SERVER_ROOT_URL: http://grafana.pi-cluster.local
+      GF_SERVER_DOMAIN: grafana.pi-cluster.lan
+      GF_SERVER_ROOT_URL: http://grafana.pi-cluster.lan
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
