@@ -10,7 +10,7 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
-    allowedHosts: [".pi-cluster.lan"],
+    allowedHosts: [".pi-cluster.lan", ".cluster.download"],
     proxy: {
       "/api": {
         target: backendUrl,
