@@ -4,6 +4,18 @@ A self-hosted DevOps platform for a 4-node Raspberry Pi cluster. Provides a Reac
 
 ---
 
+## Access
+
+| Location | URL |
+|---|---|
+| Home WiFi | `http://pi-cluster.lan` |
+| Public (anywhere) | `http://pi.cluster.download` |
+| Direct IP | `http://10.100.102.10` |
+
+DNS is handled by a dnsmasq container on pi-node1. On home WiFi, `*.pi-cluster.lan` and `*.cluster.download` resolve directly to `10.100.102.10` (split-horizon). Public access is via Cloudflare Tunnel — no port forwarding required.
+
+---
+
 ## Cluster nodes
 
 | Node     | IP             | Role                  |
@@ -75,7 +87,7 @@ A self-hosted DevOps platform for a 4-node Raspberry Pi cluster. Provides a Reac
   │  ┌──────────┐  ┌──────────────────────┐  │
   │  │ Traefik  │  │  User workloads      │  │
   │  │ Ingress  │  │  (Deployments)       │  │
-  │  │ :80/:443 │  │  *.pi-cluster.local  │  │
+  │  │ :80/:443 │  │  *.pi-cluster.lan  │  │
   │  └──────────┘  └──────────────────────┘  │
   │                                          │
   │  pi-node1 ─ pi-node2 ─ pi-node3 ─ pi-node4
@@ -99,6 +111,8 @@ A self-hosted DevOps platform for a 4-node Raspberry Pi cluster. Provides a Reac
 | Orchestration| K3s (Kubernetes)                  | Container scheduling across 4 nodes          |
 | GitOps       | ArgoCD                            | Declarative K8s manifest delivery            |
 | Ingress      | Traefik DaemonSet                 | HTTP/S routing + TLS for workloads           |
+| DNS          | dnsmasq                           | LAN wildcard DNS + split-horizon for public domain |
+| Tunnel       | Cloudflare Tunnel (cloudflared)   | Public access without port forwarding        |
 | Config Mgmt  | Ansible                           | Node bootstrap, K3s install, platform deploy |
 | K8s Packaging| Helm                              | Platform chart (backend, frontend, DB, Redis)|
 | IaC          | Terraform (K8s + Helm providers)  | Namespaces, RBAC, ArgoCD Application         |
@@ -150,7 +164,7 @@ Every push to `master` is detected via SCM polling (every 2 minutes) and runs th
 | Stage | What it does |
 |---|---|
 | **Checkout** | Clones `master` from GitHub into the Jenkins workspace |
-| **Sync** | `rsync` copies the workspace to `/opt/pi-cluster` on pi-node1 |
+| **Sync** | `rsync` copies the workspace to `/home/admin/pi-cluster` on pi-node1 |
 | **Build** | `docker compose build backend` — builds the backend image |
 | **Test** | `pytest` against all 32 tests using an in-process SQLite DB |
 | **Deploy** | `docker compose up -d --build backend frontend` — restarts containers |
@@ -447,6 +461,7 @@ All routes are prefixed `/api/v1/`. Authentication is JWT Bearer token (`Authori
 | node-exporter | 9100 | internal (K3s pod network) |
 | Traefik HTTP | 80 | K3s HostPort (all nodes) |
 | Traefik HTTPS | 443 | K3s HostPort (all nodes) |
+| Cloudflare Tunnel | outbound only | Public internet → pi-node1:80 |
 
 ---
 
@@ -459,7 +474,7 @@ cd backend
 pytest --tb=long -x
 ```
 
-Tests live in `backend/tests/` and cover: health, auth, nodes, workloads, namespaces, configmaps, storage, pods, jobs, quotas, audit, and WebSocket log routes (14 test files, 32+ tests). `asyncio_mode = auto` via `pytest-asyncio`.
+Tests live in `backend/tests/` and cover: health, auth, nodes, workloads, namespaces, configmaps, storage, pods, jobs, quotas, audit, and WebSocket log routes (23 test files, 304 tests). `asyncio_mode = auto` via `pytest-asyncio`.
 
 CI runs the test suite on every commit (both pipelines) and blocks deploy if any test fails.
 
@@ -517,18 +532,18 @@ Code is deployed automatically by Jenkins on every push to `master`. Manual step
 
 All Docker Compose services are configured with `restart: unless-stopped` — the platform stack starts automatically when the cluster is powered on.
 
-> **SSH key requirement:** All SSH-based operations to pi-node1 (manual deploys, SCP) require key-based authentication. Password auth is disabled. Your SSH key must be loaded in the shell (`ssh-add`) before running any `ssh` or `scp` commands to `alex@10.100.102.10`.
+> SSH to pi-node1 uses password authentication: `ssh admin@10.100.102.10`.
 
 ### Application path on pi-node1
 
-All application code lives at `/opt/pi-cluster` on pi-node1. Jenkins rsyncs to this path. Docker Compose is run from there.
+All application code lives at `/home/admin/pi-cluster` on pi-node1. Jenkins rsyncs to this path. Docker Compose is run from there.
 
 ### First deploy
 
 ```bash
 # On pi-node1 (as alex):
-git clone https://github.com/AlexBoyev/pi-cluster /opt/pi-cluster
-cd /opt/pi-cluster
+git clone https://github.com/AlexBoyev/pi-cluster /home/admin/pi-cluster
+cd /home/admin/pi-cluster
 cp .env.example .env   # fill in secrets
 docker compose up -d
 docker compose exec backend alembic upgrade head
@@ -538,19 +553,19 @@ docker compose exec backend alembic upgrade head
 
 ```bash
 # Ensure files are writable (Jenkins rsync runs as root, chown first)
-ssh alex@10.100.102.10 "sudo chown -R alex:alex /opt/pi-cluster/backend"
+ssh alex@10.100.102.10 "sudo chown -R alex:alex /home/admin/pi-cluster/backend"
 
 # Copy the changed files
-scp backend/app/services/my_service.py alex@10.100.102.10:/opt/pi-cluster/backend/app/services/
+scp backend/app/services/my_service.py alex@10.100.102.10:/home/admin/pi-cluster/backend/app/services/
 
 # Restart the backend container
-ssh alex@10.100.102.10 "cd /opt/pi-cluster && docker compose restart backend"
+ssh alex@10.100.102.10 "cd /home/admin/pi-cluster && docker compose restart backend"
 ```
 
 If a migration is included, run it after the restart:
 
 ```bash
-ssh alex@10.100.102.10 "cd /opt/pi-cluster && docker compose exec backend alembic upgrade head"
+ssh alex@10.100.102.10 "cd /home/admin/pi-cluster && docker compose exec backend alembic upgrade head"
 ```
 
 ### Deploy a workload via the dashboard
