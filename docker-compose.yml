@@ -98,6 +98,7 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     platform: linux/arm64
+    network_mode: host
     command: tunnel --no-autoupdate run
     environment:
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
