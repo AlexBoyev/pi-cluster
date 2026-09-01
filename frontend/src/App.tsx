@@ -333,10 +333,15 @@ export default function App() {
   const [nodes,        setNodes]        = useState<NodeHealth[]>([]);
   const [error,        setError]        = useState<string | null>(null);
   const [loading,      setLoading]      = useState(true);
-  const [sbOpen,        setSbOpen]        = useState(true);
+  const [sbOpen,        setSbOpen]        = useState(() => window.innerWidth > 768);
   const [selectedNode,  setSelectedNode]  = useState<NodeHealth | null>(null);
   const [clusterAction, setClusterAction] = useState<"restart" | "shutdown" | null>(null);
   const [clusterBusy,   setClusterBusy]   = useState(false);
+
+  const navigate = (p: Page) => {
+    setPage(p);
+    if (window.innerWidth <= 768) setSbOpen(false);
+  };
 
   const refresh = () =>
     getAllHealth()
@@ -380,7 +385,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "dashboard" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("dashboard"); }}
+            onClick={(e) => { e.preventDefault(); navigate("dashboard"); }}
           >
             <span className="sb-icon">⊞</span>
             Dashboard
@@ -388,7 +393,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "workloads" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("workloads"); }}
+            onClick={(e) => { e.preventDefault(); navigate("workloads"); }}
           >
             <span className="sb-icon">⬡</span>
             Workloads
@@ -396,7 +401,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "capacity" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("capacity"); }}
+            onClick={(e) => { e.preventDefault(); navigate("capacity"); }}
           >
             <span className="sb-icon">▦</span>
             Capacity
@@ -404,7 +409,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "events" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("events"); }}
+            onClick={(e) => { e.preventDefault(); navigate("events"); }}
           >
             <span className="sb-icon">⊜</span>
             Events
@@ -412,7 +417,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "namespaces" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("namespaces"); }}
+            onClick={(e) => { e.preventDefault(); navigate("namespaces"); }}
           >
             <span className="sb-icon">⊟</span>
             Namespaces
@@ -420,7 +425,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "audit" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("audit"); }}
+            onClick={(e) => { e.preventDefault(); navigate("audit"); }}
           >
             <span className="sb-icon">≔</span>
             Audit Log
@@ -428,7 +433,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "alert-history" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("alert-history"); }}
+            onClick={(e) => { e.preventDefault(); navigate("alert-history"); }}
           >
             <span className="sb-icon">⊛</span>
             Alert History
@@ -436,7 +441,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "configmaps" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("configmaps"); }}
+            onClick={(e) => { e.preventDefault(); navigate("configmaps"); }}
           >
             <span className="sb-icon">⊞</span>
             ConfigMaps
@@ -444,7 +449,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "secrets" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("secrets"); }}
+            onClick={(e) => { e.preventDefault(); navigate("secrets"); }}
           >
             <span className="sb-icon">⊕</span>
             Secrets
@@ -452,7 +457,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "services" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("services"); }}
+            onClick={(e) => { e.preventDefault(); navigate("services"); }}
           >
             <span className="sb-icon">⇌</span>
             Services
@@ -460,7 +465,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "cronjobs" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("cronjobs"); }}
+            onClick={(e) => { e.preventDefault(); navigate("cronjobs"); }}
           >
             <span className="sb-icon">⊙</span>
             CronJobs
@@ -468,7 +473,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "storage" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("storage"); }}
+            onClick={(e) => { e.preventDefault(); navigate("storage"); }}
           >
             <span className="sb-icon">◫</span>
             Storage
@@ -476,7 +481,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "objects" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("objects"); }}
+            onClick={(e) => { e.preventDefault(); navigate("objects"); }}
           >
             <span className="sb-icon">◈</span>
             Objects
@@ -484,7 +489,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "helm" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("helm"); }}
+            onClick={(e) => { e.preventDefault(); navigate("helm"); }}
           >
             <span className="sb-icon">⛵</span>
             Helm
@@ -492,7 +497,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "jobs" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("jobs"); }}
+            onClick={(e) => { e.preventDefault(); navigate("jobs"); }}
           >
             <span className="sb-icon">⊙</span>
             Jobs
@@ -500,7 +505,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "quotas" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("quotas"); }}
+            onClick={(e) => { e.preventDefault(); navigate("quotas"); }}
           >
             <span className="sb-icon">⊠</span>
             Quotas
@@ -508,7 +513,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "alert-rules" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("alert-rules"); }}
+            onClick={(e) => { e.preventDefault(); navigate("alert-rules"); }}
           >
             <span className="sb-icon">⊛</span>
             Alert Rules
@@ -516,7 +521,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "live-logs" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("live-logs"); }}
+            onClick={(e) => { e.preventDefault(); navigate("live-logs"); }}
           >
             <span className="sb-icon">▶</span>
             Live Logs
@@ -526,7 +531,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "users" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("users"); }}
+            onClick={(e) => { e.preventDefault(); navigate("users"); }}
           >
             <span className="sb-icon">◉</span>
             Users
@@ -534,7 +539,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "notifications" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("notifications"); }}
+            onClick={(e) => { e.preventDefault(); navigate("notifications"); }}
           >
             <span className="sb-icon">⊛</span>
             Notifications
@@ -542,7 +547,7 @@ export default function App() {
           <a
             href="#"
             className={`sb-link${page === "rbac" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); setPage("rbac"); }}
+            onClick={(e) => { e.preventDefault(); navigate("rbac"); }}
           >
             <span className="sb-icon">⊗</span>
             RBAC
@@ -573,6 +578,8 @@ export default function App() {
           <div className="sb-foot-val">4 nodes · arm64 · 10.100.102.0/24</div>
         </div>
       </aside>
+
+      {sbOpen && <div className="sb-overlay" onClick={() => setSbOpen(false)} />}
 
       {/* ── Main ─────────────────────────────────────────────────────────── */}
       <div className="main-area">
