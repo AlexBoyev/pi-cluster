@@ -147,11 +147,13 @@ services:
       - "50000:50000"
     volumes:
       - jenkins-data:/var/jenkins_home
+      - ./docker/jenkins/init.groovy.d:/var/jenkins_home/init.groovy.d:ro
       - /var/run/docker.sock:/var/run/docker.sock
       - /usr/bin/docker:/usr/bin/docker:ro
       - /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins:ro
       - /home/admin/pi-cluster:/home/admin/pi-cluster
     environment:
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD}
       JAVA_OPTS: >-
         -Djenkins.install.runSetupWizard=false
         -Dhudson.model.DirectoryBrowserSupport.CSP=
