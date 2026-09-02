@@ -7,6 +7,9 @@ interface VaultData {
   redis: { url: string };
   ssh: { username: string; password: string };
   grafana: { url: string; username: string; password: string };
+  jenkins: { url: string; username: string; password: string };
+  argocd: { url: string; username: string; password: string };
+  prometheus: { url: string; note: string };
   app_admin: { username: string; password: string; note: string };
   jwt: { secret_key: string };
 }
@@ -51,6 +54,29 @@ function buildGroups(v: VaultData): CredGroup[] {
         { label: "URL", value: v.grafana.url },
         { label: "Username", value: v.grafana.username },
         { label: "Password", value: v.grafana.password, secret: true },
+      ],
+    },
+    {
+      title: "Jenkins",
+      rows: [
+        { label: "URL", value: v.jenkins.url },
+        { label: "Username", value: v.jenkins.username },
+        { label: "Password", value: v.jenkins.password, secret: true },
+      ],
+    },
+    {
+      title: "ArgoCD",
+      rows: [
+        { label: "URL", value: v.argocd.url },
+        { label: "Username", value: v.argocd.username },
+        { label: "Password", value: v.argocd.password, secret: true },
+      ],
+    },
+    {
+      title: "Prometheus",
+      rows: [
+        { label: "URL", value: v.prometheus.url },
+        { label: "Auth", value: v.prometheus.note },
       ],
     },
     {

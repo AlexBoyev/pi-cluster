@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     grafana_admin_user: str = "admin"
     grafana_admin_password: str = "CHANGE_ME"
 
+    jenkins_admin_password: str = ""
+
     k8s_kubeconfig_path: str = "/app/kubeconfig"
     k8s_api_host: str = "10.100.102.10"
     k8s_namespace: str = "pi-apps"

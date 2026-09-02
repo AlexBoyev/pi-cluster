@@ -1,8 +1,22 @@
+import base64
+
 from fastapi import APIRouter
 
 from app.config import settings
 
 router = APIRouter(prefix="/vault", tags=["vault"])
+
+
+def _argocd_password() -> str:
+    try:
+        from kubernetes import client as k8s_client, config as k8s_config
+        k8s_config.load_kube_config(config_file=settings.k8s_kubeconfig_path)
+        secret = k8s_client.CoreV1Api().read_namespaced_secret(
+            "argocd-initial-admin-secret", "argocd"
+        )
+        return base64.b64decode(secret.data["password"]).decode().strip()
+    except Exception:
+        return "(unavailable — secret not found in argocd namespace)"
 
 
 @router.get("")
@@ -26,6 +40,20 @@ async def get_vault() -> dict:
             "url": settings.grafana_url,
             "username": settings.grafana_admin_user,
             "password": settings.grafana_admin_password,
+        },
+        "jenkins": {
+            "url": "https://jenkins.cluster.download",
+            "username": "admin",
+            "password": settings.jenkins_admin_password or "(not set — add JENKINS_ADMIN_PASSWORD to .env)",
+        },
+        "argocd": {
+            "url": "https://argocd.cluster.download",
+            "username": "admin",
+            "password": _argocd_password(),
+        },
+        "prometheus": {
+            "url": "https://prometheus.cluster.download",
+            "note": "No authentication configured.",
         },
         "app_admin": {
             "username": "admin",

@@ -34,6 +34,7 @@ type Page = "dashboard" | "workloads" | "capacity" | "events" | "namespaces" | "
 
 const POLL_MS  = 30_000;
 const CTRL_IP  = "10.100.102.10";
+const IS_LAN   = !window.location.hostname.endsWith(".cluster.download");
 
 const NAV = [
   { label: "Prometheus", href: "https://prometheus.cluster.download", icon: "◎" },
@@ -535,14 +536,16 @@ export default function App() {
           </a>
 
           <div className="sb-section">Admin</div>
-          <a
-            href="#"
-            className={`sb-link${page === "key-vault" ? " active" : ""}`}
-            onClick={(e) => { e.preventDefault(); navigate("key-vault"); }}
-          >
-            <span className="sb-icon">⚿</span>
-            Key Vault
-          </a>
+          {IS_LAN && (
+            <a
+              href="#"
+              className={`sb-link${page === "key-vault" ? " active" : ""}`}
+              onClick={(e) => { e.preventDefault(); navigate("key-vault"); }}
+            >
+              <span className="sb-icon">⚿</span>
+              Key Vault
+            </a>
+          )}
           <a
             href="#"
             className={`sb-link${page === "users" ? " active" : ""}`}
