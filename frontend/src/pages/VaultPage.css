@@ -1,0 +1,125 @@
+.vault-page {
+  padding: 1.5rem;
+  max-width: 900px;
+}
+
+.vault-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(255, 60, 60, 0.08);
+  border: 1px solid rgba(255, 60, 60, 0.2);
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.5rem;
+}
+
+.vault-banner-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.vault-banner-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.vault-banner-sub {
+  font-size: 0.78rem;
+  opacity: 0.6;
+  margin-top: 0.2rem;
+}
+
+.vault-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 1rem;
+}
+
+.vault-card {
+  background: var(--card-bg, rgba(255,255,255,0.04));
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.vault-card-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.5;
+  padding: 0.7rem 1rem 0.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.vault-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.vault-row td {
+  padding: 0.55rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 0.82rem;
+  vertical-align: middle;
+}
+
+.vault-row:last-child td {
+  border-bottom: none;
+}
+
+.vault-label {
+  opacity: 0.55;
+  width: 30%;
+  white-space: nowrap;
+}
+
+.vault-value {
+  font-family: monospace;
+  word-break: break-all;
+}
+
+.vault-val-text {
+  letter-spacing: 0.02em;
+}
+
+.vault-actions {
+  width: 90px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.vault-btn {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.5rem;
+  margin-left: 0.3rem;
+  transition: background 0.15s;
+}
+
+.vault-btn:hover {
+  background: rgba(255,255,255,0.14);
+}
+
+.vault-btn-copy {
+  opacity: 0.7;
+}
+
+.vault-loading,
+.vault-error {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 2rem;
+  opacity: 0.7;
+  font-size: 0.9rem;
+}
+
+.vault-error {
+  color: #f87171;
+}

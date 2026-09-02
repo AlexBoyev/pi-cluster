@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from app.api.v1 import alert_history, alerts, audit, auth, cluster, configmaps, cronjobs, events, exec, helm, health, jobs, namespaces, nodes, notifications, objects, pods, prom_rules, quotas, rbac, secrets, services, storage, users, workloads
+from app.api.v1 import alert_history, alerts, audit, auth, cluster, configmaps, cronjobs, events, exec, helm, health, jobs, namespaces, nodes, notifications, objects, pods, prom_rules, quotas, rbac, secrets, services, storage, users, vault, workloads
 from app.auth.dependencies import require_admin
 
 router = APIRouter(prefix="/api/v1")
@@ -35,3 +35,4 @@ router.include_router(pods.router, dependencies=[Depends(require_admin)])
 router.include_router(jobs.router, dependencies=[Depends(require_admin)])
 router.include_router(quotas.router, dependencies=[Depends(require_admin)])
 router.include_router(prom_rules.router, dependencies=[Depends(require_admin)])
+router.include_router(vault.router, dependencies=[Depends(require_admin)])

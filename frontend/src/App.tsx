@@ -26,21 +26,22 @@ import UsersPage from "./pages/UsersPage";
 import AlertsPanel from "./components/AlertsPanel";
 import NodeSSHModal from "./components/NodeSSHModal";
 import { NodeDetailView } from "./pages/NodesPage";
+import VaultPage from "./pages/VaultPage";
 import WorkloadsPage from "./pages/WorkloadsPage";
 import type { NodeHealth } from "./types/node";
 
-type Page = "dashboard" | "workloads" | "capacity" | "events" | "namespaces" | "audit" | "alert-history" | "users" | "configmaps" | "secrets" | "services" | "cronjobs" | "storage" | "notifications" | "objects" | "helm" | "rbac" | "jobs" | "quotas" | "alert-rules" | "live-logs";
+type Page = "dashboard" | "workloads" | "capacity" | "events" | "namespaces" | "audit" | "alert-history" | "users" | "configmaps" | "secrets" | "services" | "cronjobs" | "storage" | "notifications" | "objects" | "helm" | "rbac" | "jobs" | "quotas" | "alert-rules" | "live-logs" | "key-vault";
 
 const POLL_MS  = 30_000;
 const CTRL_IP  = "10.100.102.10";
 
 const NAV = [
-  { label: "Prometheus", href: `http://${CTRL_IP}:9090`,        icon: "◎" },
-  { label: "Grafana",    href: `http://${CTRL_IP}:3000`,         icon: "▣" },
-  { label: "Jenkins",    href: `http://${CTRL_IP}:8080`,         icon: "⬡" },
-  { label: "ArgoCD",     href: `https://${CTRL_IP}:30443`,       icon: "◈" },
-  { label: "API Docs",   href: `http://${CTRL_IP}:8000/docs`,    icon: "≋" },
-  { label: "Metrics",    href: `http://${CTRL_IP}:8000/metrics`, icon: "⌬" },
+  { label: "Prometheus", href: "https://prometheus.cluster.download", icon: "◎" },
+  { label: "Grafana",    href: "https://grafana.cluster.download",    icon: "▣" },
+  { label: "Jenkins",    href: "https://jenkins.cluster.download",    icon: "⬡" },
+  { label: "ArgoCD",     href: "https://argocd.cluster.download",     icon: "◈" },
+  { label: "API Docs",   href: "https://api.cluster.download/docs",   icon: "≋" },
+  { label: "Metrics",    href: "https://api.cluster.download/metrics",icon: "⌬" },
 ];
 
 // ── Formatters ───────────────────────────────────────────────────────────────
@@ -265,8 +266,9 @@ const COMING_SOON = [
 ];
 
 function ViewerPortal({ username, logout }: { username: string | null; logout: () => void }) {
+  const [sbOpen, setSbOpen] = useState(() => window.innerWidth > 768);
   return (
-    <div className="layout">
+    <div className={`layout${sbOpen ? "" : " sb-closed"}`}>
       <aside className="sidebar">
         <div className="sb-brand">
           <div className="sb-logo">π</div>
@@ -297,9 +299,14 @@ function ViewerPortal({ username, logout }: { username: string | null; logout: (
         </div>
       </aside>
 
+      {sbOpen && <div className="sb-overlay" onClick={() => setSbOpen(false)} />}
+
       <div className="main-area">
         <header className="topbar">
           <div className="tb-left">
+            <button className="hamburger" onClick={() => setSbOpen((o) => !o)}>
+              <span /><span /><span />
+            </button>
             <h1 className="page-title">Portal</h1>
           </div>
           <div className="tb-right"><Clock /></div>
@@ -530,6 +537,14 @@ export default function App() {
           <div className="sb-section">Admin</div>
           <a
             href="#"
+            className={`sb-link${page === "key-vault" ? " active" : ""}`}
+            onClick={(e) => { e.preventDefault(); navigate("key-vault"); }}
+          >
+            <span className="sb-icon">⚿</span>
+            Key Vault
+          </a>
+          <a
+            href="#"
             className={`sb-link${page === "users" ? " active" : ""}`}
             onClick={(e) => { e.preventDefault(); navigate("users"); }}
           >
@@ -589,7 +604,7 @@ export default function App() {
               <span /><span /><span />
             </button>
             <h1 className="page-title">
-              {page === "workloads" ? "Workloads" : page === "capacity" ? "Capacity" : page === "events" ? "Events" : page === "namespaces" ? "Namespaces" : page === "audit" ? "Audit Log" : page === "alert-history" ? "Alert History" : page === "users" ? "Users" : page === "configmaps" ? "ConfigMaps" : page === "secrets" ? "Secrets" : page === "services" ? "Services & Ingresses" : page === "cronjobs" ? "CronJobs" : page === "storage" ? "Storage" : page === "notifications" ? "Notifications" : page === "objects" ? "Objects" : page === "helm" ? "Helm Releases" : page === "rbac" ? "RBAC Explorer" : page === "jobs" ? "Batch Jobs" : page === "quotas" ? "Quotas & Limits" : page === "alert-rules" ? "Alert Rules" : page === "live-logs" ? "Live Logs" : "Dashboard"}
+              {page === "workloads" ? "Workloads" : page === "capacity" ? "Capacity" : page === "events" ? "Events" : page === "namespaces" ? "Namespaces" : page === "audit" ? "Audit Log" : page === "alert-history" ? "Alert History" : page === "users" ? "Users" : page === "configmaps" ? "ConfigMaps" : page === "secrets" ? "Secrets" : page === "services" ? "Services & Ingresses" : page === "cronjobs" ? "CronJobs" : page === "storage" ? "Storage" : page === "notifications" ? "Notifications" : page === "objects" ? "Objects" : page === "helm" ? "Helm Releases" : page === "rbac" ? "RBAC Explorer" : page === "jobs" ? "Batch Jobs" : page === "quotas" ? "Quotas & Limits" : page === "alert-rules" ? "Alert Rules" : page === "live-logs" ? "Live Logs" : page === "key-vault" ? "Key Vault" : "Dashboard"}
             </h1>
           </div>
           <div className="tb-right">
@@ -644,6 +659,8 @@ export default function App() {
             <AlertRulesPage />
           ) : page === "live-logs" ? (
             <LiveLogsPage />
+          ) : page === "key-vault" ? (
+            <VaultPage />
           ) : selectedNode ? (
             <NodeDetailView node={selectedNode} onBack={() => setSelectedNode(null)} />
           ) : (

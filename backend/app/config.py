@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     backend_port: int = 8000
 
     database_url: str
+    postgres_host: str = "postgres"
+    postgres_port: int = 5432
+    postgres_db: str = "pi_cluster"
+    postgres_user: str = "pi_cluster"
+    postgres_password: str = "CHANGE_ME"
 
     redis_url: str = "redis://redis:6379/0"
 

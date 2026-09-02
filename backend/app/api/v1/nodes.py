@@ -42,10 +42,19 @@ async def shutdown_all_nodes(
     service: NodeService = Depends(get_node_service),
     _: None = Depends(require_admin),
 ) -> dict:
-    nodes = await service.list_nodes()
+    from app.config import settings
     from app.services.ssh_service import ssh_service
+    nodes = await service.list_nodes()
+    workers = [n for n in nodes if n.ip_address != settings.k8s_api_host]
+    ctrl = [n for n in nodes if n.ip_address == settings.k8s_api_host]
+    if workers:
+        await asyncio.gather(
+            *[ssh_service.exec_command(n.ip_address, "sudo shutdown -h now") for n in workers],
+            return_exceptions=True,
+        )
+        await asyncio.sleep(5)
     await asyncio.gather(
-        *[ssh_service.exec_command(n.ip_address, "sudo shutdown -h now") for n in nodes],
+        *[ssh_service.exec_command(n.ip_address, "sudo shutdown -h now") for n in ctrl],
         return_exceptions=True,
     )
     return {"status": "shutting_down", "count": len(nodes)}
