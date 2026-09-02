@@ -9,11 +9,10 @@ router = APIRouter(prefix="/vault", tags=["vault"])
 
 def _argocd_password() -> str:
     try:
-        from kubernetes import client as k8s_client, config as k8s_config
-        k8s_config.load_kube_config(config_file=settings.k8s_kubeconfig_path)
-        secret = k8s_client.CoreV1Api().read_namespaced_secret(
-            "argocd-initial-admin-secret", "argocd"
-        )
+        from app.services.k8s_service import _load_api
+        from kubernetes import client as k8s_client
+        api = k8s_client.CoreV1Api(_load_api())
+        secret = api.read_namespaced_secret("argocd-initial-admin-secret", "argocd")
         return base64.b64decode(secret.data["password"]).decode().strip()
     except Exception:
         return "(unavailable — secret not found in argocd namespace)"
