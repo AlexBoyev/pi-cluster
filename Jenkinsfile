@@ -68,7 +68,12 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                sh 'cd $PROJECT_DIR && docker compose up -d'
+                sh '''
+                    cd $PROJECT_DIR
+                    SERVICES=$(docker compose config --services | grep -v "^jenkins$" | tr "\n" " ")
+                    docker compose up -d $SERVICES
+                    docker restart pi-cluster-nginx-1
+                '''
             }
         }
 
