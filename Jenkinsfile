@@ -89,10 +89,16 @@ pipeline {
         stage('Health Check') {
             steps {
                 sh '''
-                    sleep 10
-                    curl -sf http://10.100.102.10:8000/health \
-                        && echo "Backend healthy" \
-                        || (echo "Backend health check FAILED" && exit 1)
+                    for i in $(seq 1 12); do
+                        if curl -sf http://10.100.102.10:8000/health; then
+                            echo "Backend healthy (attempt $i)"
+                            exit 0
+                        fi
+                        echo "Backend not ready yet, retrying in 5s ($i/12)..."
+                        sleep 5
+                    done
+                    echo "Backend health check FAILED after 60s"
+                    exit 1
                 '''
             }
         }
