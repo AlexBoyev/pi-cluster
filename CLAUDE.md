@@ -4,9 +4,9 @@
 
 Pi-Cluster is a DevOps platform for managing and monitoring a Raspberry Pi cluster.
 
-Status (see `docs/roadmap.md` for the full phase-by-phase list):
+Status (see `docs/roadmap.md` for the full phase-by-phase list — do not hardcode a phase count here, it goes stale immediately; the frontend sidebar's `Phase N` string is the freshest single indicator of how far the phase count has actually gone):
 
-Cluster monitoring and management, orchestration, workload scheduling, deployments, and load balancing are all built (Phases 0-39). This is a full K3s admin platform now, not just a monitoring dashboard — don't treat orchestration/scheduling/deployment work as "future" or out of scope.
+Cluster monitoring and management, orchestration, workload scheduling, deployments, load balancing, CI/CD, GitOps, backups, log aggregation, and a container registry are all built. This is a full K3s admin platform now, not just a monitoring dashboard — don't treat orchestration/scheduling/deployment work as "future" or out of scope.
 
 Current priority:
 
@@ -19,9 +19,17 @@ Do not implement future features prematurely.
 * Frontend: React + TypeScript
 * Backend: Python + FastAPI
 * Persistent data: PostgreSQL
-* Cache / locks / ephemeral state: Redis
-* Metrics: Prometheus
+* Cache / locks / ephemeral state / rate limiting: Redis (rate limiting is in-process in-memory, not Redis — see `docs/decisions.md`)
+* Orchestration: K3s (single-server; embedded SQLite/kine datastore, not etcd)
+* Ingress: Traefik (K3s DaemonSet)
+* GitOps (K8s manifests only): ArgoCD
+* CI/CD (Docker Compose stack): Jenkins
+* Metrics: Prometheus + node-exporter + kube-state-metrics
+* Log aggregation: Loki + Promtail
 * Visualization: Grafana
+* Container registry: `registry:2` (LAN only, no auth)
+* Provisioning: Ansible (node bootstrap, K3s install, backups) + Terraform (K8s namespaces/RBAC/ArgoCD Application) + Helm (chart exists for a possible future K3s migration of the platform itself — not currently used for deployment)
+* Local DNS: dnsmasq · Public ingress: Cloudflare Tunnel (`cloudflared`)
 
 ## Architecture
 
@@ -57,18 +65,6 @@ Do not hardcode infrastructure details in frontend components.
 * Use type hints in Python and strict TypeScript.
 * Keep services independently testable.
 * Handle node failures without breaking the entire dashboard.
-
-## Current Priority
-
-Build in this order:
-
-1. Cluster and node inventory
-2. Node health and metrics
-3. Backend API
-4. Dashboard UI
-5. Prometheus and Grafana
-6. Authentication
-7. Orchestration
 
 ## Documentation
 

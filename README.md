@@ -543,7 +543,7 @@ All application code lives at `/home/admin/pi-cluster` on pi-node1. Jenkins rsyn
 ### First deploy
 
 ```bash
-# On pi-node1 (as alex):
+# On pi-node1 (as admin):
 git clone https://github.com/AlexBoyev/pi-cluster /home/admin/pi-cluster
 cd /home/admin/pi-cluster
 cp .env.example .env   # fill in secrets
@@ -553,21 +553,20 @@ docker compose exec backend alembic upgrade head
 
 ### Manual backend hotfix (bypassing Jenkins)
 
-```bash
-# Ensure files are writable (Jenkins rsync runs as root, chown first)
-ssh alex@10.100.102.10 "sudo chown -R alex:alex /home/admin/pi-cluster/backend"
+`admin` already owns `/home/admin/pi-cluster` for files it wrote itself, but Jenkins' rsync runs as root and leaves whatever it touches root-owned — no chown needed unless you're editing a file Jenkins last wrote.
 
+```bash
 # Copy the changed files
-scp backend/app/services/my_service.py alex@10.100.102.10:/home/admin/pi-cluster/backend/app/services/
+scp backend/app/services/my_service.py admin@10.100.102.10:/home/admin/pi-cluster/backend/app/services/
 
 # Restart the backend container
-ssh alex@10.100.102.10 "cd /home/admin/pi-cluster && docker compose restart backend"
+ssh admin@10.100.102.10 "cd /home/admin/pi-cluster && echo 'admin' | sudo -S docker compose restart backend"
 ```
 
 If a migration is included, run it after the restart:
 
 ```bash
-ssh alex@10.100.102.10 "cd /home/admin/pi-cluster && docker compose exec backend alembic upgrade head"
+ssh admin@10.100.102.10 "cd /home/admin/pi-cluster && docker compose exec backend alembic upgrade head"
 ```
 
 ### Deploy a workload via the dashboard
@@ -587,7 +586,7 @@ ssh alex@10.100.102.10 "cd /home/admin/pi-cluster && docker compose exec backend
 - SSH credentials are held only in backend environment variables — never in the frontend or API responses
 - Audit log records every workload and node operation with actor and timestamp
 - Secrets are in `.env` — never committed to Git
-- SSH key auth is required for access to pi-node1; password auth is disabled
+- SSH to pi-node1 as `admin`: key-based for operators, password-based for the backend's own health-check client (`SSH_PASSWORD` in `.env`) — password auth is not disabled on this host
 - `audit_logs` and resolved `alert_history` rows older than `LOG_RETENTION_DAYS` (default 90) are deleted daily by a background job — see `docs/architecture.md` §22
 - Rate limited: 300 requests/minute per IP globally, 10/minute on `/auth/login` specifically (brute-force protection)
 

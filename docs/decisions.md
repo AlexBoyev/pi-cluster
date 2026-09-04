@@ -70,9 +70,15 @@ Jenkins runs on pi-node1 (`:8080`) with direct LAN access. It polls GitHub every
 
 ## Traefik as the K8s ingress controller
 
-Traefik was chosen because it has a lightweight DaemonSet mode, native Kubernetes Ingress support, and built-in TLS termination without requiring cert-manager. It runs as a DaemonSet binding HostPort 80/443, meaning any node IP can route to any workload.
+Traefik was chosen because it has a lightweight DaemonSet mode, native Kubernetes Ingress support, and built-in TLS termination without requiring cert-manager. It runs as a DaemonSet binding HostPort 80/443, meaning any node it's scheduled on can route to any workload — as of the pi-node1 exclusion below, that's pi-node2/3/4, not all four.
 
 The alternative (NodePort Services per workload) would expose a different port per service and require clients to know port numbers. Ingress with a consistent host (`<name>.pi-cluster.local`) is cleaner.
+
+## Traefik is excluded from pi-node1
+
+Traefik's DaemonSet (`k8s/traefik/traefik.yaml`) originally tolerated the control-plane taint specifically so it would also run on pi-node1, giving true "any node routes anywhere" ingress. In practice this meant Traefik's hostPort 80/443 binding fought with Docker Compose's `nginx` service, which already binds those same host ports on pi-node1 for the platform's own subdomains. The result was a persistent crash-loop on that node's Traefik pod — discovered via an orphaned/misbehaving process burning real CPU for 10+ hours before being traced back to this conflict.
+
+Fixed with a `nodeAffinity` excluding `kubernetes.io/hostname: pi-node1`, rather than removing the control-plane tolerations (kept in case a second control-plane node is ever added). Traefik now only runs on pi-node2/3/4 — sufficient for K8s workload ingress, since pi-node1's own routing was always nginx's job, not Traefik's.
 
 ## node-exporter DaemonSet via ArgoCD
 
@@ -92,17 +98,17 @@ The `GET /api/v1/audit` endpoint accepts `status` and `resource_type` query para
 
 Client-side filtering only works against the currently loaded page, so filtering by `status=failure` would miss failures outside the current 50-record window. Server-side filtering is accurate against the full log.
 
-## SSH key auth for pi-node1 (password auth disabled)
+## SSH to pi-node1: `admin`, both key and password auth enabled
 
-All access to pi-node1 uses SSH key authentication (`alex@10.100.102.10`). Password auth is disabled on the Pi's SSH daemon.
+Operator/interactive SSH and Claude Code sessions use `admin@10.100.102.10`, key-based. The backend's own `SSHService` (health checks, node restart/shutdown, the in-app SSH terminal) authenticates as the same `admin` user but with a **password** (`SSH_PASSWORD` in `.env`) via paramiko — password auth is not disabled on this host, and this was previously documented incorrectly (docs asserted `alex` + key-only, which was never true in practice).
 
-This is required because Jenkins, manual deploys, and SCP all use key-based auth. The implication: SSH or SCP commands in any shell (local or CI) require the key to be loaded (`ssh-add`) or configured in `~/.ssh/config`.
+A separate `alex` identity exists only for Ansible-managed automation (`ansible_user: alex` in `ansible/group_vars/all.yml`) — a distinct credential from the one used for actual day-to-day operations, and untested/unverified as of this writing (see the `/opt/pi-cluster` entry below for the same pattern: an Ansible-declared value that never matched what's actually running).
 
-## /opt/pi-cluster as the application root
+## `/home/admin/pi-cluster` is the real application root, not `/opt/pi-cluster`
 
-Application code on pi-node1 lives at `/opt/pi-cluster`. Jenkins rsyncs to this path; Docker Compose is run from there.
+Jenkins rsyncs to and runs Docker Compose from `/home/admin/pi-cluster` — this has always been true of the actual deploy pipeline (`Jenkinsfile`'s `PROJECT_DIR`, and the Jenkins service's own bind mount in `docker-compose.yml`).
 
-The initial deploy used `/home/admin/pi-cluster` but this was moved to `/opt` to follow Linux convention for optional application software and to separate platform code from user home directories. All scripts, documentation, and deployment instructions use `/opt/pi-cluster`.
+An earlier version of this document claimed the app had been moved to `/opt/pi-cluster` "to follow Linux convention." That move was never actually made in the live deploy path — only `ansible/roles/platform`'s `platform_dir` variable points at `/opt/pi-cluster`, and that role is a separate, rarely-used alternate provisioning path (see below), not what Jenkins runs. Docs described the aspiration, not the reality, for some time; corrected here.
 
 ## Polling-based alert history, not AlertManager webhook receiver
 
@@ -126,11 +132,15 @@ The backup script instead uses SQLite's own online backup command (`sqlite3 stat
 
 ## Postgres backup reads via `docker exec`, not `docker compose exec`
 
-Jenkins' rsync leaves `/home/admin/pi-cluster` root-owned on pi-node1 (a known recurring friction point — see the Ansible/Jenkins path split below). `docker compose exec` needs to resolve the compose project from that directory; `docker exec pi-cluster-postgres-1 pg_dump ...` targets the container directly by its known name and needs nothing but docker socket access, which the `alex` user already has via `docker` group membership (`ansible/roles/platform`). This sidesteps the permission issue entirely instead of working around it.
+Jenkins' rsync leaves `/home/admin/pi-cluster` root-owned on pi-node1 (a known recurring friction point). `docker compose exec` needs to resolve the compose project from that directory; `docker exec pi-cluster-postgres-1 pg_dump ...` targets the container directly by its known name and needs nothing but docker socket access, which `admin` already has (verified empirically — `docker ps`/`docker stats` work as `admin` with no `sudo`). This sidesteps the permission issue entirely instead of working around it. The backup role itself runs as `admin`, not `alex`, for the same reason — see the SSH entry above.
 
-## Ansible's `platform_dir` (`/opt/pi-cluster`) is not the live deploy path
+## Prometheus and AlertManager are LAN-restricted at nginx, not just "trusted by convention"
 
-`ansible/roles/platform` targets `/opt/pi-cluster`, following Linux convention for optional application software. In practice, Jenkins is what actually deploys the running platform, and its pipeline has always used `/home/admin/pi-cluster` (`Jenkinsfile`'s `PROJECT_DIR`, and the docker-compose Jenkins service's bind mount). These have drifted apart — anything that needs to touch the live containers or their compose project (like the backup script) must use the Jenkins path, not `platform_dir`. Reconciling the two paths is out of scope for this change; flagged here so it isn't rediscovered the hard way.
+Both hostnames (`prometheus.*`, `alertmanager.*`) are proxied by the same nginx `server` block regardless of whether the request arrived via direct LAN access (`*.pi-cluster.lan`) or through the Cloudflare Tunnel (`*.cluster.download`) — nginx routes on the `Host` header only, it doesn't distinguish the two paths itself. Neither Prometheus nor AlertManager has any authentication of its own, unlike Grafana and Jenkins (both have a login).
+
+Fixed with `allow 10.100.102.0/24; deny all;` on both server blocks, the same pattern already used for `/api/v1/vault`. This works correctly against tunnel traffic specifically because `cloudflared` runs with `network_mode: host` and forwards to nginx over `localhost` — tunnel-routed requests arrive at nginx as `127.0.0.1`, outside the allowed CIDR, so they're rejected; genuine direct-LAN requests keep their real source IP and pass. Verified against the live nginx binary (`nginx -t`) before rollout.
+
+This was found by checking, not assumed: `cloudflared`'s actual tunnel routing rules live in Cloudflare's dashboard, not this repo, so it wasn't possible to confirm from code alone which hostnames the tunnel exposes. The nginx-level restriction is a repo-visible, defense-in-depth fix regardless of what the tunnel config turns out to be — but the Cloudflare Zero Trust dashboard should still be checked directly to confirm which routes exist and whether Cloudflare Access policies are (or should be) applied at the tunnel level too.
 
 ## Container registry has no authentication
 

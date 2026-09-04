@@ -322,29 +322,105 @@
 - [x] CronJobs page: namespace filter, summary cards (total/active/suspended), create form (name, namespace, cron schedule, image, command, env vars), table with schedule code badge, Active/Suspended badge, last-run time, Runs modal (job history: status badge, started, duration), Suspend/Resume toggle, delete confirmation
 - [x] "CronJobs" sidebar link (⊙ icon); version bumped to Phase 39
 
-## Phase 40 — Backup & Disaster Recovery (code complete, needs manual rollout)
+## Phases 40-50 — undocumented until now
+
+This roadmap file stopped being updated after Phase 39, even though development kept going in git history through at least Phase 52 plus a batch of unnumbered follow-up work. `README.md` was partially kept in sync (a "Phases 23-52+" pass at one point) but this file wasn't — this is exactly the kind of drift that caused the phase-numbering collision below (this file's own Phase 40-43 entries, added in the same session that wrote this backfill, originally reused numbers 40-43 that had already shipped as different features and were simply never recorded here). Renumbered to 54+ to stop colliding.
+
+Entries below are reconstructed from commit history (messages + diffs), not independently re-verified against current code line-by-line the way earlier phases in this file were when they were written — treat as reasonably accurate, not gospel, until spot-checked.
+
+### Phase 40 — PVC/Storage Management ✓
+- `K8sService.list_pvcs()`, `delete_pvc()`, `list_pvs()`; `GET/DELETE /storage/pvcs`, `GET /storage/pvs`
+- `StoragePage.tsx`: PVC/PV tabs with status badges, delete confirmation
+
+### Phase 41 — Alert Notifications (Webhook) ✓
+- Migration 0010: `notification_channels` table; `NotificationService` dispatches async HTTP webhooks
+- Wired into `alert_history_service.py` — fires on new alert firings
+- `NotificationsPage.tsx`: manage channels, test button
+
+### Phase 42 — Pod Terminal (WebSocket Exec) ✓
+- `WS /ws/exec/{name}` bridges a K8s exec stream via thread + `asyncio.Queue`, `?token=` auth
+- `TerminalModal.tsx`: dark terminal UI, ANSI stripping, Ctrl+C/L
+
+### Phase 43 — StatefulSets/DaemonSets, Helm, RBAC Explorer, PVC creation ✓
+- Objects page: StatefulSets/DaemonSets with replica/availability badges
+- Helm Releases: parses Helm 3 secrets (chart/version/status/revision)
+- RBAC Explorer: ClusterRoles (expandable rules), ClusterRoleBindings, Service Accounts by namespace
+- Storage: Create PVC form (storage class, access mode, size)
+
+### Phase 44 — Live log streaming ✓
+- `WS /ws/logs/{name}` replaces HTTP polling; LIVE badge, filter, auto-scroll, reconnect, 3000-line cap
+
+### Phase 45 — Pod detail view ✓
+- `GET /pods/{namespace}/{name}`: containers, resource requests/limits, conditions, recent events
+- `PodDetailModal`, opened from `PodsModal`
+
+### Phase 46 — Batch Jobs, Quotas, Alert Rules browser ✓
+- Jobs viewer (state, duration, parent CronJob link); ResourceQuotas/LimitRanges with usage bars
+- Prometheus Alert Rules browser (grouped by rule group, PromQL expression, active instances)
+
+### Phase 47 — Dedicated Live Logs page ✓
+- Full-page log viewer: Namespace → Pod → Container cascade, tail size selector, WebSocket streaming
+
+### Phase 48 — Node SSH terminal + power management ✓
+- `WS /ws/ssh/{node_ip}` proxies paramiko `invoke_shell`; `NodeSSHModal`
+- `POST /nodes/{id}/restart|shutdown` and cluster-wide `/nodes/all/restart|shutdown` (admin-only, SSH sudo)
+- Backend test suite established (`backend/tests/`, later expanded to 307+ tests); Jenkinsfile gained a Test stage
+
+### Phase 49 — Networking & public access ✓
+- nginx reverse proxy for friendly local hostnames (`*.pi-cluster.lan`)
+- dnsmasq container for network-wide local DNS (host networking, forwards unknown queries upstream)
+- Cloudflare Tunnel (`cloudflared`) added for public access via `*.cluster.download`; `.env` removed from git
+- Mobile-responsive dashboard layout
+
+### Phase 50 — Access lockdown + Key Vault ✓
+- All cluster-management routes made admin-only; viewers get a portal/limited view (verify current exact scope against `backend/app/auth/dependencies.py` before relying on this — reconstructed from an old commit message, not independently re-checked)
+- Key Vault page: surfaces Jenkins/ArgoCD/Prometheus/Grafana credentials read from K8s Secrets and the vault API; hidden on the public Cloudflare domain, restricted to LAN via nginx `allow`/`deny` on `/api/v1/vault` (see `nginx/nginx.conf`)
+- Jenkins admin password reset from `JENKINS_ADMIN_PASSWORD` on startup; Jenkins excluded from the Compose `up` that Jenkins itself triggers (self-kill prevention)
+
+## Phase 51 — Backup & Disaster Recovery (code complete, needs manual rollout)
 - [x] `ansible/roles/backup` — nightly script backs up the `pi_cluster` Postgres DB (via `docker exec` on the container directly, so it never needs read access to the root-owned `/home/admin/pi-cluster` Jenkins path) and the K3s control-plane datastore (SQLite online `.backup`, since this is a single-server K3s install using embedded SQLite/kine, not etcd — see the comment in `roles/backup/templates/backup.sh.j2`)
 - [x] Backups shipped via rsync over a dedicated SSH key to pi-node4 (`ansible/playbooks/backup.yml` generates the key on pi-node1 and trusts it on pi-node4 — idempotent, safe to re-run)
 - [x] Local backups on pi-node1 trimmed to the last 3; remote backups on pi-node4 trimmed to the last 14 (independent retention from the app's `LOG_RETENTION_DAYS` — this is infra backup file retention, a different concern)
 - [ ] **Not yet applied to the live cluster** — run `ansible-playbook -i inventory/hosts.ini playbooks/backup.yml` from `ansible/` to activate. Not part of the GitOps/Jenkins auto-deploy path.
 - [ ] Restore runbook — documented in `docs/architecture.md` §19, but never actually exercised against pi-node1
 
-## Phase 41 — Container Registry ✓
+## Phase 52 — Container Registry ✓
 - [x] `registry:2` added to `docker-compose.yml` (port 5000, `registry-data` volume) — picked up automatically by Jenkins' existing `docker compose up -d $SERVICES` Deploy stage, no separate rollout needed
 - [x] Jenkinsfile `Push to Registry` stage (after Health Check, so it never blocks or races the actual deploy) tags `backend`/`frontend` images with the short git SHA and `latest`, pushes both to `localhost:5000`
 - [x] Closes the roadmap's original Phase 5 gap ("Automated docker build and push to local registry") for the platform's own images
 - [ ] No auth on the registry (LAN-only, matches Prometheus's existing posture) — revisit if the registry is ever exposed beyond the LAN
 
-## Phase 42 — Log Aggregation (Loki + Promtail) ✓
+## Phase 53 — Log Aggregation (Loki + Promtail) ✓
 - [x] `loki` added to `docker-compose.yml` on pi-node1 (port 3100, filesystem storage, own `loki/loki-config.yml` with a 30d `retention_period` — independent of `LOG_RETENTION_DAYS`)
 - [x] `promtail` DaemonSet in `k8s/apps/promtail.yaml` (ArgoCD-applied automatically, same as node-exporter/traefik) — self-contained ServiceAccount/ClusterRole/ClusterRoleBinding following the `traefik.yaml` pattern
 - [x] Scrapes K3s pod logs across all 4 nodes (`/var/log/pods`, CRI pipeline stage) and Docker Compose container logs on pi-node1 only (`/var/lib/docker/containers`, JSON pipeline stage); pushes to `http://10.100.102.10:3100/loki/api/v1/push`
 - [x] Grafana datasource `grafana/provisioning/datasources/loki.yaml` (auto-provisioned on the next Grafana container restart via Jenkins deploy)
-- [ ] Not yet spot-checked against the live cluster — verify log lines actually arrive in Grafana's Explore view after the next deploy
+- [x] Verified live: `kubectl get pods -n monitoring` shows `promtail` 4/4 Running, 0 restarts, on all 4 nodes. Log content itself (Grafana Explore) not yet spot-checked.
 
-## Phase 43 — Log & Audit Retention ✓
+## Phase 54 — Log & Audit Retention ✓
 - [x] `LOG_RETENTION_DAYS` env var (default 90) — new `.env` value, `Settings.log_retention_days`
 - [x] `poll_retention_forever()` background task (registered in `main.py` lifespan alongside the health/alert pollers) deletes `audit_logs` rows and **resolved** `alert_history` rows older than the cutoff once a day; active/unresolved alerts are never deleted regardless of age
-- [x] Scoped strictly to these two Postgres tables — does not touch Loki's or Prometheus's own storage/retention, which are configured independently (see Phase 42)
+- [x] Scoped strictly to these two Postgres tables — does not touch Loki's or Prometheus's own storage/retention, which are configured independently (see Phase 53)
 - [x] Migration `0011_add_retention_indexes` — indexes on `audit_logs.created_at` and `alert_history.resolved_at` so the daily cleanup delete is cheap
 - [x] Repository-level tests (`backend/tests/test_retention.py`) verify old rows are deleted, recent rows survive, and active alerts are never touched regardless of age
+
+## Phase 55 — API Rate Limiting ✓
+- [x] `slowapi`, in-memory storage (not Redis — deliberate, see `docs/decisions.md`; the app runs single-process because the background pollers are in-process asyncio tasks)
+- [x] 300 requests/minute per IP globally via `SlowAPIMiddleware`; 10/minute specifically on `POST /auth/login` for brute-force protection
+- [x] Disabled during tests (`conftest.py` — the session-scoped test client would otherwise trip it across every login-heavy test); `test_rate_limit.py` re-enables it in isolation to prove it actually returns 429
+- [x] Dropped `--reload` from the backend's production `docker-compose.yml` command — a dev flag with no reason to run in production
+
+## Phase 56 — Pod-Level Alerting (kube-state-metrics) + Traefik/pi-node1 Fix ✓
+- [x] Root-caused via live investigation: a Traefik pod on pi-node1 had burned 100+ min of CPU over 10+ hours (cgroup-confirmed to be the live container, not an orphan) because it fights Docker Compose's `nginx` for host ports 80/443 — Traefik's DaemonSet tolerated the control-plane taint specifically to also run there
+- [x] Fixed with a `nodeAffinity` excluding pi-node1 (`k8s/traefik/traefik.yaml`) — Traefik now runs pi-node2/3/4 only; pi-node1's own routing was always nginx's job
+- [x] `kube-state-metrics` added (`k8s/apps/kube-state-metrics.yaml`, Deployment + NodePort 30108 — ClusterIP wouldn't be reachable from Prometheus, which runs in Docker Compose outside the K8s pod network) — this class of incident (pod-level crash-loop) was invisible to every prior alert rule, all node-level
+- [x] Two new Prometheus alert rules: `PodCrashLooping`, `PodNotReady`
+- [x] nginx now LAN-restricts `prometheus.*`/`alertmanager.*` (`allow 10.100.102.0/24; deny all` — same pattern as `/api/v1/vault`) since neither has its own auth and both are reachable through the Cloudflare Tunnel; verified against the live nginx binary before rollout
+- [x] Jenkinsfile reloads Prometheus after deploy (`curl -X POST .../-/reload`) — `prometheus.yml`/`alerts.yml` are volume-mounted, so `docker compose up -d` alone doesn't pick up changes to them
+- [ ] Cluster-wide restart pattern (all 4 Traefik pods restarted ~simultaneously, ~10h before the investigation) not fully root-caused — the pi-node1-specific port conflict is fixed, but the broader trigger is still unknown
+
+## Phase 57 — Documentation Consistency Pass ✓
+- [x] Fixed CLAUDE.md: removed a stale duplicate "Current Priority" section that contradicted the top of the file (an artifact of an earlier partial edit); expanded the Stack list, which omitted K3s/Jenkins/ArgoCD/Traefik/Loki/registry/Ansible/Terraform/Helm/dnsmasq/Cloudflare Tunnel entirely
+- [x] Fixed architecture.md/decisions.md/README.md: etcd → embedded SQLite/kine (3 places), `/opt/pi-cluster` → `/home/admin/pi-cluster` (the real Jenkins path, in architecture.md, decisions.md, and this file's own `/deploy` skill), `alex`+key-only → `admin`+key-and-password (matches actual verified SSH behavior)
+- [x] Backfilled Phases 40-50 (see above) — real, shipped work that stopped being recorded in this file after Phase 39, discovered via `git log` when the frontend's own `Phase 50` sidebar string didn't match this file's `Phase 39` end point
+- [ ] Frontend sidebar phase string was manually bumped to match the true latest number as of this pass — it will go stale again the next time a phase ships without updating `App.tsx`; there's no automated check for this drift

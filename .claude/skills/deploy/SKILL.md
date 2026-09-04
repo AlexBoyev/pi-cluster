@@ -47,7 +47,7 @@ git push origin master
 ```
 
 Jenkins polls GitHub every 2 minutes and, on `master`, runs: rsync workspace →
-`/opt/pi-cluster` → `docker compose up -d --build backend frontend` →
+`/home/admin/pi-cluster` → `docker compose up -d --build backend frontend` →
 `alembic upgrade head` → health check. Wait roughly 2-3 minutes after the
 push, then verify the same way:
 

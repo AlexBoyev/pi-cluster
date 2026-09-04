@@ -41,11 +41,11 @@ Switch:  10.100.102.200
 | pi-node3 | 10.100.102.17  | K3s worker                 |
 | pi-node4 | 10.100.102.12  | K3s worker                 |
 
-**pi-node1** hosts the entire platform stack via Docker Compose. It also runs the K3s control plane (API server, scheduler, controller-manager, etcd).
+**pi-node1** hosts the entire platform stack via Docker Compose. It also runs the K3s control plane (API server, scheduler, controller-manager, and the embedded SQLite/kine datastore — this is single-server K3s, not etcd; see `docs/decisions.md`).
 
 **pi-node2/3/4** run only the K3s agent. They receive and execute workloads scheduled by the K3s control plane.
 
-All SSH access to pi-node1 uses key-based authentication (`alex@10.100.102.10`). Password authentication is disabled. Application code lives at `/opt/pi-cluster`.
+SSH access to pi-node1 is as `admin@10.100.102.10`. Both key-based (interactive/operator sessions) and password-based auth are enabled — the backend's own health-check SSH client (`SSHService`) authenticates with a password (`SSH_PASSWORD` in `.env`), so password auth is not disabled. Application code lives at `/home/admin/pi-cluster` (the path Jenkins actually deploys to — see `docs/decisions.md` for why this differs from Ansible's `platform_dir`). A separate `alex` identity exists for Ansible-managed automation only (`ansible_user: alex` in `ansible/group_vars/all.yml`) — not the identity used for day-to-day operator SSH.
 
 ---
 
@@ -190,7 +190,7 @@ SSH (via Paramiko) is used for node health checks only:
 
 SSH credentials are held exclusively in backend environment variables. The frontend never sees them. Arbitrary shell execution is not exposed through the API — all SSH commands are explicitly defined in `SSHService`.
 
-The primary SSH target for platform operations is `alex@10.100.102.10` using key-based auth.
+The primary SSH target for platform operations is `admin@10.100.102.10` (key-based for operator sessions; password-based for the backend's own health-check client — see §2).
 
 ---
 
@@ -201,7 +201,7 @@ Jenkins runs as a Docker container on pi-node1 (`:8080`). It polls GitHub every 
 Pipeline stages:
 
 1. **Checkout** — clone `master` from GitHub
-2. **Sync** — rsync workspace to `/opt/pi-cluster` on pi-node1
+2. **Sync** — rsync workspace to `/home/admin/pi-cluster` on pi-node1
 3. **Deploy** — `docker compose up -d --build backend frontend`
 4. **Migrate** — `alembic upgrade head` inside the backend container
 5. **Health Check** — `curl -sf http://10.100.102.10:8000/health`
@@ -214,7 +214,7 @@ Jenkins has direct LAN access to all nodes and is not exposed to the internet.
 
 K3s runs the container orchestration layer:
 
-- **Control plane** on pi-node1 (API server, scheduler, controller-manager, etcd)
+- **Control plane** on pi-node1 (API server, scheduler, controller-manager, embedded SQLite/kine datastore — not etcd)
 - **Agents** on pi-node2/3/4
 
 The FastAPI backend communicates with K3s via the Kubernetes Python client using a kubeconfig file stored on pi-node1.
@@ -247,7 +247,7 @@ ArgoCD does **not** manage the Docker Compose stack — that is Jenkins's respon
 
 ## 14. Ingress — Traefik
 
-Traefik runs as a DaemonSet on all K3s nodes (managed by ArgoCD), binding ports 80 and 443 via HostPort.
+Traefik runs as a DaemonSet on pi-node2/3/4 (managed by ArgoCD), binding ports 80 and 443 via HostPort. Excluded from pi-node1 via node affinity — Docker Compose's `nginx` already binds those host ports there, and Traefik crash-loops if scheduled alongside it. See `docs/decisions.md`.
 
 When a workload is deployed with a `container_port`, the backend creates:
 1. A K8s `Service` targeting `container_port`
@@ -299,7 +299,7 @@ Health polling runs as a background asyncio task every 30 seconds. A single node
 - SSH credentials in backend `.env` only — never logged, never sent to the frontend
 - No arbitrary shell execution through the API — all SSH commands are explicit and predefined
 - Secrets in `.env`, excluded from Git via `.gitignore`
-- SSH key auth required for pi-node1; password auth disabled
+- SSH to pi-node1 as `admin@10.100.102.10`: key-based for operators, password-based for the backend's own `SSHService` health checks (`SSH_PASSWORD` in `.env`, never sent to the frontend)
 - Audit log provides a non-repudiation trail for every cluster operation
 
 ---
@@ -320,7 +320,7 @@ Health polling runs as a background asyncio task every 30 seconds. A single node
 - **Postgres** — `pg_dump` of the `pi_cluster` database via `docker exec pi-cluster-postgres-1`, gzipped
 - **K3s datastore** — a SQLite online backup of `/var/lib/rancher/k3s/server/db/state.db`, plus a tarball of `/etc/rancher/k3s` and the server TLS directory. pi-node1 runs single-server K3s with the embedded SQLite/kine datastore, not etcd — see `docs/decisions.md`.
 
-Both are shipped via `rsync` over a dedicated SSH key (`/home/alex/.ssh/id_backup`) to **pi-node4** (10.100.102.12), the intentional off-node target. Local copies on pi-node1 are trimmed to the last 3; remote copies on pi-node4 to the last 14.
+Both are shipped via `rsync` over a dedicated SSH key (`/home/admin/.ssh/id_backup`) to **pi-node4** (10.100.102.12), the intentional off-node target. Local copies on pi-node1 are trimmed to the last 3; remote copies on pi-node4 to the last 14.
 
 **Not part of the GitOps/Jenkins auto-deploy path** — apply with:
 
