@@ -80,3 +80,7 @@ terraform/terraform.tfvars
 # Ansible vault / secrets
 ansible/group_vars/all/vault.yml
 ansible/*.retry
+
+# Claude Code local/personal config (project-wide skills/hooks stay tracked)
+.claude/settings.local.json
+.claude/worktrees/
