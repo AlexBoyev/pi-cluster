@@ -52,9 +52,16 @@ def scan(diff_text: str):
 
 def main():
     try:
-        json.load(sys.stdin)
+        payload = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError):
-        pass  # tool_input isn't needed beyond the `if` filter already applied
+        payload = {}
+
+    # Defense-in-depth: don't rely solely on the settings.json `if` filter to
+    # gate this to `git commit` — check the actual command too, so a staged
+    # secret can't cause an unrelated Bash call to be denied.
+    command = (payload.get("tool_input") or {}).get("command", "")
+    if "git commit" not in command:
+        return
 
     try:
         result = subprocess.run(
