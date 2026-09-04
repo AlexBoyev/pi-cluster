@@ -34,3 +34,9 @@ scrape_configs:
       - targets: ["10.100.102.12:9100"]
         labels:
           node_name: pi-node4
+
+  - job_name: kube-state-metrics
+    # NodePort, reachable via any node IP regardless of which one the
+    # single replica actually landed on.
+    static_configs:
+      - targets: ["10.100.102.10:30108"]

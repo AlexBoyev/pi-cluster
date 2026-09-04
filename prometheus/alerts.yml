@@ -46,3 +46,28 @@ groups:
         annotations:
           summary: "High temperature on {{ $labels.node_name }}"
           description: "CPU temperature is {{ $value | printf \"%.1f\" }}°C (threshold: 70°C)"
+
+  - name: pod-health
+    interval: 30s
+    rules:
+      # Requires kube-state-metrics (job=kube-state-metrics) — node-exporter
+      # only exposes host-level metrics, nothing pod/container-level. Added
+      # after a Traefik pod on pi-node1 crash-looped 8+ times over days with
+      # zero alerting, because nothing scraped pod restart counts.
+      - alert: PodCrashLooping
+        expr: increase(kube_pod_container_status_restarts_total{job="kube-state-metrics"}[1h]) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.namespace }}/{{ $labels.pod }} is crash-looping"
+          description: "Container {{ $labels.container }} has restarted {{ $value | printf \"%.0f\" }} times in the last hour"
+
+      - alert: PodNotReady
+        expr: sum by (namespace, pod) (kube_pod_status_ready{job="kube-state-metrics", condition="false"}) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.namespace }}/{{ $labels.pod }} not ready"
+          description: "Pod has been in a non-ready state for over 15 minutes"

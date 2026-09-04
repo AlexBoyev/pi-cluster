@@ -55,6 +55,18 @@ spec:
         app: traefik
     spec:
       serviceAccountName: traefik
+      # Excluded from pi-node1: Docker Compose's nginx already binds host
+      # ports 80/443 there, so Traefik's hostPort binding on that node
+      # conflicts with it and crash-loops indefinitely. See docs/decisions.md.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      - pi-node1
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists

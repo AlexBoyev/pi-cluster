@@ -73,6 +73,11 @@ pipeline {
                     SERVICES=$(docker compose config --services | grep -v "^jenkins$" | tr "\n" " ")
                     docker compose up -d $SERVICES
                     docker restart pi-cluster-nginx-1
+                    # prometheus.yml/alerts.yml are volume-mounted, so `up -d`
+                    # alone won't pick up changes to them (no image/env change
+                    # to trigger a recreate) - reload explicitly instead of a
+                    # full restart, matching --web.enable-lifecycle.
+                    curl -sf -X POST http://10.100.102.10:9090/-/reload || true
                 '''
             }
         }
