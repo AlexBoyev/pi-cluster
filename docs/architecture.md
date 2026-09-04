@@ -335,7 +335,7 @@ Safe to re-run (key generation, `authorized_keys`, and cron are all idempotent).
 1. **Postgres**: `gunzip -c postgres.sql.gz | docker exec -i pi-cluster-postgres-1 psql -U pi_cluster pi_cluster`
 2. **K3s datastore**: stop k3s (`systemctl stop k3s`), replace `/var/lib/rancher/k3s/server/db/state.db` with the backed-up copy, restore `/etc/rancher/k3s` and the server TLS directory from `k3s-certs.tar.gz`, restart k3s.
 
-This runbook has not yet been exercised end-to-end against pi-node1 — treat step 2 as a starting point, not a verified procedure, until it's been tested once.
+Step 1 (Postgres) has been exercised for real: restored into a scratch database and row counts (`users`, `workloads`, `audit_logs`, `nodes`) matched production exactly. Step 2 (K3s datastore) has not — treat it as a starting point, not a verified procedure, until it's been tested once (lower urgency, higher blast radius to rehearse than the Postgres path — stopping k3s on the live control plane to test a restore is a bigger ask than a scratch-database drill).
 
 ## 20. Container Registry
 
