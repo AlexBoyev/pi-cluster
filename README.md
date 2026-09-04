@@ -460,6 +460,8 @@ All routes are prefixed `/api/v1/`. Authentication is JWT Bearer token (`Authori
 | Redis | 6379 | internal only |
 | node-exporter | 9100 | internal (K3s pod network) |
 | Traefik HTTP | 80 | K3s HostPort (all nodes) |
+| Container registry | 5000 | LAN (no auth) |
+| Loki | 3100 | internal only |
 | Traefik HTTPS | 443 | K3s HostPort (all nodes) |
 | Cloudflare Tunnel | outbound only | Public internet → pi-node1:80 |
 
@@ -586,6 +588,7 @@ ssh alex@10.100.102.10 "cd /home/admin/pi-cluster && docker compose exec backend
 - Audit log records every workload and node operation with actor and timestamp
 - Secrets are in `.env` — never committed to Git
 - SSH key auth is required for access to pi-node1; password auth is disabled
+- `audit_logs` and resolved `alert_history` rows older than `LOG_RETENTION_DAYS` (default 90) are deleted daily by a background job — see `docs/architecture.md` §22
 
 ---
 
@@ -610,6 +613,9 @@ ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/argocd.yml
 
 # 4. Deploy the Docker Compose platform stack on pi-node1
 ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/platform.yml
+
+# 5. Set up nightly Postgres + K3s datastore backups to pi-node4
+ansible-playbook -i ansible/inventory/hosts.ini ansible/playbooks/backup.yml
 ```
 
 Sensitive values (DB password, JWT secret) are prompted at runtime — never stored in the repo.

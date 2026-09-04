@@ -111,3 +111,31 @@ Alert history (Phase 30) is recorded by a background poller that queries Prometh
 The webhook approach would require exposing an unauthenticated HTTP endpoint that AlertManager can reach, adding receiver configuration to `alertmanager.yml`, and handling webhook delivery retries. The poller approach requires no changes to AlertManager, works with the existing Prometheus API the platform already queries, and is self-contained in the backend lifespan.
 
 The tradeoff is a ±30s recording lag for new firings and resolutions, which is acceptable for operational history. Sub-second precision is not needed for post-mortem analysis. If finer precision or push-based alerting to external systems is needed later, a webhook receiver can be added without replacing the poller.
+
+## Backups target pi-node4, not a NAS or cloud storage
+
+The cluster has no NAS or cloud storage account. Backups (Postgres dump + K3s datastore) are shipped nightly from pi-node1 to pi-node4 over a dedicated SSH key, via `ansible/roles/backup`.
+
+This is a same-LAN, same-power-circuit copy — it protects against pi-node1's SD card/disk failing, but not against a whole-site event (power loss, theft, fire). That's a known, accepted gap for a homelab; revisit if off-site storage becomes available.
+
+## K3s datastore backup is a SQLite `.backup`, not an etcd snapshot
+
+pi-node1 runs K3s in single-server mode (`ansible/roles/k3s_server`) with no `--cluster-init` and no external datastore, so it uses the embedded SQLite (kine) datastore — not etcd. `k3s etcd-snapshot` does not apply here.
+
+The backup script instead uses SQLite's own online backup command (`sqlite3 state.db ".backup ..."`), which produces a consistent copy without stopping k3s, plus a tarball of `/etc/rancher/k3s` and the server TLS directory (certs/tokens needed for a full restore). If the cluster is ever moved to multi-server HA (embedded etcd), this backup step needs to change to `k3s etcd-snapshot save`.
+
+## Postgres backup reads via `docker exec`, not `docker compose exec`
+
+Jenkins' rsync leaves `/home/admin/pi-cluster` root-owned on pi-node1 (a known recurring friction point — see the Ansible/Jenkins path split below). `docker compose exec` needs to resolve the compose project from that directory; `docker exec pi-cluster-postgres-1 pg_dump ...` targets the container directly by its known name and needs nothing but docker socket access, which the `alex` user already has via `docker` group membership (`ansible/roles/platform`). This sidesteps the permission issue entirely instead of working around it.
+
+## Ansible's `platform_dir` (`/opt/pi-cluster`) is not the live deploy path
+
+`ansible/roles/platform` targets `/opt/pi-cluster`, following Linux convention for optional application software. In practice, Jenkins is what actually deploys the running platform, and its pipeline has always used `/home/admin/pi-cluster` (`Jenkinsfile`'s `PROJECT_DIR`, and the docker-compose Jenkins service's bind mount). These have drifted apart — anything that needs to touch the live containers or their compose project (like the backup script) must use the Jenkins path, not `platform_dir`. Reconciling the two paths is out of scope for this change; flagged here so it isn't rediscovered the hard way.
+
+## Container registry has no authentication
+
+`registry:2` is bound to pi-node1's LAN-facing port 5000 with no auth configured, matching the existing posture of Prometheus (`:9090`) and Postgres (`:5432`) — internal services trusted on the home LAN rather than hardened individually. Revisit with basic auth (htpasswd) or a reverse-proxy auth layer if the registry, or the LAN itself, is ever exposed beyond the house.
+
+## Loki retention is independent of the app's `LOG_RETENTION_DAYS`
+
+`LOG_RETENTION_DAYS` (backend `.env`) only governs the `audit_logs` and `alert_history` Postgres tables via `poll_retention_forever()`. Loki has its own `retention_period` in `loki/loki-config.yml`, and Prometheus manages its own TSDB retention separately. Each service owns its own storage and retention policy; the app's retention job only ever touches the two tables it created, and a future service adding its own log/data storage is expected to manage its own retention rather than being folded into this job.

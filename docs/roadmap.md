@@ -321,3 +321,30 @@
 - [x] `DELETE /api/v1/cronjobs/{name}` — delete (admin)
 - [x] CronJobs page: namespace filter, summary cards (total/active/suspended), create form (name, namespace, cron schedule, image, command, env vars), table with schedule code badge, Active/Suspended badge, last-run time, Runs modal (job history: status badge, started, duration), Suspend/Resume toggle, delete confirmation
 - [x] "CronJobs" sidebar link (⊙ icon); version bumped to Phase 39
+
+## Phase 40 — Backup & Disaster Recovery (code complete, needs manual rollout)
+- [x] `ansible/roles/backup` — nightly script backs up the `pi_cluster` Postgres DB (via `docker exec` on the container directly, so it never needs read access to the root-owned `/home/admin/pi-cluster` Jenkins path) and the K3s control-plane datastore (SQLite online `.backup`, since this is a single-server K3s install using embedded SQLite/kine, not etcd — see the comment in `roles/backup/templates/backup.sh.j2`)
+- [x] Backups shipped via rsync over a dedicated SSH key to pi-node4 (`ansible/playbooks/backup.yml` generates the key on pi-node1 and trusts it on pi-node4 — idempotent, safe to re-run)
+- [x] Local backups on pi-node1 trimmed to the last 3; remote backups on pi-node4 trimmed to the last 14 (independent retention from the app's `LOG_RETENTION_DAYS` — this is infra backup file retention, a different concern)
+- [ ] **Not yet applied to the live cluster** — run `ansible-playbook -i inventory/hosts.ini playbooks/backup.yml` from `ansible/` to activate. Not part of the GitOps/Jenkins auto-deploy path.
+- [ ] Restore runbook — documented in `docs/architecture.md` §19, but never actually exercised against pi-node1
+
+## Phase 41 — Container Registry ✓
+- [x] `registry:2` added to `docker-compose.yml` (port 5000, `registry-data` volume) — picked up automatically by Jenkins' existing `docker compose up -d $SERVICES` Deploy stage, no separate rollout needed
+- [x] Jenkinsfile `Push to Registry` stage (after Health Check, so it never blocks or races the actual deploy) tags `backend`/`frontend` images with the short git SHA and `latest`, pushes both to `localhost:5000`
+- [x] Closes the roadmap's original Phase 5 gap ("Automated docker build and push to local registry") for the platform's own images
+- [ ] No auth on the registry (LAN-only, matches Prometheus's existing posture) — revisit if the registry is ever exposed beyond the LAN
+
+## Phase 42 — Log Aggregation (Loki + Promtail) ✓
+- [x] `loki` added to `docker-compose.yml` on pi-node1 (port 3100, filesystem storage, own `loki/loki-config.yml` with a 30d `retention_period` — independent of `LOG_RETENTION_DAYS`)
+- [x] `promtail` DaemonSet in `k8s/apps/promtail.yaml` (ArgoCD-applied automatically, same as node-exporter/traefik) — self-contained ServiceAccount/ClusterRole/ClusterRoleBinding following the `traefik.yaml` pattern
+- [x] Scrapes K3s pod logs across all 4 nodes (`/var/log/pods`, CRI pipeline stage) and Docker Compose container logs on pi-node1 only (`/var/lib/docker/containers`, JSON pipeline stage); pushes to `http://10.100.102.10:3100/loki/api/v1/push`
+- [x] Grafana datasource `grafana/provisioning/datasources/loki.yaml` (auto-provisioned on the next Grafana container restart via Jenkins deploy)
+- [ ] Not yet spot-checked against the live cluster — verify log lines actually arrive in Grafana's Explore view after the next deploy
+
+## Phase 43 — Log & Audit Retention ✓
+- [x] `LOG_RETENTION_DAYS` env var (default 90) — new `.env` value, `Settings.log_retention_days`
+- [x] `poll_retention_forever()` background task (registered in `main.py` lifespan alongside the health/alert pollers) deletes `audit_logs` rows and **resolved** `alert_history` rows older than the cutoff once a day; active/unresolved alerts are never deleted regardless of age
+- [x] Scoped strictly to these two Postgres tables — does not touch Loki's or Prometheus's own storage/retention, which are configured independently (see Phase 42)
+- [x] Migration `0011_add_retention_indexes` — indexes on `audit_logs.created_at` and `alert_history.resolved_at` so the daily cleanup delete is cheap
+- [x] Repository-level tests (`backend/tests/test_retention.py`) verify old rows are deleted, recent rows survive, and active alerts are never touched regardless of age

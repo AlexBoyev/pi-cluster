@@ -4,13 +4,13 @@
 
 Pi-Cluster is a DevOps platform for managing and monitoring a Raspberry Pi cluster.
 
+Status (see `docs/roadmap.md` for the full phase-by-phase list):
+
+Cluster monitoring and management, orchestration, workload scheduling, deployments, and load balancing are all built (Phases 0-39). This is a full K3s admin platform now, not just a monitoring dashboard — don't treat orchestration/scheduling/deployment work as "future" or out of scope.
+
 Current priority:
 
-Cluster monitoring and management.
-
-Future:
-
-Orchestration, workload scheduling, deployments, and load balancing.
+Operational hardening — backup/DR, log aggregation, image registry, retention — rather than new dashboard features. Check `docs/roadmap.md` for what's actually still open before assuming a feature doesn't exist.
 
 Do not implement future features prematurely.
 

@@ -16,6 +16,9 @@ The architecture separates:
 - CI/CD delivery
 - Kubernetes orchestration
 - GitOps manifest management
+- Container image registry
+- Log aggregation
+- Backup & disaster recovery
 
 ---
 
@@ -309,3 +312,45 @@ Health polling runs as a background asyncio task every 30 seconds. A single node
 - Incremental development: one phase at a time, no premature abstraction
 - Testability: services are independently testable without HTTP or DB dependencies
 - Node failure isolation: one node being unreachable never breaks the dashboard for others
+
+## 19. Backups & Disaster Recovery
+
+`ansible/roles/backup` schedules a nightly (02:30) cron job on pi-node1 that backs up:
+
+- **Postgres** — `pg_dump` of the `pi_cluster` database via `docker exec pi-cluster-postgres-1`, gzipped
+- **K3s datastore** — a SQLite online backup of `/var/lib/rancher/k3s/server/db/state.db`, plus a tarball of `/etc/rancher/k3s` and the server TLS directory. pi-node1 runs single-server K3s with the embedded SQLite/kine datastore, not etcd — see `docs/decisions.md`.
+
+Both are shipped via `rsync` over a dedicated SSH key (`/home/alex/.ssh/id_backup`) to **pi-node4** (10.100.102.12), the intentional off-node target. Local copies on pi-node1 are trimmed to the last 3; remote copies on pi-node4 to the last 14.
+
+**Not part of the GitOps/Jenkins auto-deploy path** — apply with:
+
+```
+cd ansible && ansible-playbook -i inventory/hosts.ini playbooks/backup.yml
+```
+
+Safe to re-run (key generation, `authorized_keys`, and cron are all idempotent).
+
+### Restore
+
+1. **Postgres**: `gunzip -c postgres.sql.gz | docker exec -i pi-cluster-postgres-1 psql -U pi_cluster pi_cluster`
+2. **K3s datastore**: stop k3s (`systemctl stop k3s`), replace `/var/lib/rancher/k3s/server/db/state.db` with the backed-up copy, restore `/etc/rancher/k3s` and the server TLS directory from `k3s-certs.tar.gz`, restart k3s.
+
+This runbook has not yet been exercised end-to-end against pi-node1 — treat step 2 as a starting point, not a verified procedure, until it's been tested once.
+
+## 20. Container Registry
+
+`registry:2` runs as a Docker Compose service on pi-node1 (`:5000`, `registry-data` volume). Jenkins tags the platform's own `backend`/`frontend` images with the short git SHA and `latest` and pushes both after a successful health check (`Jenkinsfile`'s `Push to Registry` stage) — this gives the platform's own image history a rollback trail independent of `docker compose build`'s local cache. No authentication is configured (see `docs/decisions.md`); it is not exposed beyond the LAN.
+
+## 21. Log Aggregation
+
+Loki (`loki` Compose service, `:3100`, filesystem storage) and Promtail (K3s DaemonSet, `k8s/apps/promtail.yaml`, ArgoCD-applied) give the platform a single place to search logs instead of switching between the in-app pod log viewer, `docker compose logs`, and SSH.
+
+Promtail runs on all 4 nodes and scrapes two sources: K3s pod logs (`/var/log/pods`, all nodes) and Docker Compose container logs (`/var/lib/docker/containers`, pi-node1 only — empty elsewhere). Both push to `http://10.100.102.10:3100/loki/api/v1/push`. Grafana has a Loki datasource provisioned alongside the existing Prometheus one, so logs and metrics live in the same dashboard tool.
+
+Loki's own log retention (`loki/loki-config.yml`, `retention_period: 30d`) is independent of the backend's `LOG_RETENTION_DAYS` — see §22 and `docs/decisions.md`.
+
+## 22. Log & Audit Retention
+
+The backend runs a daily background job (`poll_retention_forever`, alongside the health and alert pollers in `main.py`'s lifespan) that deletes `audit_logs` rows and **resolved** `alert_history` rows older than `LOG_RETENTION_DAYS` (`.env`, default 90). Active/unresolved alerts are never deleted regardless of age.
+
+This is scoped strictly to those two Postgres tables. It does not touch Loki's or Prometheus's storage (§21) — each service that persists its own data is expected to manage its own retention rather than being swept by this job.
