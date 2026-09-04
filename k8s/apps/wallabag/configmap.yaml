@@ -31,9 +31,12 @@ data:
   POSTGRES_USER: "wallabag"
   POSTGRES_DB: "wallabag"
 
-  # Confirmed idempotent on restart for Postgres (entrypoint checks for an
-  # existing schema before installing) — see docs/decisions.md. Left on
-  # permanently rather than toggled off after first boot.
+  # Does NOT actually auto-install the schema in this setup — the
+  # entrypoint sees the pre-created (but empty) database from
+  # README.md step 1 and concludes "already configured," skipping
+  # install regardless of this flag. wallabag:install has to be run
+  # once manually (README.md step 4). Left "True" anyway since it's
+  # otherwise harmless and matches upstream's own default.
   POPULATE_DATABASE: "True"
 
   # Closed by default upstream; set explicitly for clarity. Re-verify after

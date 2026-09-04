@@ -47,23 +47,35 @@ to skip the ~3 minute wait:
 sudo k3s kubectl apply -f k8s/apps/wallabag/
 ```
 
-## 4. Create the two real accounts
+## 4. Run the install command once — required, not optional
 
-Once the pod is `Ready` (check `sudo k3s kubectl get pods -n wallabag` —
-first boot is slow, see `docs/operations.md`), visit
-`http://wallabag.pi-cluster.lan` and register the first account through the
-UI while registration is still open from the image's default. Register the
-second account the same way, then immediately do step 5.
+Found the hard way: `POPULATE_DATABASE=True` alone does **not** create the
+schema. Wallabag's entrypoint has its own bootstrap check, separate from the
+Symfony config, and it gets confused by a database that already exists (from
+step 1) but has no tables yet — it sees "database exists" and skips install
+entirely, so the app 500s on every request (`relation ... does not exist`).
+Run this once after the pod is `Ready` (`sudo k3s kubectl get pods -n
+wallabag` — first boot is slow, see `docs/operations.md`):
 
-## 5. Disable registration
+```bash
+sudo k3s kubectl exec -n wallabag deploy/wallabag -- bin/console wallabag:install --env=prod -n
+```
 
-Registration is closed by default (`SYMFONY__ENV__FOSUSER_REGISTRATION:
-"false"` in `configmap.yaml`) — this step is verifying that's actually in
-effect, not turning it off. Visit `http://wallabag.pi-cluster.lan/register`
-after creating both accounts; it should refuse new signups. If it doesn't,
-something about the ConfigMap didn't apply — check
-`sudo k3s kubectl describe configmap wallabag-config -n wallabag` before
-assuming the app itself is misbehaving.
+Safe to re-run if it fails partway — Wallabag's own installer checks its
+existing state before each step.
+
+## 5. Create the two real accounts
+
+Registration is **closed by default** (`SYMFONY__ENV__FOSUSER_REGISTRATION:
+"false"` in `configmap.yaml`, matching wallabag's own upstream default) —
+visiting `/register` redirects straight to `/login`. Create both accounts
+via the CLI instead, which never needs a signup window open at all:
+
+```bash
+sudo k3s kubectl exec -n wallabag deploy/wallabag -- bin/console fos:user:create <username> <email> <password>
+```
+
+Run it twice, once per user. Nothing to "disable" afterward — it was never open.
 
 ## Not done here (accepted tradeoffs — see `docs/decisions.md`)
 
