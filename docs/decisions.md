@@ -80,6 +80,10 @@ Traefik's DaemonSet (`k8s/traefik/traefik.yaml`) originally tolerated the contro
 
 Fixed with a `nodeAffinity` excluding `kubernetes.io/hostname: pi-node1`, rather than removing the control-plane tolerations (kept in case a second control-plane node is ever added). Traefik now only runs on pi-node2/3/4 — sufficient for K8s workload ingress, since pi-node1's own routing was always nginx's job, not Traefik's.
 
+**Discovered while deploying this fix: `k8s/traefik/traefik.yaml` is not GitOps-managed at all.** ArgoCD's Application only watches `k8s/apps` (`spec.source.path`) — confirmed via `kubectl get application pi-cluster -n argocd -o jsonpath='{.spec.source.path}'`. Despite architecture.md previously implying Traefik was ArgoCD-managed like node-exporter/promtail, it was applied manually once (Phase 8) and has been drifting from the repo ever since; pushing this fix to git alone did nothing, it had to be applied by hand (`kubectl apply -f k8s/traefik/traefik.yaml`). Worth moving this file into `k8s/apps/` so it's actually under GitOps like everything else there — not done yet, flagged as a follow-up rather than risked this late in an unrelated change.
+
+**Also observed while applying the fix: individual Traefik pods got stuck `Terminating` past their grace period more than once during the rollout** (first pi-node1's old pod, then pi-node3's) — required `--grace-period=0 --force` to clear. This happened on nodes with no port conflict, so it's not fully explained by the pi-node1 root cause above; combined with all 4 pods' pre-existing high restart counts (8-12 each, including the 3 nodes that never had a port conflict), there may be a second, still-unidentified issue with how Traefik terminates on this cluster. Worth keeping an eye on via the new `PodCrashLooping`/`PodNotReady` alerts rather than considered closed.
+
 ## node-exporter DaemonSet via ArgoCD
 
 node-exporter is deployed as a K8s DaemonSet (one pod per node) managed by ArgoCD, rather than as a Docker Compose service on pi-node1 only.

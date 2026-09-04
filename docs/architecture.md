@@ -230,18 +230,25 @@ Workload operations performed through the backend:
 
 ## 13. GitOps — ArgoCD
 
-ArgoCD (K3s, NodePort `:30443`) watches the `k8s/apps/` directory in the GitHub repository and automatically applies changes to the K3s cluster.
+ArgoCD (K3s, NodePort `:30443`) watches **only** the `k8s/apps/` directory (`spec.source.path` on the `pi-cluster` Application — verify with `kubectl get application pi-cluster -n argocd -o jsonpath='{.spec.source.path}'` if this ever needs re-confirming) and automatically applies changes to the K3s cluster.
 
 ```
 k8s/
-└── apps/
-    ├── node-exporter.yaml    ← prometheus/node-exporter DaemonSet on all 4 nodes
-    └── traefik.yaml          ← Traefik DaemonSet + RBAC
+├── apps/
+│   ├── namespace.yaml              ← pi-apps namespace
+│   ├── node-exporter.yaml          ← node-exporter DaemonSet, all 4 nodes
+│   ├── promtail.yaml                ← Promtail DaemonSet, all 4 nodes
+│   ├── kube-state-metrics.yaml     ← kube-state-metrics Deployment + NodePort
+│   └── sample-nginx.yaml           ← example workload
+└── traefik/
+    └── traefik.yaml                 ← Traefik DaemonSet + RBAC — NOT under k8s/apps/, NOT GitOps-managed
 ```
+
+**`k8s/traefik/traefik.yaml` is a documentation trap** — it looks like it belongs with the other K8s manifests, but ArgoCD never watches it. It was applied once by hand (Phase 8) and any change to it since requires a manual `kubectl apply -f k8s/traefik/traefik.yaml` — pushing to git alone does nothing. Discovered the hard way while deploying the pi-node1 exclusion fix (see `docs/decisions.md`). Worth moving into `k8s/apps/` at some point so it stops being a special case; not done as of this writing.
 
 ArgoCD does **not** manage the Docker Compose stack — that is Jenkins's responsibility.
 
-**Sync policy:** automated with `prune: true` and `selfHeal: true`. Any change to `k8s/apps/` in Git is applied within ~3 minutes. Manual `kubectl apply` is not needed for resources in this directory.
+**Sync policy:** automated with `prune: true` and `selfHeal: true`. Any change to `k8s/apps/` in Git is applied within ~3 minutes. Manual `kubectl apply` is not needed for resources in that directory — but is needed for `k8s/traefik/`, per above.
 
 ---
 
