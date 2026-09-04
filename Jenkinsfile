@@ -96,6 +96,21 @@ pipeline {
                 '''
             }
         }
+
+        stage('Push to Registry') {
+            steps {
+                sh '''
+                    cd $PROJECT_DIR
+                    TAG=$(echo "$GIT_COMMIT" | cut -c1-7)
+                    for svc in backend frontend; do
+                        docker tag pi-cluster-$svc:latest localhost:5000/pi-cluster-$svc:$TAG
+                        docker tag pi-cluster-$svc:latest localhost:5000/pi-cluster-$svc:latest
+                        docker push localhost:5000/pi-cluster-$svc:$TAG
+                        docker push localhost:5000/pi-cluster-$svc:latest
+                    done
+                '''
+            }
+        }
     }
 
     post {

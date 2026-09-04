@@ -84,6 +84,24 @@ services:
       - --storage.path=/alertmanager
     restart: unless-stopped
 
+  registry:
+    image: registry:2
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry-data:/var/lib/registry
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:2.9.4
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+
   dnsmasq:
     build:
       context: .
@@ -166,3 +184,5 @@ volumes:
   grafana-data:
   alertmanager-data:
   jenkins-data:
+  registry-data:
+  loki-data:
