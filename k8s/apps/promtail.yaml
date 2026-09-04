@@ -109,17 +109,28 @@ spec:
         app: promtail
     spec:
       serviceAccountName: promtail
+      # Root cause of a "0 active targets" bug, found the hard way: Promtail
+      # auto-injects a k8s SD field selector (spec.nodeName=$self-hostname)
+      # to only watch pods on its own node — a sensible DaemonSet
+      # optimization. But a container's hostname (Go's os.Hostname(), which
+      # reads the kernel/UTS-namespace hostname — NOT the HOSTNAME env var;
+      # setting that alone does nothing here, tried it first) defaults to
+      # the pod name, not the node's real hostname, so the selector became
+      # spec.nodeName=<this promtail pod's own name>, matching nothing on
+      # every node, cluster-wide. hostNetwork shares the node's real UTS
+      # namespace — same reason node-exporter already uses it. Confirmed
+      # node hostnames match K8s node names exactly (`hostname` on
+      # pi-node1 == `kubectl get nodes` output) before relying on this.
+      hostNetwork: true
       tolerations:
         - operator: Exists
       containers:
         - name: promtail
-          # 2.9.4 originally, but its client-go was too old to talk to this
-          # cluster's K3s 1.36.3 correctly — the Kubernetes pod-discovery
-          # scrape job silently returned 0 targets (confirmed: RBAC was
-          # fine, the raw API call worked when impersonating promtail's own
-          # identity, only Promtail's own client never got results).
-          # Bumped to current; verified arm64 support directly against the
-          # registry, same as every other pinned image in this repo.
+          # Bumped from 2.9.4 while chasing this bug, initially suspecting
+          # a client-go/K3s version mismatch — that theory turned out wrong
+          # (the hostNetwork fix above was the actual cause), but kept the
+          # bump anyway as a reasonable modernization; arm64 support
+          # verified directly against the registry.
           image: grafana/promtail:3.6.11
           args:
             - -config.file=/etc/promtail/promtail.yaml
