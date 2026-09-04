@@ -1,0 +1,34 @@
+---
+# Sets up nightly Postgres + K3s datastore backups from pi-node1, shipped to
+# a second Pi (pi-node4 by default — see roles/backup/defaults/main.yml).
+# Run after k3s.yml and platform.yml have already stood up the cluster:
+#
+#   ansible-playbook -i inventory/hosts.ini playbooks/backup.yml
+#
+# Safe to re-run — key generation, cron, and authorized_keys are all
+# idempotent.
+
+- name: Generate backup transfer key and install backup script on pi-node1
+  hosts: control_plane
+  gather_facts: no
+  roles:
+    - backup
+
+- name: Authorize pi-node1's backup key on the backup target
+  hosts: "{{ hostvars[groups['control_plane'][0]].backup_target_host | default('pi-node4') }}"
+  gather_facts: no
+  tasks:
+    - name: Ensure remote backup directory exists
+      file:
+        path: "{{ hostvars[groups['control_plane'][0]].backup_remote_path | default('/home/alex/pi-cluster-backups') }}"
+        state: directory
+        owner: alex
+        group: alex
+        mode: "0700"
+      become: yes
+
+    - name: Trust pi-node1's backup key
+      authorized_key:
+        user: alex
+        key: "{{ hostvars[groups['control_plane'][0]].backup_pubkey }}"
+      become: yes

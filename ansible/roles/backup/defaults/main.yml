@@ -1,0 +1,23 @@
+---
+# Postgres runs inside the pi-cluster-postgres-1 container, backed up via
+# `docker exec` (not `docker compose exec`) so this never needs read access
+# to /home/admin/pi-cluster, which Jenkins' rsync leaves root-owned.
+backup_postgres_container: pi-cluster-postgres-1
+backup_postgres_user: pi_cluster
+backup_postgres_db: pi_cluster
+
+# Where backups are assembled on pi-node1 before being shipped out.
+backup_local_dir: /home/alex/backups
+backup_local_keep: 3
+
+# Where they're shipped to and how many daily snapshots survive there.
+backup_target_host: pi-node4
+backup_remote_path: /home/alex/pi-cluster-backups
+backup_remote_keep: 14
+
+# Dedicated key so this doesn't ride on anyone's personal SSH identity.
+backup_ssh_key_path: /home/alex/.ssh/id_backup
+
+# Cron schedule (defaults to 02:30 daily).
+backup_cron_hour: "2"
+backup_cron_minute: "30"

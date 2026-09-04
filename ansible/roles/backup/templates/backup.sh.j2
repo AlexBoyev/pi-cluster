@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Managed by Ansible (roles/backup) — edit the template, not this file.
+#
+# Backs up: the pi_cluster Postgres database (audit log, users, workload
+# records — everything the platform's control plane needs), and the K3s
+# control-plane datastore (this is a single-server K3s install using the
+# embedded SQLite/kine datastore, not etcd, so this is a SQLite online
+# backup + certs/tokens, not an `etcd-snapshot`).
+#
+# Ships both to {{ backup_target_host }} over a dedicated SSH key. Does NOT
+# touch Loki, Prometheus, or any other service's own storage — those manage
+# their own retention independently.
+set -euo pipefail
+
+BACKUP_ROOT="{{ backup_local_dir }}"
+STAMP="$(date +%Y%m%d-%H%M%S)"
+WORKDIR="$BACKUP_ROOT/$STAMP"
+REMOTE_HOST="{{ backup_target_host }}"
+REMOTE_USER="alex"
+REMOTE_PATH="{{ backup_remote_path }}"
+SSH_KEY="{{ backup_ssh_key_path }}"
+
+mkdir -p "$WORKDIR"
+
+echo "[backup] Dumping Postgres..."
+docker exec "{{ backup_postgres_container }}" \
+    pg_dump -U "{{ backup_postgres_user }}" "{{ backup_postgres_db }}" \
+    | gzip > "$WORKDIR/postgres.sql.gz"
+
+echo "[backup] Snapshotting K3s datastore (embedded SQLite)..."
+sudo sqlite3 /var/lib/rancher/k3s/server/db/state.db \
+    ".backup '$WORKDIR/k3s-state.db'"
+sudo tar czf "$WORKDIR/k3s-certs.tar.gz" \
+    -C / etc/rancher/k3s var/lib/rancher/k3s/server/tls
+sudo chown "$(id -u):$(id -g)" "$WORKDIR/k3s-state.db" "$WORKDIR/k3s-certs.tar.gz"
+
+echo "[backup] Shipping to $REMOTE_HOST..."
+rsync -az -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new" \
+    "$WORKDIR" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH/"
+
+echo "[backup] Trimming local backups (keep {{ backup_local_keep }})..."
+ls -1dt "$BACKUP_ROOT"/*/ 2>/dev/null | tail -n +$(({{ backup_local_keep }} + 1)) | xargs -r rm -rf
+
+echo "[backup] Trimming remote backups on $REMOTE_HOST (keep {{ backup_remote_keep }})..."
+ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new "$REMOTE_USER@$REMOTE_HOST" \
+    "cd $REMOTE_PATH && ls -1dt */ 2>/dev/null | tail -n +$(({{ backup_remote_keep }} + 1)) | xargs -r rm -rf"
+
+echo "[backup] Done: $STAMP"

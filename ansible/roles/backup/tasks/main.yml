@@ -1,0 +1,56 @@
+---
+- name: Ensure backup working directory exists
+  file:
+    path: "{{ backup_local_dir }}"
+    state: directory
+    owner: alex
+    group: alex
+    mode: "0700"
+  become: yes
+
+- name: Check for existing backup SSH key
+  stat:
+    path: "{{ backup_ssh_key_path }}"
+  register: backup_key_stat
+
+- name: Generate dedicated SSH key for backup transfers
+  openssh_keypair:
+    path: "{{ backup_ssh_key_path }}"
+    type: ed25519
+    owner: alex
+    group: alex
+    mode: "0600"
+  when: not backup_key_stat.stat.exists
+
+- name: Read backup public key
+  slurp:
+    src: "{{ backup_ssh_key_path }}.pub"
+  register: backup_pubkey_raw
+
+- name: Expose backup public key to other plays
+  set_fact:
+    backup_pubkey: "{{ backup_pubkey_raw.content | b64decode | trim }}"
+
+- name: Install sqlite3 (needed for the K3s datastore backup)
+  apt:
+    name: sqlite3
+    state: present
+  become: yes
+
+- name: Deploy backup script
+  template:
+    src: backup.sh.j2
+    dest: /home/alex/backup.sh
+    owner: alex
+    group: alex
+    mode: "0700"
+  become: yes
+
+- name: Schedule nightly backup via cron
+  cron:
+    name: "pi-cluster nightly backup"
+    user: alex
+    minute: "{{ backup_cron_minute }}"
+    hour: "{{ backup_cron_hour }}"
+    job: "/home/alex/backup.sh >> /home/alex/backup.log 2>&1"
+  become: yes
