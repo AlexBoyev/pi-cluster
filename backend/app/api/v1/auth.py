@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +11,7 @@ from app.auth.service import (
 )
 from app.database import get_db
 from app.models.user import User
+from app.rate_limit import limiter
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import AccessToken, LoginRequest, RefreshRequest, TokenPair, UserInfo
 
@@ -18,7 +19,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/login", response_model=TokenPair)
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenPair:
+@limiter.limit("10/minute")
+async def login(
+    request: Request, body: LoginRequest, db: AsyncSession = Depends(get_db)
+) -> TokenPair:
     user = await UserRepository(db).get_by_username(body.username)
     if user is None or not verify_password(body.password, user.hashed_password):
         raise HTTPException(

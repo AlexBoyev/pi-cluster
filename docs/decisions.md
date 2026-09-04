@@ -136,6 +136,10 @@ Jenkins' rsync leaves `/home/admin/pi-cluster` root-owned on pi-node1 (a known r
 
 `registry:2` is bound to pi-node1's LAN-facing port 5000 with no auth configured, matching the existing posture of Prometheus (`:9090`) and Postgres (`:5432`) — internal services trusted on the home LAN rather than hardened individually. Revisit with basic auth (htpasswd) or a reverse-proxy auth layer if the registry, or the LAN itself, is ever exposed beyond the house.
 
+## Rate limiting uses in-memory storage, not Redis
+
+`slowapi`'s `Limiter` (`app/rate_limit.py`) uses the default in-memory storage backend rather than the Redis instance the platform already runs. This is correct specifically because the backend intentionally runs as a single uvicorn process — the health/alert/retention pollers are in-process asyncio tasks, and running multiple worker processes would duplicate them. Single process means in-memory rate-limit state needs no cross-process sharing. If that assumption ever changes (multiple backend processes/replicas), the limiter's storage would need to move to Redis at the same time the pollers get split into their own process.
+
 ## Loki retention is independent of the app's `LOG_RETENTION_DAYS`
 
 `LOG_RETENTION_DAYS` (backend `.env`) only governs the `audit_logs` and `alert_history` Postgres tables via `poll_retention_forever()`. Loki has its own `retention_period` in `loki/loki-config.yml`, and Prometheus manages its own TSDB retention separately. Each service owns its own storage and retention policy; the app's retention job only ever touches the two tables it created, and a future service adding its own log/data storage is expected to manage its own retention rather than being folded into this job.

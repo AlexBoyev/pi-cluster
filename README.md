@@ -589,6 +589,7 @@ ssh alex@10.100.102.10 "cd /home/admin/pi-cluster && docker compose exec backend
 - Secrets are in `.env` — never committed to Git
 - SSH key auth is required for access to pi-node1; password auth is disabled
 - `audit_logs` and resolved `alert_history` rows older than `LOG_RETENTION_DAYS` (default 90) are deleted daily by a background job — see `docs/architecture.md` §22
+- Rate limited: 300 requests/minute per IP globally, 10/minute on `/auth/login` specifically (brute-force protection)
 
 ---
 

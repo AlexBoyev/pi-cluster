@@ -20,7 +20,13 @@ from app.main import app
 from app.database import Base, engine, get_db, AsyncSessionLocal
 from app.auth.service import hash_password, create_access_token
 from app.models.user import UserRole
+from app.rate_limit import limiter
 from app.repositories.user_repository import UserRepository
+
+# Login-heavy tests would otherwise trip the 10/minute login limit, since the
+# `client` fixture below is session-scoped and shares one Limiter instance
+# across the whole test run.
+limiter.enabled = False
 
 TEST_DB_URL = "sqlite+aiosqlite:///./test_ci.db"
 
