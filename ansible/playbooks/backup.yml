@@ -20,15 +20,15 @@
   tasks:
     - name: Ensure remote backup directory exists
       file:
-        path: "{{ hostvars[groups['control_plane'][0]].backup_remote_path | default('/home/alex/pi-cluster-backups') }}"
+        path: "{{ hostvars[groups['control_plane'][0]].backup_remote_path | default('/home/admin/pi-cluster-backups') }}"
         state: directory
-        owner: alex
-        group: alex
+        owner: admin
+        group: admin
         mode: "0700"
       become: yes
 
     - name: Trust pi-node1's backup key
       authorized_key:
-        user: alex
+        user: admin
         key: "{{ hostvars[groups['control_plane'][0]].backup_pubkey }}"
       become: yes

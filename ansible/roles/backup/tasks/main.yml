@@ -3,8 +3,8 @@
   file:
     path: "{{ backup_local_dir }}"
     state: directory
-    owner: alex
-    group: alex
+    owner: admin
+    group: admin
     mode: "0700"
   become: yes
 
@@ -17,8 +17,8 @@
   openssh_keypair:
     path: "{{ backup_ssh_key_path }}"
     type: ed25519
-    owner: alex
-    group: alex
+    owner: admin
+    group: admin
     mode: "0600"
   when: not backup_key_stat.stat.exists
 
@@ -40,17 +40,17 @@
 - name: Deploy backup script
   template:
     src: backup.sh.j2
-    dest: /home/alex/backup.sh
-    owner: alex
-    group: alex
+    dest: /home/admin/backup.sh
+    owner: admin
+    group: admin
     mode: "0700"
   become: yes
 
 - name: Schedule nightly backup via cron
   cron:
     name: "pi-cluster nightly backup"
-    user: alex
+    user: admin
     minute: "{{ backup_cron_minute }}"
     hour: "{{ backup_cron_hour }}"
-    job: "/home/alex/backup.sh >> /home/alex/backup.log 2>&1"
+    job: "/home/admin/backup.sh >> /home/admin/backup.log 2>&1"
   become: yes
