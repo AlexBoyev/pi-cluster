@@ -11,7 +11,11 @@ backup_local_dir: /home/admin/backups
 backup_local_keep: 3
 
 # Where they're shipped to and how many daily snapshots survive there.
-backup_target_host: pi-node4
+# Must be an address pi-node1 can actually resolve — it isn't an Ansible
+# control node with the inventory's hostname aliases available, it's the
+# managed host running this script standalone via cron, so the bare
+# inventory name "pi-node4" doesn't resolve there. Use the real IP.
+backup_target_host: 10.100.102.12
 backup_remote_path: /home/admin/pi-cluster-backups
 backup_remote_keep: 14
 
