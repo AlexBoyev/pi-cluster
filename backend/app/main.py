@@ -36,13 +36,16 @@ async def _seed_admin() -> None:
 async def lifespan(app: FastAPI):
     from app.services.alert_history_service import poll_alert_history_forever
     from app.services.health_service import poll_health_forever
+    from app.services.retention_service import poll_retention_forever
     await _seed_admin()
     health_task = asyncio.create_task(poll_health_forever())
     alert_task = asyncio.create_task(poll_alert_history_forever())
+    retention_task = asyncio.create_task(poll_retention_forever())
     yield
     health_task.cancel()
     alert_task.cancel()
-    for t in (health_task, alert_task):
+    retention_task.cancel()
+    for t in (health_task, alert_task, retention_task):
         try:
             await t
         except asyncio.CancelledError:

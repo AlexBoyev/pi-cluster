@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.alert_history import AlertHistory
@@ -66,3 +66,17 @@ class AlertHistoryRepository:
         q = select(AlertHistory).where(AlertHistory.resolved_at.is_(None))
         result = await self._db.execute(q)
         return len(result.scalars().all())
+
+    async def delete_resolved_older_than(self, cutoff: datetime) -> int:
+        """Delete resolved alert history older than cutoff. Active (unresolved)
+        alerts are never deleted regardless of age."""
+        result = await self._db.execute(
+            delete(AlertHistory)
+            .where(
+                AlertHistory.resolved_at.is_not(None),
+                AlertHistory.resolved_at < cutoff,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        await self._db.commit()
+        return result.rowcount or 0

@@ -1,4 +1,6 @@
-from sqlalchemy import select
+from datetime import datetime
+
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit import AuditLog
@@ -44,3 +46,12 @@ class AuditRepository:
             q = q.where(AuditLog.resource_type == resource_type)
         result = await self._db.execute(q.offset(offset).limit(limit))
         return list(result.scalars().all())
+
+    async def delete_older_than(self, cutoff: datetime) -> int:
+        result = await self._db.execute(
+            delete(AuditLog)
+            .where(AuditLog.created_at < cutoff)
+            .execution_options(synchronize_session=False)
+        )
+        await self._db.commit()
+        return result.rowcount or 0

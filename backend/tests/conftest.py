@@ -96,8 +96,12 @@ async def client(test_session_factory, admin_token, viewer_token):
             "app.services.alert_history_service.poll_alert_history_forever",
             new_callable=AsyncMock,
         ):
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-                yield c
+            with patch(
+                "app.services.retention_service.poll_retention_forever",
+                new_callable=AsyncMock,
+            ):
+                async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+                    yield c
 
     app.dependency_overrides.clear()
 

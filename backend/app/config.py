@@ -38,6 +38,8 @@ class Settings(BaseSettings):
 
     jenkins_admin_password: str = ""
 
+    log_retention_days: int = 90
+
     k8s_kubeconfig_path: str = "/app/kubeconfig"
     k8s_api_host: str = "10.100.102.10"
     k8s_namespace: str = "pi-apps"
