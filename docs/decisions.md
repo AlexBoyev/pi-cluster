@@ -157,3 +157,49 @@ This was found by checking, not assumed: `cloudflared`'s actual tunnel routing r
 ## Loki retention is independent of the app's `LOG_RETENTION_DAYS`
 
 `LOG_RETENTION_DAYS` (backend `.env`) only governs the `audit_logs` and `alert_history` Postgres tables via `poll_retention_forever()`. Loki has its own `retention_period` in `loki/loki-config.yml`, and Prometheus manages its own TSDB retention separately. Each service owns its own storage and retention policy; the app's retention job only ever touches the two tables it created, and a future service adding its own log/data storage is expected to manage its own retention rather than being folded into this job.
+
+---
+
+# ADR: Household Services — Wallabag (first of four)
+
+Wallabag, Vikunja, Paperless-ngx, and Firefly III are planned as self-hosted apps for household use (2 users), unrelated to the pi-cluster platform itself — they don't manage the cluster, they just run on it. Wallabag goes first specifically because it's the smallest, to prove out the patterns the other three inherit cheaply. The decisions below are the actual deliverable; Wallabag is the test case.
+
+## D1 — Storage: `local-path` + `nodeSelector: pi-node3`, not NFS
+
+Verified before deciding, not assumed: the cluster's only `StorageClass` is `local-path` (K3s's built-in provisioner). No NFS server exists anywhere — `nfs-kernel-server` isn't installed on pi-node1, no `/etc/exports`.
+
+Rejected NFS from pi-node1 despite it being the more "obvious" choice for a stateful workload that might move nodes: it isn't infrastructure that already exists, it's a new build (server + exports + a CSI provisioner), and it trades one coupling for a worse one — instead of "pi-node3 down means Wallabag is down" (simple, already how every other per-node thing on this cluster fails), you get "pi-node1's NFS daemon becomes a dependency for every workload's storage, cluster-wide." That's a bigger, newer failure mode in exchange for pod-portability a 2-user read-later app doesn't need. Revisit if a real cross-node-portability need shows up later.
+
+**Consequences, not objections — written down now while still theoretical:**
+- `local-path`'s PV carries a hard `nodeAffinity` to whichever node first provisioned it. Draining pi-node3 does **not** reschedule Wallabag elsewhere — the pod goes `Pending` forever, since no other node can satisfy that PVC. See `docs/operations.md` for the drain-impact table this creates (which household service dies when which node is drained).
+- Moving a service to a different node later is a **manual** procedure — copy the hostPath directory to the new node, delete and recreate the PV/PVC pointing at the new node — not a live reschedule. Documented once now in `docs/operations.md` rather than reconstructed during an incident.
+
+## D2 — Database: new `wallabag` database inside the existing platform Postgres
+
+Rejected a dedicated Postgres pod (another instance to run and back up separately) and SQLite (corrupts under concurrent access, serializes writes, and — decisively — Wallabag's data directory lives on `local-path`, and SQLite-over-network-filesystem semantics are exactly the failure mode `local-path` doesn't have, but a future NFS migration would reintroduce if a service were still on SQLite). Reusing the platform Postgres means no new pod and it inherits an already-running, already-backed-up instance.
+
+**This does widen the backup role** (`ansible/roles/backup` previously dumped only `pi_cluster`) — done as part of this change, not deferred: `backup_postgres_databases` is now a list (`[pi_cluster, wallabag]`), looped in `backup.sh.j2`. Confirmed covered, per the prompt's own request to state this explicitly.
+
+## D3 — Ingress: nginx wildcard fallback + multi-worker upstream, LAN-only for now
+
+Found while investigating, not assumed: there was no working path from any hostname to Traefik on pi-node2/3/4 at all. `dnsmasq` wildcards `*.pi-cluster.lan`/`*.cluster.download` both resolve to pi-node1; `nginx` there only proxies a fixed set of hardcoded hostnames; Traefik was excluded from pi-node1 in an earlier change (it fought Docker Compose's `nginx` for the same host ports). Any new K8s-Ingress-based hostname would 404 at nginx before ever reaching Traefik. This blocked all four household services, not just Wallabag.
+
+Rejected a per-hostname nginx block (works for Wallabag, then costs an nginx edit + full Jenkins platform deploy for every future service — coupling user workloads to the platform's own delivery pipeline, exactly the boundary kept clean everywhere else). Rejected pointing the dnsmasq wildcard straight at a worker IP instead of through nginx: simpler, but breaks every existing platform hostname (they only exist behind nginx on pi-node1) and gets no failover.
+
+Built instead: one `server` block matching `*.pi-cluster.lan` and `*.cluster.download`, proxying to an `upstream` listing all three workers (`10.100.102.16/17/12:80`) with `max_fails`/`fail_timeout` for passive health checks — one worker down doesn't take routing down with it. (Placement after the specific server blocks is for file readability, not correctness — nginx's `server_name` matching picks an exact match over a wildcard regardless of block order.) Vikunja, Paperless, and Firefly need nothing but a K8s `Ingress` from here — no nginx change, no platform deploy.
+
+**LAN-only for now** (`wallabag.pi-cluster.lan`), Cloudflare Tunnel exposure deferred as a separate later change — agreed explicitly rather than doing both at once. Whatever Cloudflare-side change that needs (adding one more Public Hostname route, or nothing at all if the tunnel already has a wildcard route — unconfirmed, lives in Cloudflare's dashboard, not this repo) is out of scope here.
+
+## D4 — Namespace: `wallabag`, dedicated (one namespace per service)
+
+Each of the four gets its own namespace: its own `ResourceQuota` so one service's spike can't starve the others, a clean uninstall (delete the namespace), no `postgres`/`redis` Service name collisions between services, and RBAC/NetworkPolicy that scopes cleanly per service later. The cost (a few more manifests, a few more API objects) is negligible at this scale. This becomes the convention for Vikunja, Paperless, and Firefly.
+
+## Configuration notes (verified against the live registry and upstream source, not assumed)
+
+- Image `wallabag/wallabag:2.6.14` — confirmed via direct Docker Hub registry API query that this tag's manifest list includes `linux/arm64` (not just amd64).
+- `SYMFONY__ENV__DOMAIN_NAME=http://wallabag.pi-cluster.lan` — must match the real URL exactly, including scheme; this is Wallabag's single most common misconfiguration (breaks generated links, the browser extension, and the mobile app in ways that look unrelated).
+- `SYMFONY__ENV__FOSUSER_REGISTRATION` defaults to `false` upstream — registration is closed out of the box; set explicitly anyway for clarity. Verify the toggle again after creating the two real accounts (belt-and-suspenders, not because the default is expected to change).
+- First-run migration: for Postgres, wallabag's own entrypoint queries the database to check whether the schema already exists before running `wallabag:install` — genuinely idempotent across pod restarts, confirmed by reading the entrypoint source. No separate init Job needed; `POPULATE_DATABASE=True` stays set permanently rather than being toggled off after first boot.
+- Mailer: left at the image's default (effectively unconfigured) — **password reset will not work**. Documented as an explicit accepted tradeoff, not silently broken; revisit if it turns out to matter for 2 users who both have direct SSH access to reset a password by hand if needed.
+- `SYMFONY__ENV__SECRET` is generated and stored only in the cluster Secret (`kubectl create secret`, manual step, never in git) — stable across restarts by design (it's read from the Secret, not regenerated).
+- No AI/enrichment in this phase. `.env.example` gets placeholder `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` entries, clearly marked unused and reserved for a future companion enrichment service — never built into the Wallabag container itself.

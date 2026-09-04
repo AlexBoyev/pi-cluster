@@ -1,0 +1,21 @@
+# local-path, not NFS — see docs/decisions.md (Wallabag ADR, D1). Binds with
+# nodeAffinity to whichever node first schedules a pod against it; combined
+# with the Deployment's nodeSelector (pi-node3), this pins Wallabag's data
+# to pi-node3 permanently. Draining pi-node3 does not let this PVC follow
+# the pod elsewhere — see docs/operations.md for the drain-impact table and
+# manual node-migration procedure.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wallabag-data
+  namespace: wallabag
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      # Text articles + preview thumbnails for 2 users — sized honestly for
+      # actual use, not generously. 219GB free on pi-node3; this is not a
+      # meaningful fraction of it.
+      storage: 5Gi

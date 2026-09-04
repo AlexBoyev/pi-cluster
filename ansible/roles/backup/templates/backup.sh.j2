@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Managed by Ansible (roles/backup) — edit the template, not this file.
 #
-# Backs up: the pi_cluster Postgres database (audit log, users, workload
-# records — everything the platform's control plane needs), and the K3s
-# control-plane datastore (this is a single-server K3s install using the
+# Backs up: every Postgres database listed in backup_postgres_databases
+# (the platform's own pi_cluster db, plus one per household service sharing
+# this Postgres instance — see docs/decisions.md's Wallabag ADR), and the
+# K3s control-plane datastore (this is a single-server K3s install using the
 # embedded SQLite/kine datastore, not etcd, so this is a SQLite online
 # backup + certs/tokens, not an `etcd-snapshot`).
 #
@@ -22,10 +23,12 @@ SSH_KEY="{{ backup_ssh_key_path }}"
 
 mkdir -p "$WORKDIR"
 
-echo "[backup] Dumping Postgres..."
+echo "[backup] Dumping Postgres databases..."
+{% for db in backup_postgres_databases %}
 docker exec "{{ backup_postgres_container }}" \
-    pg_dump -U "{{ backup_postgres_user }}" "{{ backup_postgres_db }}" \
-    | gzip > "$WORKDIR/postgres.sql.gz"
+    pg_dump -U "{{ backup_postgres_user }}" "{{ db }}" \
+    | gzip > "$WORKDIR/postgres-{{ db }}.sql.gz"
+{% endfor %}
 
 echo "[backup] Snapshotting K3s datastore (embedded SQLite)..."
 sudo sqlite3 /var/lib/rancher/k3s/server/db/state.db \

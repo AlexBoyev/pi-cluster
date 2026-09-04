@@ -2,9 +2,18 @@
 # Postgres runs inside the pi-cluster-postgres-1 container, backed up via
 # `docker exec` (not `docker compose exec`) so this never needs read access
 # to /home/admin/pi-cluster, which Jenkins' rsync leaves root-owned.
+# Dumped as the pi_cluster superuser regardless of which role owns each
+# database (household services get their own scoped Postgres role for the
+# app itself, e.g. `wallabag` — this is only for backup, where a superuser
+# dump is simpler than granting each service's role dump rights too).
 backup_postgres_container: pi-cluster-postgres-1
 backup_postgres_user: pi_cluster
-backup_postgres_db: pi_cluster
+# One database per platform component or household service sharing this
+# Postgres instance. Add a new service's database name here when it's
+# added — see docs/decisions.md's Wallabag ADR (D2).
+backup_postgres_databases:
+  - pi_cluster
+  - wallabag
 
 # Where backups are assembled on pi-node1 before being shipped out.
 backup_local_dir: /home/admin/backups

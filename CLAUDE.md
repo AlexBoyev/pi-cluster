@@ -74,3 +74,4 @@ Keep documentation updated when architecture changes:
 * `docs/architecture.md`
 * `docs/roadmap.md`
 * `docs/decisions.md`
+* `docs/operations.md`

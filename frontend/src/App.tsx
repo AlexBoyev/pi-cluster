@@ -591,7 +591,7 @@ export default function App() {
           </div>
           <button className="sb-logout" onClick={logout}>Sign out</button>
           <div className="sb-foot-label" style={{ marginTop: "0.8rem" }}>Version</div>
-          <div className="sb-foot-val">v0.1.0 · Phase 57</div>
+          <div className="sb-foot-val">v0.1.0 · Phase 58</div>
           <div className="sb-foot-label" style={{ marginTop: "0.4rem" }}>Cluster</div>
           <div className="sb-foot-val">4 nodes · arm64 · 10.100.102.0/24</div>
         </div>

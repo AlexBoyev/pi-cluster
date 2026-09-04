@@ -361,3 +361,19 @@ Loki's own log retention (`loki/loki-config.yml`, `retention_period: 30d`) is in
 The backend runs a daily background job (`poll_retention_forever`, alongside the health and alert pollers in `main.py`'s lifespan) that deletes `audit_logs` rows and **resolved** `alert_history` rows older than `LOG_RETENTION_DAYS` (`.env`, default 90). Active/unresolved alerts are never deleted regardless of age.
 
 This is scoped strictly to those two Postgres tables. It does not touch Loki's or Prometheus's storage (§21) — each service that persists its own data is expected to manage its own retention rather than being swept by this job.
+
+## 23. Household Services
+
+A separate category from everything above: self-hosted apps for household use (2 users) that happen to run on this cluster, not part of the platform itself — they don't manage nodes, workloads, or each other. Wallabag (read-later) is the first; Vikunja, Paperless-ngx, and Firefly III are planned to follow the same pattern. Full reasoning in `docs/decisions.md`'s Wallabag ADR — this section is the pattern summary, kept current as more services land.
+
+**The pattern, established once and reused:**
+
+- **One namespace per service** (`wallabag`, eventually `vikunja`, `paperless`, `firefly`) — own `ResourceQuota`, clean uninstall, no cross-service Service-name collisions.
+- **Storage**: `local-path` StorageClass + `nodeSelector` pinning the Deployment to a specific worker — not NFS (no NFS infrastructure exists on this cluster; see the ADR for why that's a deliberate choice, not a gap). Each service's data is physically tied to one node. Consequence: draining that node makes the service `Pending`, not rescheduled — see `docs/operations.md` for the drain-impact table and manual node-migration procedure.
+- **Database**: a dedicated Postgres role + database inside the existing platform Postgres (`10.100.102.10:5432`, reached over the LAN from K8s pods, since Postgres runs in Docker Compose, not K8s) — not a new Postgres pod per service, not SQLite. Each new database must be added to `ansible/roles/backup`'s `backup_postgres_databases` list, or it silently isn't backed up.
+- **Secrets**: created manually with `kubectl create secret`, documented per-service in that service's `k8s/apps/<name>/README.md`. Never committed — a Secret manifest in git under `k8s/apps/` would be continuously overwritten by ArgoCD's `selfHeal`, clobbering whatever real value was set manually.
+- **Ingress**: a K8s `Ingress` resource with `ingressClassName: traefik` and a `<name>.pi-cluster.lan` host — nothing else required. nginx's wildcard fallback (§ below) and Traefik's DaemonSet on pi-node2/3/4 already handle routing for any hostname on that pattern; no nginx edit, no Jenkins deploy, no platform change per new service.
+- **Node placement**: pi-node1 takes no household-service workloads (control plane + Docker Compose stack only). Each service is pinned to a specific worker by convention, not left to the scheduler — pi-node3 for Wallabag, pi-node2 reserved for Paperless, pi-node4 doubles as the backup target.
+- **Monitoring**: relies on existing cluster-level tooling — `kube-state-metrics` + the `PodCrashLooping`/`PodNotReady` alert rules (§ Pod-Level Alerting, `prometheus/alerts.yml`) already cover any namespace, and Promtail already scrapes pod logs cluster-wide into Loki. A new household service does not need its own alert rule or logging setup by default; add one only if it needs alerting beyond "is the pod up."
+
+**Ingress routing path**: `*.pi-cluster.lan`/`*.cluster.download` (dnsmasq wildcard) → nginx on pi-node1 → wildcard fallback `server` block (any hostname not matching a specific platform block) → `upstream` of all three workers with passive health checks → Traefik (whichever worker answers) → K8s `Ingress` → Service → pod. See `nginx/nginx.conf` and the ADR for why this replaced an earlier per-hostname-block idea.

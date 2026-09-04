@@ -1,0 +1,37 @@
+# Non-secret configuration. DATABASE_PASSWORD and SECRET live in the
+# wallabag-secret Secret instead — created manually, never in git. See
+# k8s/apps/wallabag/README.md.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wallabag-config
+  namespace: wallabag
+data:
+  # Must exactly match the real ingress URL, including scheme — wallabag's
+  # single most common misconfiguration. See docs/decisions.md.
+  SYMFONY__ENV__DOMAIN_NAME: "http://wallabag.pi-cluster.lan"
+
+  # Postgres runs in Docker Compose on pi-node1, not in K8s — reached over
+  # the LAN, not a K8s Service. Port 5432 is published on the host
+  # (docker-compose.yml).
+  SYMFONY__ENV__DATABASE_DRIVER: "pdo_pgsql"
+  SYMFONY__ENV__DATABASE_HOST: "10.100.102.10"
+  SYMFONY__ENV__DATABASE_PORT: "5432"
+  SYMFONY__ENV__DATABASE_NAME: "wallabag"
+  SYMFONY__ENV__DATABASE_USER: "wallabag"
+  SYMFONY__ENV__DATABASE_TABLE_PREFIX: "wallabag_"
+  SYMFONY__ENV__DATABASE_CHARSET: "utf8"
+
+  # Confirmed idempotent on restart for Postgres (entrypoint checks for an
+  # existing schema before installing) — see docs/decisions.md. Left on
+  # permanently rather than toggled off after first boot.
+  POPULATE_DATABASE: "True"
+
+  # Closed by default upstream; set explicitly for clarity. Re-verify after
+  # creating the two real accounts.
+  SYMFONY__ENV__FOSUSER_REGISTRATION: "false"
+  SYMFONY__ENV__FOSUSER_CONFIRMATION: "true"
+
+  # Mailer intentionally left unconfigured — password reset will not work.
+  # Accepted tradeoff for 2 users with direct SSH access; see
+  # docs/decisions.md.

@@ -1,0 +1,22 @@
+# LAN-only for now (docs/decisions.md, D3). Reachable via nginx's wildcard
+# fallback -> Traefik (pi-node2/3/4) -> this Ingress. Adding Cloudflare
+# Tunnel exposure later needs no change here — just a Cloudflare-side route
+# to the same nginx wildcard path.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wallabag
+  namespace: wallabag
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: wallabag.pi-cluster.lan
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wallabag
+                port:
+                  number: 80
