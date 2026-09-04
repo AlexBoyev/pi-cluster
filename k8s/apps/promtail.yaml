@@ -63,7 +63,12 @@ data:
             target_label: container
           - source_labels: [__meta_kubernetes_pod_uid]
             target_label: __path__
-            replacement: /var/log/pods/*$1/*.log
+            # One level deeper than it looks: real files are
+            # <ns>_<pod>_<uid>/<container>/<N>.log, not .../<uid>/*.log —
+            # confirmed by listing an actual pod's log directory on
+            # pi-node1. The glob without the extra */ silently matched
+            # nothing, cluster-wide, since this file was first written.
+            replacement: /var/log/pods/*$1/*/*.log
 
       # Docker Compose platform containers (backend, postgres, jenkins, etc.)
       # — only present on pi-node1, where the compose stack actually runs;

@@ -42,6 +42,19 @@ spec:
                 secretKeyRef:
                   name: wallabag-secret
                   key: database-password
+            # The entrypoint's own install-trigger logic (not the Symfony
+            # app config) separately checks POSTGRES_PASSWORD to decide
+            # whether to run wallabag:install — without it, POPULATE_DATABASE
+            # is silently ignored and the schema never gets created. Found
+            # by reading the actual entrypoint source after a real deploy
+            # attempt failed with "relation ... does not exist". Same value
+            # as the wallabag role's password above (it owns the database,
+            # so no separate superuser credential is needed).
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wallabag-secret
+                  key: database-password
             - name: SYMFONY__ENV__SECRET
               valueFrom:
                 secretKeyRef:

@@ -22,6 +22,15 @@ data:
   SYMFONY__ENV__DATABASE_TABLE_PREFIX: "wallabag_"
   SYMFONY__ENV__DATABASE_CHARSET: "utf8"
 
+  # Separate from the SYMFONY__ENV__DATABASE_* vars above: the entrypoint
+  # script's OWN wait-for-database/install-trigger logic uses these,
+  # mirroring the standard `postgres` image's bootstrap convention (and
+  # defaults DATABASE_USER to "root" if unset, which is not this database's
+  # actual user). Found only by testing a real deploy — not documented
+  # anywhere upstream that this WebFetch/WebSearch could find.
+  POSTGRES_USER: "wallabag"
+  POSTGRES_DB: "wallabag"
+
   # Confirmed idempotent on restart for Postgres (entrypoint checks for an
   # existing schema before installing) — see docs/decisions.md. Left on
   # permanently rather than toggled off after first boot.
