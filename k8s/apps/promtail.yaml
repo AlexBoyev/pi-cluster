@@ -113,7 +113,14 @@ spec:
         - operator: Exists
       containers:
         - name: promtail
-          image: grafana/promtail:2.9.4
+          # 2.9.4 originally, but its client-go was too old to talk to this
+          # cluster's K3s 1.36.3 correctly — the Kubernetes pod-discovery
+          # scrape job silently returned 0 targets (confirmed: RBAC was
+          # fine, the raw API call worked when impersonating promtail's own
+          # identity, only Promtail's own client never got results).
+          # Bumped to current; verified arm64 support directly against the
+          # registry, same as every other pinned image in this repo.
+          image: grafana/promtail:3.6.11
           args:
             - -config.file=/etc/promtail/promtail.yaml
           resources:
