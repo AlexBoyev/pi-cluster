@@ -309,6 +309,13 @@ function ViewerPortal({ username, logout }: { username: string | null; logout: (
         </div>
         <nav className="sb-nav">
           <div className="sb-section">Services</div>
+          {HOUSEHOLD_SERVICES.map((s) => (
+            <a key={s.key} href={serviceHref(s)} target="_blank" rel="noreferrer" className="sb-link">
+              <span className="sb-icon">{s.icon}</span>
+              {s.label}
+              <span className="sb-ext">↗</span>
+            </a>
+          ))}
           {COMING_SOON.map((s) => (
             <span key={s.label} className="sb-link sb-link-disabled">
               <span className="sb-icon">{s.icon}</span>
@@ -347,6 +354,13 @@ function ViewerPortal({ username, logout }: { username: string | null; logout: (
             <div className="portal-sub">Your services will appear here as they become available.</div>
           </div>
           <div className="portal-grid">
+            {HOUSEHOLD_SERVICES.map((s) => (
+              <a key={s.key} href={serviceHref(s)} target="_blank" rel="noreferrer" className="portal-card svc-card">
+                <div className="portal-card-icon">{s.icon}</div>
+                <div className="portal-card-label">{s.label}</div>
+                <div className="portal-card-desc">{s.desc}</div>
+              </a>
+            ))}
             {COMING_SOON.map((s) => (
               <div key={s.label} className="portal-card portal-card-soon">
                 <div className="portal-card-icon">{s.icon}</div>
