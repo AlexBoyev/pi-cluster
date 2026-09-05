@@ -1,0 +1,43 @@
+# Non-secret configuration. DATABASE_PASSWORD, JWTSECRET, and MAILER
+# credentials live in the vikunja-secret Secret instead — created manually,
+# never in git. See k8s/apps/vikunja/README.md.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vikunja-config
+  namespace: vikunja
+data:
+  # Single canonical domain, decided up front this time — Wallabag's own
+  # DOMAIN_NAME was pinned to its LAN host first and had to be corrected
+  # after assets rendered unstyled over the public one (docs/decisions.md).
+  # cluster.download works both from the LAN (dnsmasq split-horizon) and
+  # publicly, so it's canonical here from day one.
+  VIKUNJA_SERVICE_PUBLICURL: "https://vikunja.cluster.download"
+
+  # Postgres runs in Docker Compose on pi-node1, not in K8s — reached over
+  # the LAN, not a K8s Service. Port 5432 is published on the host
+  # (docker-compose.yml). Same pattern as Wallabag.
+  VIKUNJA_DATABASE_TYPE: "postgres"
+  VIKUNJA_DATABASE_HOST: "10.100.102.10"
+  VIKUNJA_DATABASE_PORT: "5432"
+  VIKUNJA_DATABASE_DATABASE: "vikunja"
+  VIKUNJA_DATABASE_USER: "vikunja"
+
+  # Closed by design (docs/decisions.md D-user-model) — two real accounts
+  # created manually via the CLI, not self-registration. Verify from
+  # outside the LAN after creating both, same as Wallabag's /register check.
+  VIKUNJA_SERVICE_ENABLEREGISTRATION: "false"
+
+  # Brevo relay (docs/decisions.md D2) — shared account with the separate
+  # security-alert system, distinct sender address for readability. Host/
+  # port are not secret; USERNAME/PASSWORD (the Brevo SMTP login + API key)
+  # live in vikunja-secret.
+  VIKUNJA_MAILER_ENABLED: "true"
+  VIKUNJA_MAILER_HOST: "smtp-relay.brevo.com"
+  VIKUNJA_MAILER_PORT: "587"
+  VIKUNJA_MAILER_FROMEMAIL: "vikunja@cluster.download"
+
+  # CalDAV requires a per-user app password (Settings -> CalDAV), not the
+  # account password — this is also Vikunja's own mitigation for CalDAV's
+  # inherent 2FA-bypass-via-Basic-Auth risk. Nothing to configure here;
+  # documented in k8s/apps/vikunja/README.md and docs/operations.md.

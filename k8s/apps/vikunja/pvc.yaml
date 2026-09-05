@@ -1,0 +1,22 @@
+# local-path, not NFS — same reasoning as Wallabag (docs/decisions.md, D1).
+# Binds with nodeAffinity to whichever node first schedules a pod against
+# it; combined with the Deployment's nodeSelector (pi-node3), this pins
+# Vikunja's attachments to pi-node3 permanently. Draining pi-node3 does not
+# let this PVC follow the pod elsewhere — see docs/operations.md.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vikunja-data
+  namespace: vikunja
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      # Task attachments for 2 users (receipt photos, the odd document) are
+      # lighter than Wallabag's full article+image archive — sized smaller
+      # than Wallabag's 5Gi deliberately, not just copied. Not covered by
+      # the backup role (Postgres-only, see ansible/roles/backup) — same
+      # gap Wallabag's own attachments already have, not new here.
+      storage: 2Gi

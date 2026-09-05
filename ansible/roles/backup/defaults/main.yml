@@ -14,6 +14,7 @@ backup_postgres_user: pi_cluster
 backup_postgres_databases:
   - pi_cluster
   - wallabag
+  - vikunja
 
 # Where backups are assembled on pi-node1 before being shipped out.
 backup_local_dir: /home/admin/backups

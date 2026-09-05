@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vikunja
+  namespace: vikunja
+  labels:
+    app: vikunja
+spec:
+  replicas: 1
+  strategy:
+    # Recreate, not RollingUpdate: local-path is ReadWriteOnce, a second pod
+    # couldn't mount the same PVC anyway while the old one terminates. Same
+    # as Wallabag.
+    type: Recreate
+  selector:
+    matchLabels:
+      app: vikunja
+  template:
+    metadata:
+      labels:
+        app: vikunja
+    spec:
+      # Pinned to pi-node3, alongside Wallabag — see docs/decisions.md.
+      # Combined footprint against pi-node3's ~7.64Gi allocatable stated
+      # there; both are light. Excludes pi-node1, which takes no
+      # household-service workloads.
+      nodeSelector:
+        kubernetes.io/hostname: pi-node3
+      containers:
+        - name: vikunja
+          # Single combined image (frontend+API) - the split vikunja/frontend
+          # and vikunja/api images are deprecated. Pinned, never latest.
+          # Verified against the Docker Hub registry API (not just a docs
+          # page) that this tag's manifest list includes linux/arm64 - see
+          # docs/decisions.md.
+          image: vikunja/vikunja:2.6.0
+          ports:
+            - name: http
+              containerPort: 3456
+          envFrom:
+            - configMapRef:
+                name: vikunja-config
+          env:
+            - name: VIKUNJA_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: vikunja-secret
+                  key: database-password
+            # Must be stable across restarts - Vikunja generates a random
+            # one at every startup if unset, which would invalidate every
+            # issued session/refresh-token on each pod restart. Confirmed
+            # live: VIKUNJA_SERVICE_JWTSECRET logs a deprecation warning on
+            # 2.6.0 ("use service.secret instead") - using the current key.
+            - name: VIKUNJA_SERVICE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: vikunja-secret
+                  key: jwt-secret
+            - name: VIKUNJA_MAILER_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: vikunja-secret
+                  key: mailer-username
+            - name: VIKUNJA_MAILER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: vikunja-secret
+                  key: mailer-password
+          volumeMounts:
+            - name: data
+              mountPath: /app/vikunja/files
+          resources:
+            # pi-node3: ~7.64Gi allocatable, Wallabag already there at 512Mi
+            # limit. Vikunja's Go binary + bundled static frontend runs
+            # ~200MB RAM at rest per upstream guidance - 384Mi limit leaves
+            # real headroom without padding past what a 2-user household
+            # task manager needs. 300m CPU limit covers a migration run or
+            # calendar-feed generation burst.
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 384Mi
+          # /api/v1/info is a real, unauthenticated, lightweight endpoint
+          # (returns version/build info) - not a bare TCP check.
+          startupProbe:
+            httpGet:
+              path: /api/v1/info
+              port: 3456
+            failureThreshold: 30
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/v1/info
+              port: 3456
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/v1/info
+              port: 3456
+            periodSeconds: 10
+            failureThreshold: 3
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: vikunja-data
