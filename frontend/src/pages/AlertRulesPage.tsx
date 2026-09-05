@@ -79,24 +79,26 @@ function RuleRow({
     }
   }
 
+  const gridCls = `ar-row-grid${isAdmin ? " ar-grid-admin" : ""}`;
+
   return (
-    <>
-      <tr className={`ar-rule-row ${rule.state === "firing" ? "ar-row-firing" : ""}`} onClick={() => setExpanded((e) => !e)}>
-        <td className="ar-expander">{expanded ? "▾" : "▸"}</td>
-        <td className="ar-rule-name">
+    <div className={`ar-row-group ${rule.state === "firing" ? "ar-row-firing" : ""}`}>
+      <div className={gridCls} onClick={() => setExpanded((e) => !e)}>
+        <span className="ar-expander">{expanded ? "▾" : "▸"}</span>
+        <div className="ar-rule-name">
           {rule.name}
           {sev && <span className={`ar-sev ${sev}`}>{rule.labels.severity || rule.labels.level}</span>}
-        </td>
-        <td>
+        </div>
+        <div>
           <span className={`ar-state-badge ${stateCls(rule.state)}`}>{rule.state}</span>
           {rule.alerts.length > 0 && (
             <span className="ar-alert-count">×{rule.alerts.length}</span>
           )}
-        </td>
-        <td className="ar-mono ar-dim">{fmtDuration(rule.duration)}</td>
-        <td className="ar-anno ar-dim">{rule.annotations.summary || rule.annotations.description || "—"}</td>
+        </div>
+        <div className="ar-mono ar-dim">{fmtDuration(rule.duration)}</div>
+        <div className="ar-anno ar-dim">{rule.annotations.summary || rule.annotations.description || "—"}</div>
         {isAdmin && (
-          <td onClick={(e) => e.stopPropagation()}>
+          <div onClick={(e) => e.stopPropagation()}>
             <div className="notif-actions">
               <button className="notif-btn-toggle" onClick={() => setEditing((v) => !v)}>
                 {editing ? "Cancel" : "Edit"}
@@ -112,117 +114,111 @@ function RuleRow({
                 <button className="notif-btn-del" onClick={() => setConfirmDel(true)}>Delete</button>
               )}
             </div>
-          </td>
+          </div>
         )}
-      </tr>
+      </div>
       {editing && (
-        <tr className="ar-detail-row">
-          <td />
-          <td colSpan={isAdmin ? 5 : 4}>
-            {error && <div className="err-banner">{error}</div>}
-            <form className="notif-form" onSubmit={handleSave} style={{ padding: "0.6rem 0" }}>
-              <div className="notif-field notif-field-wide">
-                <label className="notif-label">PromQL expression</label>
-                <input
-                  className="notif-input notif-mono"
-                  value={form.expr}
-                  onChange={(e) => setForm((f) => ({ ...f, expr: e.target.value }))}
-                  required
-                  disabled={saving}
-                />
-              </div>
-              <div className="notif-field">
-                <label className="notif-label">For</label>
-                <input
-                  className="notif-input notif-mono"
-                  style={{ width: "80px" }}
-                  placeholder="5m"
-                  value={form.for}
-                  onChange={(e) => setForm((f) => ({ ...f, for: e.target.value }))}
-                  required
-                  disabled={saving}
-                />
-              </div>
-              <div className="notif-field">
-                <label className="notif-label">Severity</label>
-                <select
-                  className="notif-input"
-                  value={form.severity}
-                  onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value }))}
-                  disabled={saving}
-                >
-                  <option value="warning">Warning</option>
-                  <option value="critical">Critical</option>
-                </select>
-              </div>
-              <div className="notif-field notif-field-wide">
-                <label className="notif-label">Summary</label>
-                <input
-                  className="notif-input"
-                  value={form.summary}
-                  onChange={(e) => setForm((f) => ({ ...f, summary: e.target.value }))}
-                  disabled={saving}
-                />
-              </div>
-              <div className="notif-field notif-field-wide">
-                <label className="notif-label">Description</label>
-                <input
-                  className="notif-input"
-                  value={form.description}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  disabled={saving}
-                />
-              </div>
-              <div className="notif-field notif-field-submit">
-                <button className="notif-btn-primary" type="submit" disabled={saving}>
-                  {saving ? "Saving…" : "Save & publish"}
-                </button>
-              </div>
-            </form>
-          </td>
-        </tr>
+        <div className="ar-row-detail">
+          {error && <div className="err-banner">{error}</div>}
+          <form className="notif-form" onSubmit={handleSave} style={{ padding: "0.6rem 0" }}>
+            <div className="notif-field notif-field-wide">
+              <label className="notif-label">PromQL expression</label>
+              <input
+                className="notif-input notif-mono"
+                value={form.expr}
+                onChange={(e) => setForm((f) => ({ ...f, expr: e.target.value }))}
+                required
+                disabled={saving}
+              />
+            </div>
+            <div className="notif-field">
+              <label className="notif-label">For</label>
+              <input
+                className="notif-input notif-mono"
+                style={{ width: "80px" }}
+                placeholder="5m"
+                value={form.for}
+                onChange={(e) => setForm((f) => ({ ...f, for: e.target.value }))}
+                required
+                disabled={saving}
+              />
+            </div>
+            <div className="notif-field">
+              <label className="notif-label">Severity</label>
+              <select
+                className="notif-input"
+                value={form.severity}
+                onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value }))}
+                disabled={saving}
+              >
+                <option value="warning">Warning</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+            <div className="notif-field notif-field-wide">
+              <label className="notif-label">Summary</label>
+              <input
+                className="notif-input"
+                value={form.summary}
+                onChange={(e) => setForm((f) => ({ ...f, summary: e.target.value }))}
+                disabled={saving}
+              />
+            </div>
+            <div className="notif-field notif-field-wide">
+              <label className="notif-label">Description</label>
+              <input
+                className="notif-input"
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                disabled={saving}
+              />
+            </div>
+            <div className="notif-field notif-field-submit">
+              <button className="notif-btn-primary" type="submit" disabled={saving}>
+                {saving ? "Saving…" : "Save & publish"}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
       {expanded && !editing && (
-        <tr className="ar-detail-row">
-          <td />
-          <td colSpan={isAdmin ? 5 : 4}>
-            <div className="ar-detail">
-              <div className="ar-detail-section">
-                <div className="ar-detail-lbl">PromQL Expression</div>
-                <pre className="ar-expr">{rule.query}</pre>
-              </div>
-              {Object.keys(rule.labels).length > 0 && (
-                <div className="ar-detail-section">
-                  <div className="ar-detail-lbl">Labels</div>
-                  <div className="ar-tags">
-                    {Object.entries(rule.labels).map(([k, v]) => (
-                      <span key={k} className="ar-label-tag">{k}=<span className="ar-label-val">{v}</span></span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {rule.alerts.length > 0 && (
-                <div className="ar-detail-section">
-                  <div className="ar-detail-lbl">Active Alerts ({rule.alerts.length})</div>
-                  <div className="ar-active-alerts">
-                    {rule.alerts.map((a, i) => (
-                      <div key={i} className="ar-active-alert">
-                        <div className="ar-tags">
-                          {Object.entries(a.labels).map(([k, v]) => (
-                            <span key={k} className="ar-label-tag">{k}=<span className="ar-label-val">{v}</span></span>
-                          ))}
-                        </div>
-                        <span className="ar-active-since">since {new Date(a.activeAt).toLocaleString()}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+        <div className="ar-row-detail">
+          <div className="ar-detail">
+            <div className="ar-detail-section">
+              <div className="ar-detail-lbl">PromQL Expression</div>
+              <pre className="ar-expr">{rule.query}</pre>
             </div>
-          </td>
-        </tr>
+            {Object.keys(rule.labels).length > 0 && (
+              <div className="ar-detail-section">
+                <div className="ar-detail-lbl">Labels</div>
+                <div className="ar-tags">
+                  {Object.entries(rule.labels).map(([k, v]) => (
+                    <span key={k} className="ar-label-tag">{k}=<span className="ar-label-val">{v}</span></span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {rule.alerts.length > 0 && (
+              <div className="ar-detail-section">
+                <div className="ar-detail-lbl">Active Alerts ({rule.alerts.length})</div>
+                <div className="ar-active-alerts">
+                  {rule.alerts.map((a, i) => (
+                    <div key={i} className="ar-active-alert">
+                      <div className="ar-tags">
+                        {Object.entries(a.labels).map(([k, v]) => (
+                          <span key={k} className="ar-label-tag">{k}=<span className="ar-label-val">{v}</span></span>
+                        ))}
+                      </div>
+                      <span className="ar-active-since">since {new Date(a.activeAt).toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
-    </>
+    </div>
   );
 }
 
@@ -455,31 +451,27 @@ export default function AlertRulesPage() {
                   <span className="ar-group-firing">● FIRING</span>
                 )}
               </div>
-              <div className="ar-table-wrap">
-                <table className="ar-table">
-                  <thead>
-                    <tr>
-                      <th></th>
-                      <th>Rule</th>
-                      <th>State</th>
-                      <th>For</th>
-                      <th>Summary</th>
-                      {isAdmin && <th></th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rules.map((r) => (
-                      <RuleRow
-                        key={r.name}
-                        rule={r}
-                        group={groupName}
-                        isAdmin={isAdmin}
-                        onSaved={refresh}
-                        onDeleted={refresh}
-                      />
-                    ))}
-                  </tbody>
-                </table>
+              <div className="ar-rows-wrap">
+                <div className="ar-rows">
+                  <div className={`ar-row-head${isAdmin ? " ar-grid-admin" : ""}`}>
+                    <span></span>
+                    <span>Rule</span>
+                    <span>State</span>
+                    <span>For</span>
+                    <span>Summary</span>
+                    {isAdmin && <span></span>}
+                  </div>
+                  {rules.map((r) => (
+                    <RuleRow
+                      key={r.name}
+                      rule={r}
+                      group={groupName}
+                      isAdmin={isAdmin}
+                      onSaved={refresh}
+                      onDeleted={refresh}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           ))}

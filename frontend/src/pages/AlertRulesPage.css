@@ -38,33 +38,47 @@
 .ar-group-count { font-size: 0.7rem; color: var(--t3); margin-left: auto; }
 .ar-group-firing { font-size: 0.65rem; font-weight: 800; color: var(--red); letter-spacing: 0.05em; }
 
-.ar-table-wrap { overflow-x: auto; }
-/* border-collapse: collapse, not separate. With separate, each td's own
-   border-bottom is rounded to the device pixel grid independently per
-   cell - at non-integer display scaling (125%/150% Windows scaling, or
-   any fractional zoom) adjacent cells in the same row can round to
-   different physical pixel rows, so one row's "single" divider line comes
-   out visibly stepped/uneven instead of crisp. collapse resolves each
-   shared cell edge into one border painted once for the whole line, which
-   is exactly why data tables conventionally use collapse for clean
-   gridlines - separate is for when cells need independent spacing or
-   radius, neither of which applies here. (Previous attempt went the wrong
-   way on this - collapse was never the problem.) */
-.ar-table { width: 100%; border-collapse: collapse; }
-.ar-table th {
+/* Deliberately not an HTML <table>. A real table's row divider is drawn
+   per-cell (border-bottom on every td), and when one column's content is
+   much taller than another (long wrapped Summary text next to a short
+   rule name), the shared line ends up looking detached from the short
+   cell's content no matter how it's aligned - confirmed live across
+   several attempts (border-collapse, vertical-align) that didn't resolve
+   it. Grid-based rows sidestep the whole question: one div per row, one
+   border-bottom on that div, period - there's no second element sharing
+   ownership of "the line" that could visually disagree with it. Header
+   and rows share the same grid-template-columns so column edges always
+   line up exactly, which a table's own auto-layout column sizing doesn't
+   strictly guarantee either. */
+.ar-rows-wrap { overflow-x: auto; }
+.ar-rows { display: flex; flex-direction: column; }
+
+.ar-row-head, .ar-row-grid {
+  display: grid;
+  grid-template-columns: 22px minmax(150px, 1.3fr) 96px 52px minmax(150px, 1.6fr);
+  align-items: center;
+  column-gap: 0.75rem;
+}
+.ar-row-head.ar-grid-admin, .ar-row-grid.ar-grid-admin {
+  grid-template-columns: 22px minmax(150px, 1.3fr) 96px 52px minmax(150px, 1.6fr) auto;
+}
+
+.ar-row-head {
   padding: 0.45rem 0.9rem; background: var(--bg); border-bottom: 1px solid var(--border);
   font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
-  color: var(--t3); text-align: left;
+  color: var(--t3);
 }
-.ar-table td {
-  padding: 0.55rem 0.9rem; border-bottom: 1px solid var(--border);
-  font-size: 0.82rem; color: var(--t1); vertical-align: middle;
-}
-.ar-table tr:last-child td { border-bottom: none; }
 
-.ar-rule-row { cursor: pointer; }
-.ar-rule-row:hover td { background: rgba(29,78,216,0.02); }
-.ar-row-firing { background: rgba(220,38,38,0.03); }
+.ar-row-group { border-bottom: 1px solid var(--border); }
+.ar-rows > .ar-row-group:last-child { border-bottom: none; }
+.ar-row-group.ar-row-firing { background: rgba(220,38,38,0.03); }
+
+.ar-row-grid {
+  padding: 0.55rem 0.9rem;
+  font-size: 0.82rem; color: var(--t1);
+  cursor: pointer;
+}
+.ar-row-grid:hover { background: rgba(29,78,216,0.02); }
 
 .ar-expander  { color: var(--t3); width: 1.2rem; font-size: 0.72rem; }
 .ar-rule-name { font-weight: 700; display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
@@ -88,7 +102,7 @@
 .ar-dim  { color: var(--t3); }
 .ar-anno { font-size: 0.78rem; max-width: 320px; }
 
-.ar-detail-row td { background: rgba(29,78,216,0.02); }
+.ar-row-detail { background: rgba(29,78,216,0.02); padding: 0 0.9rem 0.6rem 2.2rem; }
 .ar-detail { padding: 0.6rem 0; display: flex; flex-direction: column; gap: 0.75rem; }
 .ar-detail-section { display: flex; flex-direction: column; gap: 0.3rem; }
 .ar-detail-lbl { font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--t3); }
