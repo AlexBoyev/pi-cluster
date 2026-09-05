@@ -33,6 +33,15 @@ def create_refresh_token(username: str) -> str:
     )
 
 
+def create_sso_token(username: str) -> str:
+    """Long-lived token for the cross-subdomain SSO cookie only - never
+    returned to the SPA, never used for API auth."""
+    return _make_token(
+        {"sub": username, "type": "sso"},
+        timedelta(days=settings.jwt_refresh_token_expire_days),
+    )
+
+
 def decode_token(token: str) -> dict:
     """Decode and validate a JWT. Raises JWTError on failure."""
     return jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])

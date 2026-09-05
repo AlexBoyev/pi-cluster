@@ -522,6 +522,19 @@ main { flex: 1; padding: 1.75rem 2rem 3rem; max-width: 1440px; width: 100%; marg
   background: var(--blue-light); border-radius: 20px; padding: 0.15rem 0.6rem;
 }
 
+/* ── Household service cards (dashboard, clickable) ─────────────────────── */
+
+.svc-grid { padding: 0 0 0.4rem; }
+.svc-card {
+  text-decoration: none; cursor: pointer;
+  transition: box-shadow 0.18s, border-color 0.18s, transform 0.14s;
+}
+.svc-card:hover {
+  box-shadow: var(--shadow-md, 0 6px 16px rgba(0,0,0,0.08));
+  border-color: var(--blue);
+  transform: translateY(-2px);
+}
+
 /* ── Sidebar overlay (mobile only) ──────────────────────────────────────── */
 
 .sb-overlay { display: none; }

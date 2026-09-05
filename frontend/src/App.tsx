@@ -45,6 +45,18 @@ const NAV = [
   { label: "Metrics",    href: "https://api.cluster.download/metrics",icon: "⌬" },
 ];
 
+// Household services (docs/architecture.md §23) - self-hosted apps for
+// personal/family use that happen to run on this cluster. Add an entry here
+// as each one lands (Vikunja, Paperless-ngx, Firefly III); nothing else
+// needed on the frontend side per service.
+const HOUSEHOLD_SERVICES = [
+  {
+    key: "wallabag", label: "Wallabag", icon: "📖",
+    desc: "Read-later article & bookmark archive",
+    href: "http://wallabag.pi-cluster.lan", lanOnly: true,
+  },
+];
+
 // ── Formatters ───────────────────────────────────────────────────────────────
 
 function fmtBytes(b: number): string {
@@ -719,6 +731,28 @@ export default function App() {
                   </div>
 
                   <AlertsPanel />
+
+                  <div className="section-header">
+                    <span className="section-title">Household Services</span>
+                    <span className="section-meta">click a service to open it</span>
+                  </div>
+
+                  <div className="portal-grid svc-grid">
+                    {HOUSEHOLD_SERVICES.map((s) => (
+                      <a
+                        key={s.key}
+                        href={s.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="portal-card svc-card"
+                      >
+                        <div className="portal-card-icon">{s.icon}</div>
+                        <div className="portal-card-label">{s.label}</div>
+                        <div className="portal-card-desc">{s.desc}</div>
+                        {s.lanOnly && <div className="portal-card-badge">LAN only</div>}
+                      </a>
+                    ))}
+                  </div>
 
                   <div className="section-header">
                     <span className="section-title">Node Health</span>

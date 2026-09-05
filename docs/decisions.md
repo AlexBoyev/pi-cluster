@@ -18,6 +18,14 @@ Business logic lives in services. Data access lives in repositories. HTTP concer
 
 This keeps services independently testable and prevents database queries from appearing in routes or business logic from appearing in repositories.
 
+## Household services SSO gate: cookie + nginx auth_request, not shared credentials
+
+Household services (Wallabag, and whatever follows it) deliberately keep their own independent user system — see the Wallabag ADR's D4 and `docs/architecture.md` §23. Sharing actual credentials with the platform's own JWT/Postgres users would break that isolation (a Wallabag compromise would then also be a platform-account compromise) and Wallabag has no clean way to accept pre-verified identity from a reverse proxy without custom, fragile header-trust plumbing.
+
+Instead: logging into the pi-cluster platform sets a second cookie (`pi_sso`, `Domain=.pi-cluster.lan`, `HttpOnly`) alongside the existing JWT `localStorage` flow — a dedicated long-lived (`sso`-typed) token, distinct from the access/refresh tokens, so nothing about the SPA's own auth needs to change. nginx's wildcard household-services block (`nginx/nginx.conf`) uses `auth_request` against a new `GET /api/v1/auth/verify` backend endpoint to check that cookie on every request; no cookie (or an invalid/expired one) bounces the browser to the platform login (`error_page 401 = @pi_sso_login`) before the request ever reaches Traefik. This gates *reachability*, not identity inside the app — you still hit Wallabag's own login once you're through, since the two user systems stay separate on purpose.
+
+Rejected a Traefik `forwardAuth` Middleware for the same gate: this cluster's Traefik was hand-deployed as a plain Deployment/DaemonSet manifest, not the official Helm chart, so the `Middleware`/`IngressRoute` CRDs were never installed — doing this in Traefik would have meant installing those CRDs cluster-wide and widening Traefik's ClusterRole again, on the same component that had just come back from a full outage (see the roadmap's Wallabag-outage incident). nginx already terminates every household-service request first and already has `auth_request` built in, so the gate lives there instead — smaller blast radius, nothing new to install.
+
 ## Vite for frontend build tooling
 
 Chosen over Create React App.

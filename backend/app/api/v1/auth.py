@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -6,9 +6,11 @@ from app.auth.dependencies import get_current_user
 from app.auth.service import (
     create_access_token,
     create_refresh_token,
+    create_sso_token,
     decode_token,
     verify_password,
 )
+from app.config import settings
 from app.database import get_db
 from app.models.user import User
 from app.rate_limit import limiter
@@ -18,10 +20,22 @@ from app.schemas.auth import AccessToken, LoginRequest, RefreshRequest, TokenPai
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _set_sso_cookie(response: Response, username: str) -> None:
+    response.set_cookie(
+        key=settings.sso_cookie_name,
+        value=create_sso_token(username),
+        domain=settings.sso_cookie_domain,
+        path="/",
+        max_age=settings.jwt_refresh_token_expire_days * 86400,
+        httponly=True,
+        samesite="lax",
+    )
+
+
 @router.post("/login", response_model=TokenPair)
 @limiter.limit("10/minute")
 async def login(
-    request: Request, body: LoginRequest, db: AsyncSession = Depends(get_db)
+    request: Request, body: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)
 ) -> TokenPair:
     user = await UserRepository(db).get_by_username(body.username)
     if user is None or not verify_password(body.password, user.hashed_password):
@@ -31,10 +45,41 @@ async def login(
         )
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
+    _set_sso_cookie(response, user.username)
     return TokenPair(
         access_token=create_access_token(user.username, user.role.value),
         refresh_token=create_refresh_token(user.username),
     )
+
+
+@router.post("/logout")
+async def logout(response: Response) -> dict:
+    response.delete_cookie(
+        key=settings.sso_cookie_name, domain=settings.sso_cookie_domain, path="/"
+    )
+    return {"detail": "logged out"}
+
+
+@router.get("/verify", include_in_schema=False)
+async def verify_sso(request: Request, db: AsyncSession = Depends(get_db)) -> Response:
+    """Checked by nginx's auth_request before routing to any household
+    service - not part of the SPA's own API surface (see docs/architecture.md
+    Household Services SSO note)."""
+    token = request.cookies.get(settings.sso_cookie_name)
+    if not token:
+        return Response(status_code=401)
+    try:
+        payload = decode_token(token)
+        if payload.get("type") != "sso":
+            return Response(status_code=401)
+        username: str = payload.get("sub", "")
+    except JWTError:
+        return Response(status_code=401)
+
+    user = await UserRepository(db).get_by_username(username)
+    if user is None or not user.is_active:
+        return Response(status_code=401)
+    return Response(status_code=200)
 
 
 @router.post("/refresh", response_model=AccessToken)

@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     jwt_refresh_token_expire_days: int = 7
     admin_default_password: str = "admin123"
 
+    # Cross-subdomain SSO cookie so household services (Wallabag, etc.) behind
+    # nginx's wildcard fallback can gate on "already logged into pi-cluster"
+    # without sharing credentials with those apps' own user systems.
+    sso_cookie_name: str = "pi_sso"
+    sso_cookie_domain: str = ".pi-cluster.lan"
+
     prometheus_url: str = "http://prometheus:9090"
     alertmanager_url: str = "http://alertmanager:9093"
     grafana_url: str = "http://grafana:3000"
