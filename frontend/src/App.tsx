@@ -313,7 +313,15 @@ function ViewerPortal({ username, logout }: { username: string | null; logout: (
         <nav className="sb-nav">
           <div className="sb-section">Services</div>
           {HOUSEHOLD_SERVICES.map((s) => (
-            <a key={s.key} href={serviceHref(s)} target="_blank" rel="noreferrer" className="sb-link">
+            // Same-tab navigation, deliberately not target="_blank": these
+            // go through a multi-hop SSO redirect chain (nginx auth_request
+            // gate -> backend auto-login bridge -> target app). A freshly
+            // opened tab that never paints before redirecting cross-origin
+            // several times gets silently killed by mobile Safari/Chrome's
+            // popup heuristics - confirmed live on Android and iPhone as a
+            // flash-open-then-close-back-to-dashboard failure that never
+            // reproduced on desktop (tabs there tolerate it fine).
+            <a key={s.key} href={serviceHref(s)} className="sb-link">
               <span className="sb-icon">{s.icon}</span>
               {s.label}
               <span className="sb-ext">↗</span>
@@ -358,7 +366,7 @@ function ViewerPortal({ username, logout }: { username: string | null; logout: (
           </div>
           <div className="portal-grid">
             {HOUSEHOLD_SERVICES.map((s) => (
-              <a key={s.key} href={serviceHref(s)} target="_blank" rel="noreferrer" className="portal-card svc-card">
+              <a key={s.key} href={serviceHref(s)} className="portal-card svc-card">
                 <div className="portal-card-icon">{s.icon}</div>
                 <div className="portal-card-label">{s.label}</div>
                 <div className="portal-card-desc">{s.desc}</div>
@@ -637,7 +645,7 @@ export default function App() {
           </div>
           <button className="sb-logout" onClick={logout}>Sign out</button>
           <div className="sb-foot-label" style={{ marginTop: "0.8rem" }}>Version</div>
-          <div className="sb-foot-val">v0.1.0 · Phase 58</div>
+          <div className="sb-foot-val">v0.1.0 · Phase 64</div>
           <div className="sb-foot-label" style={{ marginTop: "0.4rem" }}>Cluster</div>
           <div className="sb-foot-val">4 nodes · arm64 · 10.100.102.0/24</div>
         </div>
@@ -776,8 +784,6 @@ export default function App() {
                       <a
                         key={s.key}
                         href={serviceHref(s)}
-                        target="_blank"
-                        rel="noreferrer"
                         className="portal-card svc-card"
                       >
                         <div className="portal-card-icon">{s.icon}</div>
