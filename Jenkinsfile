@@ -73,11 +73,22 @@ pipeline {
                     SERVICES=$(docker compose config --services | grep -v "^jenkins$" | tr "\n" " ")
                     docker compose up -d $SERVICES
                     docker restart pi-cluster-nginx-1
-                    # prometheus.yml/alerts.yml are volume-mounted, so `up -d`
-                    # alone won't pick up changes to them (no image/env change
-                    # to trigger a recreate) - reload explicitly instead of a
-                    # full restart, matching --web.enable-lifecycle.
-                    curl -sf -X POST http://10.100.102.10:9090/-/reload || true
+                    # prometheus.yml/alerts.yml are bind-mounted as individual
+                    # FILES, not a directory - `up -d` alone won't recreate
+                    # prometheus for a content-only change (compose only
+                    # tracks its own declared config, not a mounted file's
+                    # content), and a plain `-/reload` doesn't help either:
+                    # rsync (this stage's own sync step, without --inplace)
+                    # replaces the file via a new inode on every deploy, and
+                    # a single-file Docker bind mount stays pinned to the
+                    # inode it resolved at container-start - a long-running
+                    # container keeps serving that orphaned old inode
+                    # forever, reload or not. Confirmed live: `docker exec
+                    # prometheus cat alerts.yml` showed 21-hour-stale content
+                    # despite a fresh host-side write and a successful
+                    # `-/reload` call. Only recreating the container
+                    # re-resolves the mount.
+                    docker compose up -d --force-recreate prometheus
                 '''
             }
         }

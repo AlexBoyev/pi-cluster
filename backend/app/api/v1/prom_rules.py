@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.auth.dependencies import require_admin
 from app.config import settings
 from app.schemas.alert_rule import AlertRuleCreate, AlertRuleUpdate
-from app.services.alert_rules_service import AlertRuleError, alert_rules_service
+from app.services.alert_rules_service import AlertRuleError, AlertRulePublishError, alert_rules_service
 
 router = APIRouter(prefix="/prometheus", tags=["prometheus"])
 
@@ -32,6 +32,8 @@ async def create_rule(body: AlertRuleCreate, _=Depends(require_admin)) -> dict:
         )
     except AlertRuleError as e:
         raise HTTPException(status_code=409, detail=str(e))
+    except AlertRulePublishError as e:
+        raise HTTPException(status_code=502, detail=str(e))
     return {"detail": "Rule created and published"}
 
 
@@ -45,6 +47,8 @@ async def update_rule(
         )
     except AlertRuleError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except AlertRulePublishError as e:
+        raise HTTPException(status_code=502, detail=str(e))
     return {"detail": "Rule updated and published"}
 
 
@@ -54,4 +58,6 @@ async def delete_rule(group: str, alert: str, _=Depends(require_admin)) -> dict:
         await alert_rules_service.delete_rule(group, alert)
     except AlertRuleError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except AlertRulePublishError as e:
+        raise HTTPException(status_code=502, detail=str(e))
     return {"detail": "Rule deleted and published"}

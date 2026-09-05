@@ -23,15 +23,67 @@ _HOST = settings.k8s_api_host
 _yaml = YAML()
 _yaml.preserve_quotes = True
 _yaml.indent(mapping=2, sequence=4, offset=2)
+# Default width wraps long expr/description values across multiple lines -
+# confirmed live: every existing rule's long PromQL expression and
+# description got reflowed on the very first edit, even though only one
+# unrelated rule actually changed, which is noisy diff churn for no
+# reason. A wide width keeps long scalars on one line, matching how this
+# file was originally hand-written.
+_yaml.width = 4096
 
 
 class AlertRuleError(Exception):
-    """User-facing error (duplicate name, not found) - distinct from a
-    transport/SSH failure, which raises normally."""
+    """Validation error - duplicate name on create, not-found on
+    update/delete. Maps to 409/404; the request never touched SSH."""
+
+
+class AlertRulePublishError(Exception):
+    """A publish step (chown, git sync, write, commit/push, or Prometheus
+    reload) actually failed - maps to 502, distinct from AlertRuleError so
+    the API layer doesn't call an infrastructure failure a "conflict" or
+    "not found". Always carries a real, checked reason: this class exists
+    because the original code logged SSH command output and returned
+    success regardless of it, silently swallowing both a write that failed
+    with Permission Denied and a push rejected as non-fast-forward."""
 
 
 class AlertRulesService:
+    async def _run_checked(self, command: str, step: str) -> str:
+        """ssh_service.exec_command returns text, never raises on a
+        nonzero exit - append a sentinel and check for it explicitly, so a
+        failed step is a real error instead of silent success."""
+        marker = "__PI_CLUSTER_OK__"
+        output = await ssh_service.exec_command(_HOST, f"{command} && echo {marker}")
+        if marker not in output:
+            raise AlertRulePublishError(f"{step} failed: {output.strip() or '(no output)'}")
+        return output
+
+    async def _sync_repo(self) -> None:
+        """Called before every read AND before every write - the edit has
+        to be computed from truly current state, not whatever this local
+        clone happened to have sitting around.
+
+        Jenkins' rsync runs as root, leaving files in this repo root-owned
+        - confirmed live as the actual cause of a "successful" write that
+        silently never landed (admin got Permission Denied, never
+        surfaced). ssh_service already special-cases any command starting
+        with "sudo " to feed the SSH password via stdin (sudo -S).
+
+        The local clone at this path is kept current by Jenkins' rsync,
+        never by git - its own HEAD can silently drift arbitrarily far
+        behind origin/master (confirmed live: found it frozen since this
+        repo's Phase 4/5, months of history behind). Synced every call,
+        not just once, or a later push builds on a stale base and gets
+        rejected as non-fast-forward - which the old code also failed to
+        detect in the first place."""
+        await self._run_checked(f"sudo chown -R admin:admin {_REMOTE_REPO}", "Fixing file ownership")
+        await self._run_checked(
+            f"cd {_REMOTE_REPO} && git fetch origin && git reset --hard origin/master",
+            "Syncing local repo to origin/master",
+        )
+
     async def _read_raw(self) -> str:
+        await self._sync_repo()
         return await ssh_service.exec_command(_HOST, f"cat {_REMOTE_FILE}")
 
     def _parse(self, raw: str):
@@ -48,7 +100,9 @@ class AlertRulesService:
         # earlier this session; base64's alphabet has no shell-special
         # characters at all, so there's nothing left to escape.
         encoded = base64.b64encode(content.encode()).decode()
-        await ssh_service.exec_command(_HOST, f"echo {encoded} | base64 -d > {_REMOTE_FILE}")
+        await self._run_checked(
+            f"echo {encoded} | base64 -d > {_REMOTE_FILE}", "Writing alerts.yml"
+        )
 
         # admin@pi-node1 has no git push credentials of its own (confirmed
         # live: git push --dry-run fails with no cached auth, and
@@ -64,13 +118,24 @@ class AlertRulesService:
             f"git push https://x-access-token:{settings.github_pat}"
             f"@github.com/AlexBoyev/pi-cluster.git master"
         )
-        result = await ssh_service.exec_command(_HOST, git_cmd)
+        result = await self._run_checked(git_cmd, "Publishing to git")
         logger.info("alert-rules git publish: %s", result)
 
-        reload_result = await ssh_service.exec_command(
-            _HOST, "curl -sf -X POST http://localhost:9090/-/reload"
+        # NOT curl .../-/reload - prometheus.yml/alerts.yml are bind-mounted
+        # as individual FILES (docker-compose.yml), not a directory. A
+        # single-file Docker bind mount binds to the specific inode it
+        # resolved at container-start; git checkout replaces files via a
+        # new inode (not an in-place edit), so a long-running container
+        # keeps serving that orphaned old inode forever regardless of how
+        # many times reload is called. Confirmed live: a fresh write plus a
+        # successful reload call still left the container reading
+        # 21-hour-stale content until it was recreated. Same root cause
+        # documented in the Jenkinsfile's own Deploy stage, which had the
+        # identical bug via rsync instead of git.
+        await self._run_checked(
+            f"cd {_REMOTE_REPO} && docker compose up -d --force-recreate prometheus",
+            "Recreating Prometheus to pick up the new rule",
         )
-        logger.info("prometheus reload: %s", reload_result or "(empty response, likely OK)")
 
     async def create_rule(
         self, group: str, alert: str, expr: str, for_: str,
