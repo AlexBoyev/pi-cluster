@@ -58,7 +58,7 @@
 }
 .ar-table td {
   padding: 0.55rem 0.9rem; border-bottom: 1px solid var(--border);
-  font-size: 0.82rem; color: var(--t1); vertical-align: top;
+  font-size: 0.82rem; color: var(--t1); vertical-align: middle;
 }
 .ar-table tr:last-child td { border-bottom: none; }
 
