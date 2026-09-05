@@ -73,6 +73,19 @@ class Settings(BaseSettings):
 
     jenkins_admin_password: str = ""
 
+    # Vault previously read this live from the argocd-initial-admin-secret
+    # K8s Secret - looks correct until anyone ever changes the ArgoCD admin
+    # password (via the UI or CLI), at which point ArgoCD itself stops
+    # honoring that bootstrap secret (it only accepts it while
+    # argocd-secret's admin.passwordMtime has never been set) but nothing
+    # deletes or updates it, so the vault kept confidently showing a value
+    # that silently stopped working - confirmed live as the actual cause of
+    # "the ArgoCD password in the vault is invalid". Stored here instead,
+    # same pattern as Grafana/Jenkins above - a value this app owns and
+    # keeps in sync, not a live read of something that can drift out from
+    # under it with no signal that it did.
+    argocd_admin_password: str = ""
+
     log_retention_days: int = 90
 
     k8s_kubeconfig_path: str = "/app/kubeconfig"
