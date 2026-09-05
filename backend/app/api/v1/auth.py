@@ -123,9 +123,16 @@ async def logout(response: Response) -> dict:
 async def verify_sso(request: Request, db: AsyncSession = Depends(get_db)) -> Response:
     """Checked by nginx's auth_request before routing to any household
     service - not part of the SPA's own API surface (see docs/architecture.md
-    Household Services SSO note)."""
+    Household Services SSO note). The X-Pi-User response header is new for
+    Paperless (docs/decisions.md D4): nginx's dedicated paperless server
+    block captures it via auth_request_set and forwards it as Remote-User,
+    which Paperless trusts (PAPERLESS_ENABLE_HTTP_REMOTE_USER) instead of
+    needing a stored-credential bridge like Wallabag/Vikunja. Harmless for
+    the household-services wildcard block, which never reads this header."""
     user = await _sso_user(request, db)
-    return Response(status_code=200 if user else 401)
+    if user is None:
+        return Response(status_code=401)
+    return Response(status_code=200, headers={"X-Pi-User": user.username})
 
 
 @router.get("/wallabag-sso", include_in_schema=False)

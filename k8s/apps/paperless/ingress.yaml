@@ -1,0 +1,37 @@
+# Reachable via nginx's DEDICATED paperless server block (nginx/nginx.conf)
+# -> Traefik (pi-node2/3/4) -> this Ingress -> Service -> pod. NOT the
+# shared household-services wildcard fallback that Wallabag/Vikunja use -
+# Paperless needs its own auth_request + Remote-User header injection for
+# PAPERLESS_ENABLE_HTTP_REMOTE_USER (docs/decisions.md D4), which the
+# generic wildcard block doesn't do. Two host rules for the reason
+# Wallabag's/Vikunja's both needed them: Traefik's ingress provider matches
+# Host by exact string against spec.rules[].host, no .lan/.cluster.download
+# equivalence.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: paperless
+  namespace: paperless
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: paperless.pi-cluster.lan
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: paperless
+                port:
+                  number: 80
+    - host: paperless.cluster.download
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: paperless
+                port:
+                  number: 80

@@ -1,0 +1,80 @@
+# Samba consume-folder share (docs/decisions.md D2) - the primary,
+# authenticated ingestion path so documents reach Paperless without manual
+# copying. SMB clients (Windows Explorer especially) expect literal port
+# 445, not an arbitrary K8s NodePort (30000-32767 range) - hostNetwork
+# binds this pod directly to pi-node2's real network interface at the
+# standard port instead, the same technique this cluster's own dnsmasq and
+# cloudflared Compose services already use (network_mode: host) for the
+# identical reason. No K8s Service needed: clients connect directly to
+# pi-node2's real IP (10.100.102.16:445) - never through nginx, never
+# through the Cloudflare Tunnel (which only ever forwards to nginx:80), so
+# there is no path from the public internet to this share at all, by
+# construction rather than by firewall rule.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paperless-samba
+  namespace: paperless
+  labels:
+    app: paperless-samba
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: paperless-samba
+  template:
+    metadata:
+      labels:
+        app: paperless-samba
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: pi-node2
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      # See deployment.yaml's comment - defensive hygiene against the same
+      # class of Service-name/env-var collision, not a fix for a bug found
+      # in this container specifically.
+      enableServiceLinks: false
+      containers:
+        - name: samba
+          # Pinned, never latest. Verified linux/arm64 via direct GHCR
+          # manifest query - see docs/decisions.md. "smbd-only" variant:
+          # no Avahi/mDNS discovery, no WSDD2 - connect by direct address
+          # (see README.md), one less moving part for a 2-user household.
+          image: ghcr.io/servercontainers/samba:smbd-only-a3.18.2-s4.18.5-r0
+          ports:
+            - name: smb
+              containerPort: 445
+          env:
+            # UID matches paperless-ngx's own default container user
+            # (USERMAP_UID default 1000) - files this share writes need to
+            # be readable by the consumer process, not just writable by
+            # Samba's own user.
+            - name: UID_ACCOUNT_paperless
+              value: "1000"
+            - name: ACCOUNT_paperless
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-secret
+                  key: samba-password
+            - name: SAMBA_VOLUME_CONFIG_INBOX
+              value: "[inbox];path=/shares/inbox;valid users=paperless;guest ok=no;read only=no;browseable=yes"
+          volumeMounts:
+            - name: data
+              mountPath: /shares/inbox
+              subPath: consume
+          resources:
+            # Lightweight file server, nothing more - the smallest limit of
+            # anything in this namespace, deliberately.
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 150m
+              memory: 128Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: paperless-data

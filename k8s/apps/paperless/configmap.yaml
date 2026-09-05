@@ -1,0 +1,80 @@
+# Non-secret configuration. DBPASS, SECRET_KEY, and the admin superuser
+# password live in the paperless-secret Secret instead — created manually,
+# never in git. See k8s/apps/paperless/README.md.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: paperless-config
+  namespace: paperless
+data:
+  # Single canonical domain from day one — Wallabag's own DOMAIN_NAME
+  # mistake (docs/decisions.md) doesn't need repeating a third time.
+  PAPERLESS_URL: "https://paperless.cluster.download"
+
+  # Postgres runs in Docker Compose on pi-node1, not in K8s — reached over
+  # the LAN, not a K8s Service. Same pattern as Wallabag/Vikunja.
+  PAPERLESS_DBHOST: "10.100.102.10"
+  PAPERLESS_DBPORT: "5432"
+  PAPERLESS_DBNAME: "paperless"
+  PAPERLESS_DBUSER: "paperless"
+
+  # Reuses the platform's existing Redis (Docker Compose, 10.100.102.10:6379)
+  # on database index 1 - the backend's own cache/locks already use index 0
+  # (see backend/app/config.py's redis_url default) - instead of a new Redis
+  # pod for a task queue this household barely stresses. docs/decisions.md.
+  PAPERLESS_REDIS: "redis://10.100.102.10:6379/1"
+
+  # Household is Hebrew-first with mixed English (docs/decisions.md D-OCR).
+  # LANGUAGE is the actual Tesseract invocation string (+ separator);
+  # LANGUAGES is the space-separated list of extra apt packages the
+  # entrypoint installs at startup beyond the image's built-in eng.
+  PAPERLESS_OCR_LANGUAGE: "heb+eng"
+  PAPERLESS_OCR_LANGUAGES: "heb"
+
+  # Skip OCR on pages that already carry a text layer - much faster for
+  # born-digital PDFs (municipal/school PDFs are frequently not scans at
+  # all), no accuracy cost since there's nothing to OCR on those pages.
+  PAPERLESS_OCR_MODE: "skip"
+
+  # Israeli documents (docs/decisions.md) - default date parsing produces
+  # wrong dates otherwise, and a wrong date is worse than no date.
+  PAPERLESS_DATE_ORDER: "DMY"
+  PAPERLESS_TIME_ZONE: "Asia/Jerusalem"
+
+  # Archive (PDF/A) generation stays ON (the default) - deliberately, not
+  # left unexamined. This is a ten-year archive; durability and correct
+  # long-term readability (the brief's #1 priority) outrank the CPU/storage
+  # cost of generating a normalized, searchable-text PDF/A copy alongside
+  # every original. Not set to skip.
+
+  # SSO (docs/decisions.md D4) - trusts the Remote-User header nginx sets
+  # only after its own auth_request against the platform's /api/v1/auth/verify
+  # succeeds (nginx/nginx.conf's dedicated paperless server block, not the
+  # shared household-services wildcard). API auth is deliberately NOT
+  # remote-user-gated, so the mobile app and any future companion service
+  # keep using Paperless's own per-user API token untouched.
+  PAPERLESS_ENABLE_HTTP_REMOTE_USER: "true"
+  PAPERLESS_ENABLE_HTTP_REMOTE_USER_API: "false"
+
+  # Tika + Gotenberg (docs/decisions.md D1) - in-namespace ClusterIP
+  # Services, not exposed beyond the pod network.
+  PAPERLESS_TIKA_ENABLED: "true"
+  PAPERLESS_TIKA_ENDPOINT: "http://paperless-tika:9998"
+  PAPERLESS_TIKA_GOTENBERG_ENDPOINT: "http://paperless-gotenberg:3000"
+
+  # Worker sizing, arithmetic-backed (docs/decisions.md, README.md's
+  # Capacity section) rather than copied from a 4-CPU tutorial: the main
+  # container's own CPU limit below is 1000m (1 core) - running more than
+  # one task worker or thread against a 1-core limit adds context-switch
+  # overhead without real parallelism, so this starts conservative for a
+  # 2-person household and is the first thing to revisit if bulk import
+  # proves too slow (see README.md's throttled-import procedure instead
+  # of just raising these).
+  PAPERLESS_TASK_WORKERS: "1"
+  PAPERLESS_THREADS_PER_WORKER: "1"
+  PAPERLESS_WEBSERVER_WORKERS: "1"
+
+  # Explicitly left at default (off) - not configured further in this
+  # phase. Barcode/ASN splitting: not enabled, per the brief (design for
+  # later, don't build now - nothing to configure either way, this is the
+  # image's own default).

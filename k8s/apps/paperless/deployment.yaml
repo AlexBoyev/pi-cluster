@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paperless
+  namespace: paperless
+  labels:
+    app: paperless
+spec:
+  replicas: 1
+  strategy:
+    # Recreate, not RollingUpdate: local-path is ReadWriteOnce, a second pod
+    # couldn't mount the same PVC anyway while the old one terminates. Same
+    # as Wallabag/Vikunja.
+    type: Recreate
+  selector:
+    matchLabels:
+      app: paperless
+  template:
+    metadata:
+      labels:
+        app: paperless
+    spec:
+      # Pinned to pi-node2, alone - not alongside Wallabag/Vikunja on
+      # pi-node3 (docs/decisions.md). OCR spikes and pins a CPU core; giving
+      # it a node with nothing else scheduled avoids contention with the
+      # other two services. Excludes pi-node1, which takes no
+      # household-service workloads.
+      nodeSelector:
+        kubernetes.io/hostname: pi-node2
+      # Found live: Kubernetes auto-injects legacy Docker-links-style
+      # <ServiceName>_PORT env vars for every Service in the namespace -
+      # since this Service is named "paperless", that becomes PAPERLESS_PORT
+      # (e.g. "tcp://10.43.209.41:80"), which collides directly with
+      # paperless-ngx's own PAPERLESS_PORT config variable and crashed its
+      # ASGI server trying to parse a URI as an integer port. Disabling this
+      # legacy injection entirely - nothing here relies on it, every
+      # cross-service address is an explicit hostname already.
+      enableServiceLinks: false
+      containers:
+        - name: paperless
+          # Pinned, never latest. Verified against the GHCR manifest API
+          # (not just a docs page) that this tag's manifest list includes
+          # linux/arm64 - see docs/decisions.md.
+          image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: paperless-config
+          env:
+            - name: PAPERLESS_DBPASS
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-secret
+                  key: database-password
+            - name: PAPERLESS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-secret
+                  key: secret-key
+            - name: PAPERLESS_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-secret
+                  key: admin-user
+            - name: PAPERLESS_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-secret
+                  key: admin-password
+          volumeMounts:
+            - name: data
+              mountPath: /usr/src/paperless/media
+              subPath: media
+            - name: data
+              mountPath: /usr/src/paperless/data
+              subPath: data
+            - name: data
+              mountPath: /usr/src/paperless/consume
+              subPath: consume
+            - name: data
+              mountPath: /usr/src/paperless/export
+              subPath: export
+          resources:
+            # pi-node2: ~7.6Gi allocatable, nothing else scheduled there
+            # besides the platform DaemonSets (~518Mi baseline, confirmed
+            # live via `free -h` - see docs/decisions.md). 1Gi/1 CPU limit
+            # here is deliberately roomier than Wallabag/Vikunja's - OCR is
+            # genuinely CPU/memory heavier per operation than either of
+            # those services' workloads, and this node has nothing else
+            # competing for it. Combined with Tika+Gotenberg+Samba below,
+            # total limits land around 2.1 CPU / 2.1Gi - well under half
+            # the node's real headroom even summing every limit at once.
+            requests:
+              cpu: 300m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+          # The official image's own Dockerfile HEALTHCHECK just curls
+          # http://localhost:8000 - not incidental. Paperless's Django
+          # ALLOWED_HOSTS only ever contains PAPERLESS_URL and "localhost";
+          # a kubelet httpGet probe connects via the pod's real IP, whose
+          # Host header would otherwise be rejected with DisallowedHost,
+          # producing an infinite crash-loop (a real, previously reported
+          # issue - paperless-ngx/paperless-ngx#3214 - not a hypothetical).
+          # Forcing the Host header to localhost here sidesteps it entirely
+          # without touching ALLOWED_HOSTS at all - kubelet still connects
+          # to the pod's real address, only the header value changes.
+          startupProbe:
+            httpGet:
+              path: /
+              port: 8000
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            failureThreshold: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            periodSeconds: 10
+            failureThreshold: 3
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: paperless-data

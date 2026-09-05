@@ -66,6 +66,7 @@ const NAV = [
 const HOUSEHOLD_SERVICES = [
   { key: "wallabag", label: "Wallabag", icon: "📖", slug: "wallabag", desc: "Read-later article & bookmark archive", ssoBridge: true },
   { key: "vikunja", label: "Vikunja", icon: "✅", slug: "vikunja", desc: "Shared tasks, projects & calendar sync", ssoBridge: true },
+  { key: "paperless", label: "Paperless", icon: "🗂️", slug: "paperless", desc: "Scanned document archive & search", ssoBridge: false },
 ];
 
 function serviceHref(s: { slug: string; ssoBridge?: boolean }): string {

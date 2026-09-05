@@ -1,0 +1,34 @@
+# local-path, not NFS — same reasoning as Wallabag/Vikunja (docs/decisions.md,
+# Wallabag ADR D1). Binds with nodeAffinity to whichever node first schedules
+# a pod against it; combined with the Deployment's nodeSelector (pi-node2),
+# this pins Paperless's data to pi-node2 permanently. Draining pi-node2 does
+# not let this PVC follow the pod elsewhere — see docs/operations.md.
+#
+# Sized generously (20Gi) relative to Wallabag (5Gi)/Vikunja (2Gi) —
+# deliberately, not a copy-paste: this is explicitly a ten-year archive of
+# scanned multi-page PDFs, not text articles or task attachments, and
+# pi-node2 has 206GB free (confirmed live via `df -h`) so there's no reason
+# to undersize it. Note: K3s's local-path-provisioner does not enforce this
+# as a real quota — it's a hostPath directory with no filesystem-level cap —
+# so this number is advisory/documentation, not a hard ceiling; the real
+# limit is the node's actual disk, which is what the capacity alert in
+# prometheus/alerts.yml watches (see README.md's "Capacity" section).
+#
+# One PVC, subPath-per-purpose — same convention as Wallabag's data/images
+# split, not a separate PVC per Paperless directory:
+#   media/   — the actual documents + thumbnails + archive PDFs
+#   data/    — Whoosh full-text index, classifier model, Celery/task state
+#   consume/ — drop-in ingestion folder (Samba share mounts this subPath too)
+#   export/  — document_exporter output, for manual/pre-upgrade backups
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: paperless-data
+  namespace: paperless
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi

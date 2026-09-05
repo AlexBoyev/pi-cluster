@@ -1,0 +1,154 @@
+# Tika + Gotenberg (docs/decisions.md D1) let Paperless ingest Office
+# documents (.docx/.xlsx/.odt) - school/municipal paperwork, per the brief.
+# In-namespace only, no Ingress, no PVC - both are stateless converters
+# reached over the K8s pod network by paperless-config's TIKA_ENDPOINT/
+# TIKA_GOTENBERG_ENDPOINT.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paperless-tika
+  namespace: paperless
+  labels:
+    app: paperless-tika
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: paperless-tika
+  template:
+    metadata:
+      labels:
+        app: paperless-tika
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: pi-node2
+      # See deployment.yaml's comment - defensive hygiene against the same
+      # class of Service-name/env-var collision, not a fix for a bug found
+      # in this container specifically.
+      enableServiceLinks: false
+      containers:
+        - name: tika
+          # Pinned, never latest. Verified linux/arm64 via direct Docker
+          # Hub manifest query - see docs/decisions.md.
+          image: apache/tika:4.0.0
+          ports:
+            - name: http
+              containerPort: 9998
+          resources:
+            # Conservative starting limit (docs/decisions.md D1) - no
+            # verified idle-RAM figure exists for this image on arm64, so
+            # this is deliberately cautious pending a real measurement
+            # against an actual Office document during rollout (see
+            # "Verified live" in decisions.md once filled in).
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          # JVM startup on Pi-class ARM is genuinely slow to bind its port -
+          # confirmed live: without a startupProbe, the liveness probe
+          # started counting immediately on container start and killed the
+          # not-yet-ready JVM in a restart loop before it ever got the
+          # chance to actually come up. The startupProbe gates
+          # readiness/liveness until the port first responds, same pattern
+          # already used for the main paperless container.
+          startupProbe:
+            tcpSocket:
+              port: 9998
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: 9998
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: 9998
+            periodSeconds: 30
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: paperless-tika
+  namespace: paperless
+spec:
+  selector:
+    app: paperless-tika
+  ports:
+    - port: 9998
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paperless-gotenberg
+  namespace: paperless
+  labels:
+    app: paperless-gotenberg
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: paperless-gotenberg
+  template:
+    metadata:
+      labels:
+        app: paperless-gotenberg
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: pi-node2
+      # See deployment.yaml's comment - defensive hygiene against the same
+      # class of Service-name/env-var collision, not a fix for a bug found
+      # in this container specifically.
+      enableServiceLinks: false
+      containers:
+        - name: gotenberg
+          # Pinned, never latest. Verified linux/arm64 via direct Docker
+          # Hub manifest query - see docs/decisions.md.
+          image: gotenberg/gotenberg:8.36.0
+          ports:
+            - name: http
+              containerPort: 3000
+          resources:
+            # Same conservative-pending-measurement rationale as Tika
+            # above - Gotenberg runs a headless Chromium instance per
+            # conversion, a known-heavy process class.
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            periodSeconds: 30
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: paperless-gotenberg
+  namespace: paperless
+spec:
+  selector:
+    app: paperless-gotenberg
+  ports:
+    - port: 3000
+      targetPort: http
