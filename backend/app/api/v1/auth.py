@@ -1,5 +1,7 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -185,11 +187,12 @@ async def vikunja_sso(request: Request, db: AsyncSession = Depends(get_db)) -> R
     if user is None:
         return RedirectResponse(f"http://{_platform_root(request)}/login")
 
-    refresh_token = await VikunjaBridgeService().login(user.username)
-    if refresh_token is None:
+    tokens = await VikunjaBridgeService().login(user.username)
+    if tokens is None:
         return RedirectResponse("https://vikunja.cluster.download/login")
 
-    token = create_vikunja_bridge_token(refresh_token)
+    refresh_token, access_token = tokens
+    token = create_vikunja_bridge_token(refresh_token, access_token)
     return RedirectResponse(f"https://vikunja.cluster.download/__vikunja_sso_finish?t={token}")
 
 
@@ -206,15 +209,39 @@ async def vikunja_sso_finish(t: str) -> Response:
         if payload.get("type") != "vikunja_bridge":
             raise JWTError()
         refresh_token = payload["rt"]
-    except JWTError:
+        access_token = payload["at"]
+    except (JWTError, KeyError):
         return RedirectResponse("https://vikunja.cluster.download/login")
 
-    response = RedirectResponse("https://vikunja.cluster.download/")
-    # Matches Vikunja's own native login exactly: same two Path scopes
-    # (v1 and v2 API), not a broader Path=/. If Vikunja's own login was
-    # ever used directly in this browser (e.g. before the bridge existed),
-    # its cookie sits at these exact same (name, path) pairs - matching
-    # them means this Set-Cookie replaces that one in place, rather than
+    # A plain redirect to "/" was confirmed live to land back on Vikunja's
+    # own /login: its frontend (checkAuth() in stores/auth.ts) only ever
+    # attempts a cookie-based silent refresh when it finds an *existing,
+    # expired* JWT already in localStorage['token'] - on a genuinely fresh
+    # load there is nothing to find, so it never calls the refresh endpoint
+    # and just renders /login, no matter how valid the refresh cookie is.
+    # So this has to actually write the access_token into
+    # localStorage['token'] itself (the exact key Vikunja's frontend reads,
+    # confirmed against its own helpers/auth.ts) before handing control
+    # back to the SPA - a same-origin inline script, served from
+    # vikunja.cluster.download itself via nginx's dedicated
+    # /__vikunja_sso_finish location, can do that; a bare 307 cannot.
+    html = f"""<!doctype html>
+<html><head><meta charset="utf-8"><title>Signing in&hellip;</title></head>
+<body>
+<script>
+localStorage.setItem('token', {json.dumps(access_token)});
+location.replace('/');
+</script>
+</body></html>"""
+    response = HTMLResponse(html)
+    # Refresh cookie is still set for later silent renewal once this JWT
+    # expires (that path *does* work - see docstring above, the gap was
+    # only the very first load with nothing in localStorage yet). Matches
+    # Vikunja's own native login exactly: same two Path scopes (v1 and v2
+    # API), not a broader Path=/. If Vikunja's own login was ever used
+    # directly in this browser (e.g. before the bridge existed), its
+    # cookie sits at these exact same (name, path) pairs - matching them
+    # means this Set-Cookie replaces that one in place, rather than
     # coexisting as a second same-named cookie at a different scope. That
     # was a real, reproduced bug for Wallabag's PHPSESSID (via Domain
     # instead of Path) - narrowing this to match natively avoids the same

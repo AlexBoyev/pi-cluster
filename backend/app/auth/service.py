@@ -50,10 +50,16 @@ def create_wallabag_bridge_token(session_id: str) -> str:
     return _make_token({"sid": session_id, "type": "wallabag_bridge"}, timedelta(seconds=30))
 
 
-def create_vikunja_bridge_token(refresh_token: str) -> str:
+def create_vikunja_bridge_token(refresh_token: str, access_token: str) -> str:
     """Same one-hop handoff pattern as the Wallabag bridge token, carrying
-    Vikunja's own refresh-token cookie value instead of a PHPSESSID."""
-    return _make_token({"rt": refresh_token, "type": "vikunja_bridge"}, timedelta(seconds=30))
+    Vikunja's own refresh-token cookie value instead of a PHPSESSID. Also
+    carries the access_token (JWT) from the login response body - Vikunja's
+    frontend won't use the refresh cookie on its own on a fresh load, only
+    localStorage['token'] (see vikunja_bridge_service.py)."""
+    return _make_token(
+        {"rt": refresh_token, "at": access_token, "type": "vikunja_bridge"},
+        timedelta(seconds=30),
+    )
 
 
 def decode_token(token: str) -> dict:

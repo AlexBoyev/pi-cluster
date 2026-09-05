@@ -22,22 +22,36 @@ class VikunjaBridgeService:
     gets no bridge - falls through to Vikunja's own login screen, same as
     before any bridge existed."""
 
-    async def login(self, pi_cluster_username: str) -> str | None:
+    async def login(self, pi_cluster_username: str) -> tuple[str, str] | None:
+        """Returns (refresh_token, access_token) - both are needed. The
+        refresh_token cookie alone was confirmed live to NOT be enough:
+        Vikunja's frontend only attempts a cookie-based silent refresh from
+        inside checkAuth() when it finds an *already-stored, expired* JWT
+        under localStorage['token'] - on a genuinely fresh load (nothing in
+        localStorage, e.g. incognito) it never calls the refresh endpoint at
+        all and just renders /login. Confirmed via Vikunja's own access
+        logs: real browser hits only ever showed GET /login, never POST
+        /api/v1/user/token/refresh, while curl calling refresh directly
+        with the same cookie succeeded every time. So the access_token from
+        the login response body has to be injected into localStorage
+        directly - see vikunja_sso_finish."""
         vikunja_login = settings.vikunja_bridge_credentials.get(pi_cluster_username)
         if vikunja_login is None:
             logger.info("vikunja-sso bridge: no entry mapped for %s", pi_cluster_username)
             return None
         for worker in _TRAEFIK_WORKERS:
-            token = await self._try_worker(worker, pi_cluster_username, vikunja_login)
-            if token:
-                return token
+            tokens = await self._try_worker(worker, pi_cluster_username, vikunja_login)
+            if tokens:
+                return tokens
         logger.warning(
             "vikunja-sso bridge: all %d workers failed for %s",
             len(_TRAEFIK_WORKERS), pi_cluster_username,
         )
         return None
 
-    async def _try_worker(self, worker: str, username: str, vikunja_login: str) -> str | None:
+    async def _try_worker(
+        self, worker: str, username: str, vikunja_login: str
+    ) -> tuple[str, str] | None:
         base = f"http://{worker}"
         headers = {"Host": _VIKUNJA_HOST}
         try:
@@ -53,6 +67,13 @@ class VikunjaBridgeService:
                         worker, username, resp.status_code,
                     )
                     return None
+                access_token = resp.json().get("token")
+                if not access_token:
+                    logger.warning(
+                        "vikunja-sso bridge: %s login for %s had no token in body",
+                        worker, username,
+                    )
+                    return None
                 # Vikunja sends this cookie twice (Path=/api/v1/... and
                 # Path=/api/v2/...) with the same value - resp.cookies.get()
                 # raises CookieConflict on the duplicate name (confirmed
@@ -60,7 +81,7 @@ class VikunjaBridgeService:
                 # directly instead of the ambiguous by-name lookup.
                 for cookie in resp.cookies.jar:
                     if cookie.name == "vikunja_refresh_token":
-                        return cookie.value
+                        return cookie.value, access_token
                 return None
         except httpx.HTTPError as exc:
             logger.warning("vikunja-sso bridge: %s request failed: %s", worker, exc)
