@@ -47,14 +47,6 @@ groups:
           summary: "High temperature on {{ $labels.node_name }}"
           description: "CPU temperature is {{ $value | printf \"%.1f\" }}°C (threshold: 70°C)"
 
-      - alert: _DiagFinalTest
-        expr: up == 0
-        for: 1m
-        labels:
-          severity: critical
-        annotations:
-          summary: final diag
-          description: final diag
   - name: pod-health
     interval: 30s
     rules:
