@@ -8,6 +8,7 @@ from app.auth.service import (
     create_access_token,
     create_refresh_token,
     create_sso_token,
+    create_wallabag_bridge_token,
     decode_token,
     verify_password,
 )
@@ -103,9 +104,16 @@ async def verify_sso(request: Request, db: AsyncSession = Depends(get_db)) -> Re
 async def wallabag_sso(request: Request, db: AsyncSession = Depends(get_db)) -> Response:
     """Auto-login bridge for Wallabag's one shared account - Wallabag has no
     reverse-proxy/OIDC pre-auth of its own (see docs/decisions.md), so this
-    logs in server-side and hands the browser the resulting session cookie.
-    Linked from the dashboard's Household Services tile instead of Wallabag
-    directly."""
+    logs in server-side. Hands off to wallabag-sso-finish (below) rather
+    than setting the PHPSESSID cookie itself: this endpoint is served from
+    pi.cluster.download, which can only ever set that cookie broadly
+    (Domain=.cluster.download) - and Wallabag's own login sets a host-only
+    one. Two same-named cookies with different Domain scopes both get sent,
+    and which one the server actually reads back is unpredictable - this
+    was a real, reproduced bug, not a hypothetical. wallabag-sso-finish is
+    reached via a redirect to wallabag.cluster.download itself, so it can
+    set the cookie host-only, matching (and cleanly replacing) whatever
+    Wallabag would set natively."""
     user = await _sso_user(request, db)
     if user is None:
         return RedirectResponse(f"http://{_platform_root(request)}/login")
@@ -114,12 +122,27 @@ async def wallabag_sso(request: Request, db: AsyncSession = Depends(get_db)) -> 
     if session_id is None:
         return RedirectResponse("https://wallabag.cluster.download/login")
 
+    token = create_wallabag_bridge_token(session_id)
+    return RedirectResponse(f"https://wallabag.cluster.download/__wallabag_sso_finish?t={token}")
+
+
+@router.get("/wallabag-sso-finish", include_in_schema=False)
+async def wallabag_sso_finish(t: str) -> Response:
+    """Reached only via a redirect from wallabag-sso above, through nginx's
+    `location = /__wallabag_sso_finish` (proxied here despite the public
+    path being on wallabag.cluster.download - see nginx/nginx.conf) so this
+    response is perceived by the browser as coming from Wallabag's own
+    origin, letting the cookie below be set host-only."""
+    try:
+        payload = decode_token(t)
+        if payload.get("type") != "wallabag_bridge":
+            raise JWTError()
+        session_id = payload["sid"]
+    except JWTError:
+        return RedirectResponse("https://wallabag.cluster.download/login")
+
     response = RedirectResponse("https://wallabag.cluster.download/")
-    for domain in settings.sso_cookie_domains:
-        response.set_cookie(
-            key="PHPSESSID", value=session_id, domain=domain, path="/",
-            httponly=True, samesite="lax",
-        )
+    response.set_cookie(key="PHPSESSID", value=session_id, path="/", httponly=True, samesite="lax")
     return response
 
 

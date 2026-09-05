@@ -42,6 +42,14 @@ def create_sso_token(username: str) -> str:
     )
 
 
+def create_wallabag_bridge_token(session_id: str) -> str:
+    """Carries a freshly-minted Wallabag PHPSESSID across the redirect to
+    wallabag-sso-finish (see docs/decisions.md) - short-lived on purpose,
+    it's a one-hop handoff, never stored anywhere. Signed so the raw session
+    id never sits in plaintext in a URL or an access log."""
+    return _make_token({"sid": session_id, "type": "wallabag_bridge"}, timedelta(seconds=30))
+
+
 def decode_token(token: str) -> dict:
     """Decode and validate a JWT. Raises JWTError on failure."""
     return jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
