@@ -1,7 +1,13 @@
-# LAN-only for now (docs/decisions.md, D3). Reachable via nginx's wildcard
-# fallback -> Traefik (pi-node2/3/4) -> this Ingress. Adding Cloudflare
-# Tunnel exposure later needs no change here — just a Cloudflare-side route
-# to the same nginx wildcard path.
+# Reachable via nginx's wildcard fallback -> Traefik (pi-node2/3/4) -> this
+# Ingress. Traefik's ingress provider matches Host header by exact string
+# against spec.rules[].host, so Cloudflare Tunnel exposure via
+# wallabag.cluster.download needed a second rule here too, not just a
+# Cloudflare-side route — the original comment claiming "no change needed
+# here" was wrong (docs/decisions.md has the correction). Note:
+# SYMFONY__ENV__DOMAIN_NAME (configmap.yaml) is still pinned to the .lan
+# host, so absolute links Wallabag itself generates always read
+# wallabag.pi-cluster.lan regardless of which hostname you browsed in on -
+# browsing works fine either way, this only affects generated links.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -11,6 +17,16 @@ spec:
   ingressClassName: traefik
   rules:
     - host: wallabag.pi-cluster.lan
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wallabag
+                port:
+                  number: 80
+    - host: wallabag.cluster.download
       http:
         paths:
           - path: /
