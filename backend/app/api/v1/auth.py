@@ -43,7 +43,9 @@ async def _sso_user(request: Request, db: AsyncSession) -> User | None:
 
 
 def _platform_root(request: Request) -> str:
-    host = request.headers.get("host", "")
+    # Vite's dev proxy rewrites Host before requests reach here
+    # (changeOrigin: true) - nginx sets X-Forwarded-Host with the real one.
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
     return "pi.cluster.download" if host.endswith(".cluster.download") else "pi-cluster.lan"
 
 
