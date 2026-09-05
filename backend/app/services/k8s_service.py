@@ -487,7 +487,7 @@ class K8sService:
         self._core().delete_namespace(name=name)
 
     def _autoscaling(self) -> client.AutoscalingV2Api:
-        return client.AutoscalingV2Api()
+        return client.AutoscalingV2Api(_load_api())
 
     def get_hpa(self, name: str, namespace: str) -> dict | None:
         try:
@@ -618,11 +618,8 @@ class K8sService:
             if e.status != 404:
                 raise
 
-    def _networking(self) -> client.NetworkingV1Api:
-        return client.NetworkingV1Api()
-
     def _batch(self) -> client.BatchV1Api:
-        return client.BatchV1Api()
+        return client.BatchV1Api(_load_api())
 
     # ── Secrets ──────────────────────────────────────────────────────────────
 
