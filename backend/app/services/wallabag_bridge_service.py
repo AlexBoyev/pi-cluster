@@ -1,8 +1,11 @@
+import logging
 import re
 
 import httpx
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 # Same worker list nginx's traefik_workers upstream uses (nginx/nginx.conf) -
 # called directly here, bypassing nginx's own SSO gate, since this request
@@ -23,18 +26,23 @@ class WallabagBridgeService:
             session_id = await self._try_worker(worker)
             if session_id:
                 return session_id
+        logger.warning("wallabag-sso bridge: all %d workers failed", len(_TRAEFIK_WORKERS))
         return None
 
     async def _try_worker(self, worker: str) -> str | None:
         base = f"http://{worker}"
         headers = {"Host": _WALLABAG_HOST}
         try:
-            async with httpx.AsyncClient(timeout=5.0, follow_redirects=False) as client:
+            async with httpx.AsyncClient(timeout=8.0, follow_redirects=False) as client:
                 login_page = await client.get(f"{base}/login", headers=headers)
                 if login_page.status_code != 200:
+                    logger.warning(
+                        "wallabag-sso bridge: %s GET /login -> %d", worker, login_page.status_code
+                    )
                     return None
                 match = _CSRF_RE.search(login_page.text)
                 if not match:
+                    logger.warning("wallabag-sso bridge: %s no CSRF token in /login page", worker)
                     return None
                 resp = await client.post(
                     f"{base}/login_check",
@@ -46,6 +54,14 @@ class WallabagBridgeService:
                         "_csrf_token": match.group(1),
                     },
                 )
-                return resp.cookies.get("PHPSESSID")
-        except httpx.HTTPError:
+                session_id = resp.cookies.get("PHPSESSID")
+                if not session_id:
+                    logger.warning(
+                        "wallabag-sso bridge: %s POST /login_check -> %d, no PHPSESSID"
+                        " (bad credentials or CSRF mismatch)",
+                        worker, resp.status_code,
+                    )
+                return session_id
+        except httpx.HTTPError as exc:
+            logger.warning("wallabag-sso bridge: %s request failed: %s", worker, exc)
             return None
