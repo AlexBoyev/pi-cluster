@@ -6,7 +6,7 @@ import {
   testChannel,
   updateChannel,
 } from "../api/notifications";
-import type { ChannelType, NotificationChannel } from "../types/notification";
+import type { ChannelType, MinSeverity, NotificationChannel } from "../types/notification";
 import "./NotificationsPage.css";
 
 export default function NotificationsPage() {
@@ -20,8 +20,9 @@ export default function NotificationsPage() {
   const [confirmDel, setConfirmDel] = useState<number | null>(null);
 
   const [form, setForm] = useState<{
-    name: string; channel_type: ChannelType; url: string; email_address: string; enabled: boolean;
-  }>({ name: "", channel_type: "webhook", url: "", email_address: "", enabled: true });
+    name: string; channel_type: ChannelType; url: string; email_address: string;
+    min_severity: MinSeverity; enabled: boolean;
+  }>({ name: "", channel_type: "webhook", url: "", email_address: "", min_severity: "critical", enabled: true });
 
   async function refresh() {
     setLoading(true);
@@ -47,14 +48,27 @@ export default function NotificationsPage() {
         channel_type: form.channel_type,
         url: form.channel_type === "webhook" ? form.url : undefined,
         email_address: form.channel_type === "email" ? form.email_address : undefined,
+        min_severity: form.min_severity,
         enabled: form.enabled,
       });
-      setForm({ name: "", channel_type: "webhook", url: "", email_address: "", enabled: true });
+      setForm({
+        name: "", channel_type: "webhook", url: "", email_address: "",
+        min_severity: "critical", enabled: true,
+      });
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create channel");
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleSeverityChange(ch: NotificationChannel, min_severity: MinSeverity) {
+    try {
+      await updateChannel(ch.id, { min_severity });
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update channel");
     }
   }
 
@@ -165,6 +179,18 @@ export default function NotificationsPage() {
               />
             </div>
           )}
+          <div className="notif-field">
+            <label className="notif-label">Minimum severity</label>
+            <select
+              className="notif-input"
+              value={form.min_severity}
+              onChange={(e) => setForm((f) => ({ ...f, min_severity: e.target.value as MinSeverity }))}
+              disabled={creating}
+            >
+              <option value="critical">Critical only</option>
+              <option value="warning">All alerts (warning + critical)</option>
+            </select>
+          </div>
           <div className="notif-field notif-field-check">
             <label className="notif-label">Enabled</label>
             <input
@@ -199,6 +225,7 @@ export default function NotificationsPage() {
                 <th>Name</th>
                 <th>Type</th>
                 <th>Destination</th>
+                <th>Min severity</th>
                 <th>Status</th>
                 <th>Created</th>
                 <th></th>
@@ -211,6 +238,16 @@ export default function NotificationsPage() {
                   <td>{ch.channel_type === "email" ? "Email" : "Webhook"}</td>
                   <td className="notif-mono notif-url">
                     {ch.channel_type === "email" ? ch.email_address : ch.url}
+                  </td>
+                  <td>
+                    <select
+                      className="notif-input"
+                      value={ch.min_severity}
+                      onChange={(e) => handleSeverityChange(ch, e.target.value as MinSeverity)}
+                    >
+                      <option value="critical">Critical only</option>
+                      <option value="warning">All alerts</option>
+                    </select>
                   </td>
                   <td>
                     <span className={`notif-status-badge ${ch.enabled ? "nsb-active" : "nsb-disabled"}`}>
@@ -280,10 +317,12 @@ export default function NotificationsPage() {
           compatible with Slack, Discord, and custom endpoints.
         </div>
         <div className="notif-help-sub" style={{ marginTop: "0.6rem" }}>
-          <strong>Email channels only receive critical-severity cluster alerts</strong>{" "}
-          (currently just Node Down) plus every security event, so routine
-          CPU/memory/disk/temperature warnings never reach an inbox. Webhook
-          channels (Slack etc.) still receive everything, unfiltered.
+          <strong>Minimum severity</strong> filters cluster alerts per channel —
+          "Critical only" (the default for new channels) means just Node Down today,
+          the only rule at that level in <code>prometheus/alerts.yml</code>; "All
+          alerts" also includes the routine CPU/memory/disk/temperature warnings.
+          This never applies to security events (new-IP logins etc.) — those always
+          reach every enabled channel regardless of this setting.
         </div>
       </div>
     </div>

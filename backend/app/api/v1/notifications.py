@@ -32,6 +32,7 @@ async def create_channel(
         channel_type=body.channel_type,
         url=body.url,
         email_address=body.email_address,
+        min_severity=body.min_severity,
         enabled=body.enabled,
     )
 

@@ -29,6 +29,7 @@ class NotificationRepository:
         channel_type: str = "webhook",
         url: str | None = None,
         email_address: str | None = None,
+        min_severity: str = "critical",
         enabled: bool = True,
     ) -> NotificationChannel:
         ch = NotificationChannel(
@@ -36,6 +37,7 @@ class NotificationRepository:
             channel_type=channel_type,
             url=url,
             email_address=email_address,
+            min_severity=min_severity,
             enabled=enabled,
         )
         self._db.add(ch)

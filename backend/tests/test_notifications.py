@@ -8,6 +8,7 @@ MOCK_CHANNEL = {
     "channel_type": "webhook",
     "url": "https://hooks.slack.com/services/test",
     "email_address": None,
+    "min_severity": "warning",
     "enabled": True,
     "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
 }

@@ -18,6 +18,11 @@ class NotificationChannel(Base):
     channel_type: Mapped[str] = mapped_column(String(16), nullable=False, default="webhook")
     url: Mapped[str | None] = mapped_column(Text, nullable=True)
     email_address: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # "warning" (receives every alert - prometheus/alerts.yml's lower tier)
+    # or "critical" (only Node Down today). Only applies to infra alerts
+    # (dispatch_alert_notification) - security events always ignore this,
+    # see docs/decisions.md.
+    min_severity: Mapped[str] = mapped_column(String(16), nullable=False, default="warning")
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

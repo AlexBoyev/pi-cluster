@@ -210,10 +210,20 @@ async def vikunja_sso_finish(t: str) -> Response:
         return RedirectResponse("https://vikunja.cluster.download/login")
 
     response = RedirectResponse("https://vikunja.cluster.download/")
-    response.set_cookie(
-        key="vikunja_refresh_token", value=refresh_token, path="/",
-        httponly=True, samesite="lax",
-    )
+    # Matches Vikunja's own native login exactly: same two Path scopes
+    # (v1 and v2 API), not a broader Path=/. If Vikunja's own login was
+    # ever used directly in this browser (e.g. before the bridge existed),
+    # its cookie sits at these exact same (name, path) pairs - matching
+    # them means this Set-Cookie replaces that one in place, rather than
+    # coexisting as a second same-named cookie at a different scope. That
+    # was a real, reproduced bug for Wallabag's PHPSESSID (via Domain
+    # instead of Path) - narrowing this to match natively avoids the same
+    # class of collision here before it's ever hit, not just Domain-safe.
+    for cookie_path in ("/api/v1/user/token/refresh", "/api/v2/user/token/refresh"):
+        response.set_cookie(
+            key="vikunja_refresh_token", value=refresh_token, path=cookie_path,
+            httponly=True, samesite="lax",
+        )
     return response
 
 

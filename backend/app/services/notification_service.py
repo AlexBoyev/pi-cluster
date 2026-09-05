@@ -52,6 +52,9 @@ async def _dispatch(webhook_payload: dict, subject: str, body: str, channels: li
                 logger.warning("Notification failed for %s: %s", ch.name, e)
 
 
+_SEVERITY_RANK = {"warning": 0, "critical": 1}
+
+
 async def dispatch_alert_notification(
     alert_name: str,
     severity: str,
@@ -61,14 +64,17 @@ async def dispatch_alert_notification(
     """Prometheus/AlertManager firings (NodeDown, HighCPU, PodCrashLooping,
     etc.) - most of these are routine noise (only NodeDown is severity
     "critical", everything else is "warning": prometheus/alerts.yml).
-    Email is reserved for critical infra alerts only, so an inbox isn't
-    spammed with every CPU blip - webhook channels (Slack etc.) still get
-    everything, unchanged, since a channel muted per-service is easy to
-    manage there and volume isn't a personal-inbox problem."""
+    Each channel has its own min_severity threshold (admin-configurable in
+    the dashboard, defaults to "critical" for new channels) - a channel
+    only receives an alert whose severity meets or exceeds its own
+    threshold. This is what keeps an inbox from being spammed with every
+    CPU blip while still letting a Slack webhook opt into everything."""
     async with AsyncSessionLocal() as db:
         channels = await NotificationRepository(db).list_enabled()
-    if severity != "critical":
-        channels = [c for c in channels if c.channel_type != "email"]
+    incoming_rank = _SEVERITY_RANK.get(severity, 0)
+    channels = [
+        c for c in channels if incoming_rank >= _SEVERITY_RANK.get(c.min_severity, 0)
+    ]
 
     payload = {
         "event": "alert_firing",
