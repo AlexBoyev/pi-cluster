@@ -21,15 +21,17 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def _set_sso_cookie(response: Response, username: str) -> None:
-    response.set_cookie(
-        key=settings.sso_cookie_name,
-        value=create_sso_token(username),
-        domain=settings.sso_cookie_domain,
-        path="/",
-        max_age=settings.jwt_refresh_token_expire_days * 86400,
-        httponly=True,
-        samesite="lax",
-    )
+    token = create_sso_token(username)
+    for domain in settings.sso_cookie_domains:
+        response.set_cookie(
+            key=settings.sso_cookie_name,
+            value=token,
+            domain=domain,
+            path="/",
+            max_age=settings.jwt_refresh_token_expire_days * 86400,
+            httponly=True,
+            samesite="lax",
+        )
 
 
 @router.post("/login", response_model=TokenPair)
@@ -54,9 +56,8 @@ async def login(
 
 @router.post("/logout")
 async def logout(response: Response) -> dict:
-    response.delete_cookie(
-        key=settings.sso_cookie_name, domain=settings.sso_cookie_domain, path="/"
-    )
+    for domain in settings.sso_cookie_domains:
+        response.delete_cookie(key=settings.sso_cookie_name, domain=domain, path="/")
     return {"detail": "logged out"}
 
 

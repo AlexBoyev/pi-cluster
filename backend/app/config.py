@@ -32,9 +32,14 @@ class Settings(BaseSettings):
 
     # Cross-subdomain SSO cookie so household services (Wallabag, etc.) behind
     # nginx's wildcard fallback can gate on "already logged into pi-cluster"
-    # without sharing credentials with those apps' own user systems.
+    # without sharing credentials with those apps' own user systems. Set on
+    # both domains on every login - a cookie's Domain attribute must match
+    # the host that issued it, and the platform is reachable on either
+    # pi-cluster.lan (LAN) or pi.cluster.download (LAN split-horizon today,
+    # public later), so only one of the two actually sticks per login,
+    # whichever matches the host the browser is actually on.
     sso_cookie_name: str = "pi_sso"
-    sso_cookie_domain: str = ".pi-cluster.lan"
+    sso_cookie_domains: list[str] = [".pi-cluster.lan", ".cluster.download"]
 
     prometheus_url: str = "http://prometheus:9090"
     alertmanager_url: str = "http://alertmanager:9093"
