@@ -41,13 +41,9 @@ async def _send_to_channel(
     logger.info("Notification sent to %s (%s)", ch.name, ch.channel_type)
 
 
-async def _dispatch(webhook_payload: dict, subject: str, body: str) -> None:
-    async with AsyncSessionLocal() as db:
-        channels = await NotificationRepository(db).list_enabled()
-
+async def _dispatch(webhook_payload: dict, subject: str, body: str, channels: list[NotificationChannel]) -> None:
     if not channels:
         return
-
     async with httpx.AsyncClient(timeout=5.0) as client:
         for ch in channels:
             try:
@@ -62,6 +58,18 @@ async def dispatch_alert_notification(
     summary: str | None,
     node_name: str | None,
 ) -> None:
+    """Prometheus/AlertManager firings (NodeDown, HighCPU, PodCrashLooping,
+    etc.) - most of these are routine noise (only NodeDown is severity
+    "critical", everything else is "warning": prometheus/alerts.yml).
+    Email is reserved for critical infra alerts only, so an inbox isn't
+    spammed with every CPU blip - webhook channels (Slack etc.) still get
+    everything, unchanged, since a channel muted per-service is easy to
+    manage there and volume isn't a personal-inbox problem."""
+    async with AsyncSessionLocal() as db:
+        channels = await NotificationRepository(db).list_enabled()
+    if severity != "critical":
+        channels = [c for c in channels if c.channel_type != "email"]
+
     payload = {
         "event": "alert_firing",
         "alert": alert_name,
@@ -71,17 +79,22 @@ async def dispatch_alert_notification(
     }
     subject = f"[pi-cluster] {severity.upper()} alert: {alert_name}"
     body = f"{summary or alert_name}\nNode: {node_name or 'cluster'}"
-    await _dispatch(payload, subject, body)
+    await _dispatch(payload, subject, body, channels)
 
 
 async def dispatch_security_alert(event: str, message: str) -> None:
     """Separate from dispatch_alert_notification (Prometheus/AlertManager
     firings) - this is for application-level security events (new-IP
-    logins etc., see docs/decisions.md). Same channels, same dispatch
-    mechanics, different payload shape."""
+    logins etc., see docs/decisions.md). Always goes to every enabled
+    channel, email included and never filtered - these are exactly the
+    "someone's hacking my account" cases email should never be muted for,
+    unlike the routine infra alerts above."""
+    async with AsyncSessionLocal() as db:
+        channels = await NotificationRepository(db).list_enabled()
+
     payload = {"event": event, "message": message}
     subject = f"[pi-cluster] Security alert: {event}"
-    await _dispatch(payload, subject, message)
+    await _dispatch(payload, subject, message, channels)
 
 
 async def test_channel(ch: NotificationChannel) -> bool:

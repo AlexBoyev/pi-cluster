@@ -166,6 +166,12 @@ This was found by checking, not assumed: `cloudflared`'s actual tunnel routing r
 
 `LOG_RETENTION_DAYS` (backend `.env`) only governs the `audit_logs` and `alert_history` Postgres tables via `poll_retention_forever()`. Loki has its own `retention_period` in `loki/loki-config.yml`, and Prometheus manages its own TSDB retention separately. Each service owns its own storage and retention policy; the app's retention job only ever touches the two tables it created, and a future service adding its own log/data storage is expected to manage its own retention rather than being folded into this job.
 
+## Email notification channels are severity-filtered; webhooks are not
+
+`dispatch_alert_notification` (`app/services/notification_service.py`) sends every Prometheus/AlertManager firing to every enabled webhook channel unchanged — but for `channel_type == "email"`, only `severity == "critical"` alerts go out (currently that's just `NodeDown`; everything else in `prometheus/alerts.yml` — HighCPU, HighMemory, HighDisk, HighTemperature, PodCrashLooping, PodNotReady — is `warning`). Explicit user request after the alert system shipped: routine infra noise in a personal inbox defeats the point of email as an urgent channel, while a webhook (Slack etc.) tolerates volume fine and can be muted per-channel there instead.
+
+`dispatch_security_alert` (new-login-IP detection, `app/api/v1/auth.py`) is never filtered by this rule, for either channel type — these are exactly the "someone's hacking my account" cases email must never be muted for, and there's no lower-severity version of a security event the way there is for infra alerts.
+
 ---
 
 # ADR: Household Services — Wallabag (first of four)

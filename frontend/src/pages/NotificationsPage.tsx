@@ -279,6 +279,12 @@ export default function NotificationsPage() {
           channels get an equivalent plain-text message instead. Webhook URLs are
           compatible with Slack, Discord, and custom endpoints.
         </div>
+        <div className="notif-help-sub" style={{ marginTop: "0.6rem" }}>
+          <strong>Email channels only receive critical-severity cluster alerts</strong>{" "}
+          (currently just Node Down) plus every security event, so routine
+          CPU/memory/disk/temperature warnings never reach an inbox. Webhook
+          channels (Slack etc.) still receive everything, unfiltered.
+        </div>
       </div>
     </div>
   );
