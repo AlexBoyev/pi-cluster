@@ -8,8 +8,13 @@ metadata:
   namespace: wallabag
 data:
   # Must exactly match the real ingress URL, including scheme — wallabag's
-  # single most common misconfiguration. See docs/decisions.md.
-  SYMFONY__ENV__DOMAIN_NAME: "http://wallabag.pi-cluster.lan"
+  # single most common misconfiguration. See docs/decisions.md. Wallabag
+  # renders every asset (CSS/JS/logo) as an ABSOLUTE url built from this
+  # single value, so it can only ever look right on one canonical hostname —
+  # picked cluster.download since that's reachable both from the LAN
+  # (dnsmasq split-horizon) and publicly; wallabag.pi-cluster.lan still
+  # works for browsing but renders unstyled (assets point at this domain).
+  SYMFONY__ENV__DOMAIN_NAME: "https://wallabag.cluster.download"
 
   # Postgres runs in Docker Compose on pi-node1, not in K8s — reached over
   # the LAN, not a K8s Service. Port 5432 is published on the host
