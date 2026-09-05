@@ -15,7 +15,7 @@ outside Kubernetes entirely.
 | Node | What actually happens when drained |
 |---|---|
 | pi-node1 | Docker Compose stack (backend, Postgres, Grafana, Jenkins, etc.) is **unaffected** — it's not managed by K3s, draining only evicts K8s DaemonSet pods there (node-exporter, promtail), which just get recreated once uncordoned. Not that draining pi-node1 is generally advisable anyway; it's the control plane. |
-| pi-node2 | Reserved for Paperless (not yet deployed). Currently just loses one of its three Traefik replicas — the other two on pi-node3/4 keep serving ingress traffic (`nginx`'s `upstream` has passive health checks for exactly this). No household-service impact yet. |
+| pi-node2 | **Paperless, Tika, Gotenberg, and the Samba share all go down.** Same `local-path`-not-portable reasoning as pi-node3 below — none of the four pods can reschedule elsewhere. Also loses one of the three Traefik replicas, same as any other worker drain — the other two on pi-node3/4 keep serving ingress traffic. |
 | pi-node3 | **Wallabag and Vikunja both go down.** Neither pod can reschedule elsewhere — each PVC's `nodeAffinity` ties it to pi-node3 (`local-path`, not portable). Both sit `Pending` until pi-node3 is uncordoned. |
 | pi-node4 | Backup target, not a K8s workload host for anything yet. K8s-level drain doesn't stop the nightly backup cron (that's a plain SSH/rsync job on pi-node1, not scheduled *on* pi-node4) — but if pi-node4 is offline outright (not just drained), that night's backup fails to ship; local copies on pi-node1 still exist until the next cleanup cycle trims them. |
 
@@ -144,3 +144,91 @@ kubectl exec -n vikunja deploy/vikunja -- ./vikunja user create -u <username> -e
 Then add them to the "Household" team (Settings → Teams) — they
 immediately inherit access to every project already shared with the team,
 no per-project reconfiguration needed.
+
+## Paperless-ngx
+
+### Deploy
+
+See `k8s/apps/paperless/README.md` for the full manual-steps sequence
+(Postgres role, Secret, Samba password, verifying Hebrew OCR — the most
+important step in the whole rollout). Manifests sync via ArgoCD
+automatically once the Secret exists, same as Wallabag/Vikunja.
+
+### SSO works differently here — no bridge, no stored password
+
+Unlike Wallabag/Vikunja, there's no `paperless-sso` bridge and nothing in
+`.env` holding a Paperless password. Paperless trusts a `Remote-User`
+header that nginx sets only after its own `auth_request` against the
+platform's session succeeds (`docs/decisions.md` D4) — logging into
+`paperless.cluster.download`/`paperless.pi-cluster.lan` while already
+logged into pi-cluster just works, nothing to configure per-user. The API
+(`/api/*`) is deliberately **not** covered by this — it keeps requiring
+Paperless's own per-user API token, so the mobile app and any future
+companion service are unaffected by how the web UI authenticates.
+
+### Ingestion: the Samba share is the primary path
+
+See `k8s/apps/paperless/README.md` §6 for client setup (Windows/macOS/iOS/
+Android) and §7 for the throttled bulk-import procedure. Anything dropped
+into the share appears in Paperless within seconds — if it doesn't, check
+`kubectl -n paperless logs deploy/paperless-samba` first (share-level
+issue) before assuming Paperless itself isn't consuming.
+
+### Reindexing the search index
+
+```bash
+kubectl exec -n paperless deploy/paperless -- python3 manage.py document_index reindex
+```
+
+*(Real timing to be recorded here after the first live run — see
+`docs/decisions.md` D3. No invented estimate.)*
+
+### When Hebrew search returns nothing, or the wrong document
+
+1. Confirm the language pack actually installed:
+   `kubectl -n paperless logs deploy/paperless | grep -i "heb\|tesseract"`
+   — the image installs `tesseract-ocr-heb` at container startup based on
+   `PAPERLESS_OCR_LANGUAGES`; a failed install here means every Hebrew page
+   OCR'd since is silently garbled, not just unsearchable.
+2. Open the specific document and read its extracted text (document detail
+   view → the OCR'd text panel) — garbled text confirms an OCR-quality
+   problem, not a search-index problem, and needs a re-OCR (`Reprocess`
+   from the document's own menu) after fixing the language pack, not just
+   a reindex.
+3. If the text looks correct but search still doesn't find it, only then
+   run a full reindex (above).
+
+### Upgrade
+
+1. Check the [Paperless-ngx releases page](https://github.com/paperless-ngx/paperless-ngx/releases)
+   for the target version's migration/breaking-change notes.
+2. Back up first — trigger `/home/admin/backup.sh` manually rather than
+   waiting for the nightly cron.
+3. Edit the pinned tag in `k8s/apps/paperless/deployment.yaml`, commit,
+   push (or `kubectl apply -f k8s/apps/paperless/` to skip the ArgoCD sync
+   wait).
+4. Watch the pod come up (`kubectl get pods -n paperless -w`) and check
+   Loki (Grafana Explore, `{namespace="paperless"}`) for migration errors.
+5. **Rollback**: revert the tag, then restore the `paperless` database and
+   the `media`/`data` PVC subPaths from the pre-upgrade backup only if the
+   new version wrote data in a format the old one can't read — check the
+   release notes from step 1 first. Note: the PVC itself isn't covered by
+   the backup role (Postgres only) — see the README's accepted-tradeoffs
+   section.
+
+### Add a user later
+
+No self-registration to disable — Paperless never had one. Create a new
+account from the admin UI (⚙ → Users & Groups) or:
+
+```bash
+kubectl exec -n paperless deploy/paperless -- python3 manage.py createsuperuser
+```
+
+### Capacity
+
+No dedicated "media volume" alert — `local-path` PVCs have no real
+filesystem quota, so the number that actually matters is pi-node2's real
+disk usage, which the existing `HighDisk` Prometheus rule already alerts
+on at 80% for any node. See `k8s/apps/paperless/README.md`'s Capacity
+section for the full reasoning.
