@@ -55,12 +55,23 @@ const NAV = [
 // actually logged in on), so linking to the other family always fails the
 // nginx auth_request gate even with a fresh session. Match whichever family
 // this dashboard itself is being viewed from, same as IS_LAN above.
+//
+// ssoBridge: true routes through the backend's auto-login bridge instead of
+// the service directly - only for apps with no native SSO/remote-user
+// support of their own (Wallabag; see docs/decisions.md). Vikunja,
+// Paperless-ngx and Firefly III all support trusted-header or OIDC login
+// natively, so they won't need this - just link to them directly.
 const HOUSEHOLD_SERVICES = [
-  { key: "wallabag", label: "Wallabag", icon: "📖", slug: "wallabag", desc: "Read-later article & bookmark archive" },
+  { key: "wallabag", label: "Wallabag", icon: "📖", slug: "wallabag", desc: "Read-later article & bookmark archive", ssoBridge: true },
 ];
 
-function serviceHref(slug: string): string {
-  return IS_LAN ? `http://${slug}.pi-cluster.lan` : `https://${slug}.cluster.download`;
+function serviceHref(s: { slug: string; ssoBridge?: boolean }): string {
+  if (s.ssoBridge) {
+    return IS_LAN
+      ? "http://pi-cluster.lan/api/v1/auth/wallabag-sso"
+      : "https://pi.cluster.download/api/v1/auth/wallabag-sso";
+  }
+  return IS_LAN ? `http://${s.slug}.pi-cluster.lan` : `https://${s.slug}.cluster.download`;
 }
 
 // ── Formatters ───────────────────────────────────────────────────────────────
@@ -747,7 +758,7 @@ export default function App() {
                     {HOUSEHOLD_SERVICES.map((s) => (
                       <a
                         key={s.key}
-                        href={serviceHref(s.slug)}
+                        href={serviceHref(s)}
                         target="_blank"
                         rel="noreferrer"
                         className="portal-card svc-card"

@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     sso_cookie_name: str = "pi_sso"
     sso_cookie_domains: list[str] = [".pi-cluster.lan", ".cluster.download"]
 
+    # Auto-login bridge for Wallabag's one shared account (docs/decisions.md)
+    # - Wallabag has no reverse-proxy/OIDC pre-auth support of its own, so
+    # this is the only way to skip its login screen. Never logged, never
+    # returned to the frontend.
+    wallabag_username: str = "wallabag"
+    wallabag_password: str = "CHANGE_ME"
+
     prometheus_url: str = "http://prometheus:9090"
     alertmanager_url: str = "http://alertmanager:9093"
     grafana_url: str = "http://grafana:3000"
