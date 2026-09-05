@@ -79,5 +79,12 @@ class Settings(BaseSettings):
     k8s_api_host: str = "10.100.102.10"
     k8s_namespace: str = "pi-apps"
 
+    # Fine-grained PAT, scoped to just this repo with Contents: write only -
+    # lets the alert-rules UI commit+push prometheus/alerts.yml so a live
+    # edit doesn't get silently reverted by the next unrelated git push
+    # (admin@pi-node1 has no push credentials of its own - confirmed live).
+    # Used only for that one file, never for anything else.
+    github_pat: str = ""
+
 
 settings = Settings()

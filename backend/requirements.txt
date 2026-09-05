@@ -13,3 +13,4 @@ prometheus-client==0.21.0
 prometheus-fastapi-instrumentator==6.1.0
 kubernetes==31.0.0
 slowapi==0.1.10
+ruamel.yaml==0.18.6

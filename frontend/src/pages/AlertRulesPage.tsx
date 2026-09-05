@@ -1,7 +1,13 @@
-import { useEffect, useState } from "react";
-import { getAlertRules } from "../api/prom_rules";
+import { FormEvent, useEffect, useState } from "react";
+import { createRule, deleteRule, getAlertRules, RuleFormData, updateRule } from "../api/prom_rules";
+import { useAuth } from "../context/AuthContext";
 import type { AlertRule, RuleGroup } from "../types/prom_rules";
 import "./AlertRulesPage.css";
+import "./NotificationsPage.css";
+
+const EMPTY_FORM: RuleFormData = {
+  group: "", alert: "", expr: "", for: "5m", severity: "warning", summary: "", description: "",
+};
 
 function stateCls(s: string): string {
   if (s === "firing")  return "ar-firing";
@@ -24,9 +30,54 @@ function fmtDuration(s: number): string {
   return `${Math.floor(s / 3600)}h`;
 }
 
-function RuleRow({ rule }: { rule: AlertRule }) {
+function RuleRow({
+  rule, group, isAdmin, onSaved, onDeleted,
+}: {
+  rule: AlertRule; group: string; isAdmin: boolean;
+  onSaved: () => void; onDeleted: () => void;
+}) {
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const sev = severityCls(rule.labels);
+
+  const [form, setForm] = useState({
+    expr: rule.query,
+    for: fmtDuration(rule.duration),
+    severity: rule.labels.severity || "warning",
+    summary: rule.annotations.summary || "",
+    description: rule.annotations.description || "",
+  });
+
+  async function handleSave(e: FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await updateRule(group, rule.name, form);
+      setEditing(false);
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update rule");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await deleteRule(group, rule.name);
+      onDeleted();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete rule");
+      setDeleting(false);
+      setConfirmDel(false);
+    }
+  }
 
   return (
     <>
@@ -44,11 +95,97 @@ function RuleRow({ rule }: { rule: AlertRule }) {
         </td>
         <td className="ar-mono ar-dim">{fmtDuration(rule.duration)}</td>
         <td className="ar-anno ar-dim">{rule.annotations.summary || rule.annotations.description || "—"}</td>
+        {isAdmin && (
+          <td onClick={(e) => e.stopPropagation()}>
+            <div className="notif-actions">
+              <button className="notif-btn-toggle" onClick={() => setEditing((v) => !v)}>
+                {editing ? "Cancel" : "Edit"}
+              </button>
+              {confirmDel ? (
+                <div className="notif-confirm">
+                  <button className="notif-btn-del-confirm" onClick={handleDelete} disabled={deleting}>
+                    {deleting ? "…" : "Delete"}
+                  </button>
+                  <button className="notif-btn-cancel" onClick={() => setConfirmDel(false)}>Cancel</button>
+                </div>
+              ) : (
+                <button className="notif-btn-del" onClick={() => setConfirmDel(true)}>Delete</button>
+              )}
+            </div>
+          </td>
+        )}
       </tr>
-      {expanded && (
+      {editing && (
         <tr className="ar-detail-row">
           <td />
-          <td colSpan={4}>
+          <td colSpan={isAdmin ? 5 : 4}>
+            {error && <div className="err-banner">{error}</div>}
+            <form className="notif-form" onSubmit={handleSave} style={{ padding: "0.6rem 0" }}>
+              <div className="notif-field notif-field-wide">
+                <label className="notif-label">PromQL expression</label>
+                <input
+                  className="notif-input notif-mono"
+                  value={form.expr}
+                  onChange={(e) => setForm((f) => ({ ...f, expr: e.target.value }))}
+                  required
+                  disabled={saving}
+                />
+              </div>
+              <div className="notif-field">
+                <label className="notif-label">For</label>
+                <input
+                  className="notif-input notif-mono"
+                  style={{ width: "80px" }}
+                  placeholder="5m"
+                  value={form.for}
+                  onChange={(e) => setForm((f) => ({ ...f, for: e.target.value }))}
+                  required
+                  disabled={saving}
+                />
+              </div>
+              <div className="notif-field">
+                <label className="notif-label">Severity</label>
+                <select
+                  className="notif-input"
+                  value={form.severity}
+                  onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value }))}
+                  disabled={saving}
+                >
+                  <option value="warning">Warning</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+              <div className="notif-field notif-field-wide">
+                <label className="notif-label">Summary</label>
+                <input
+                  className="notif-input"
+                  value={form.summary}
+                  onChange={(e) => setForm((f) => ({ ...f, summary: e.target.value }))}
+                  disabled={saving}
+                />
+              </div>
+              <div className="notif-field notif-field-wide">
+                <label className="notif-label">Description</label>
+                <input
+                  className="notif-input"
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  disabled={saving}
+                />
+              </div>
+              <div className="notif-field notif-field-submit">
+                <button className="notif-btn-primary" type="submit" disabled={saving}>
+                  {saving ? "Saving…" : "Save & publish"}
+                </button>
+              </div>
+            </form>
+          </td>
+        </tr>
+      )}
+      {expanded && !editing && (
+        <tr className="ar-detail-row">
+          <td />
+          <td colSpan={isAdmin ? 5 : 4}>
             <div className="ar-detail">
               <div className="ar-detail-section">
                 <div className="ar-detail-lbl">PromQL Expression</div>
@@ -90,13 +227,21 @@ function RuleRow({ rule }: { rule: AlertRule }) {
 }
 
 export default function AlertRulesPage() {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
+
   const [groups, setGroups]   = useState<RuleGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
   const [stateFilter, setStateFilter] = useState<"all" | "firing" | "pending" | "inactive">("all");
   const [search, setSearch]   = useState("");
 
-  useEffect(() => {
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating]     = useState(false);
+  const [createForm, setCreateForm] = useState<RuleFormData>(EMPTY_FORM);
+
+  function refresh() {
+    setLoading(true);
     getAlertRules()
       .then((res) => {
         if (res.status === "success") setGroups(res.data.groups);
@@ -104,7 +249,25 @@ export default function AlertRulesPage() {
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Failed to load alert rules"))
       .finally(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(refresh, []);
+
+  async function handleCreate(e: FormEvent) {
+    e.preventDefault();
+    setCreating(true);
+    setError(null);
+    try {
+      await createRule(createForm);
+      setCreateForm(EMPTY_FORM);
+      setShowCreate(false);
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create rule");
+    } finally {
+      setCreating(false);
+    }
+  }
 
   const allRules = groups.flatMap((g) =>
     g.rules.filter((r) => r.type === "alerting").map((r) => ({ ...r, _group: g.name }))
@@ -170,8 +333,108 @@ export default function AlertRulesPage() {
             ))}
           </div>
         </div>
-        <span className="ar-count">{filtered.length} rules · {groups.length} groups</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <span className="ar-count">{filtered.length} rules · {groups.length} groups</span>
+          {isAdmin && (
+            <button className="notif-btn-primary" onClick={() => setShowCreate((v) => !v)}>
+              {showCreate ? "Cancel" : "+ Add Rule"}
+            </button>
+          )}
+        </div>
       </div>
+
+      {showCreate && isAdmin && (
+        <div className="notif-form-card" style={{ marginBottom: "1rem" }}>
+          <form className="notif-form" onSubmit={handleCreate}>
+            <div className="notif-field">
+              <label className="notif-label">Group</label>
+              <input
+                className="notif-input"
+                placeholder="node-health"
+                value={createForm.group}
+                onChange={(e) => setCreateForm((f) => ({ ...f, group: e.target.value }))}
+                required
+                disabled={creating}
+              />
+            </div>
+            <div className="notif-field">
+              <label className="notif-label">Alert name</label>
+              <input
+                className="notif-input"
+                placeholder="HighDiskIO"
+                value={createForm.alert}
+                onChange={(e) => setCreateForm((f) => ({ ...f, alert: e.target.value }))}
+                required
+                disabled={creating}
+              />
+            </div>
+            <div className="notif-field notif-field-wide">
+              <label className="notif-label">PromQL expression</label>
+              <input
+                className="notif-input notif-mono"
+                placeholder={'up{job="node-exporter"} == 0'}
+                value={createForm.expr}
+                onChange={(e) => setCreateForm((f) => ({ ...f, expr: e.target.value }))}
+                required
+                disabled={creating}
+              />
+            </div>
+            <div className="notif-field">
+              <label className="notif-label">For</label>
+              <input
+                className="notif-input notif-mono"
+                style={{ width: "80px" }}
+                placeholder="5m"
+                value={createForm.for}
+                onChange={(e) => setCreateForm((f) => ({ ...f, for: e.target.value }))}
+                required
+                disabled={creating}
+              />
+            </div>
+            <div className="notif-field">
+              <label className="notif-label">Severity</label>
+              <select
+                className="notif-input"
+                value={createForm.severity}
+                onChange={(e) => setCreateForm((f) => ({ ...f, severity: e.target.value }))}
+                disabled={creating}
+              >
+                <option value="warning">Warning</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+            <div className="notif-field notif-field-wide">
+              <label className="notif-label">Summary</label>
+              <input
+                className="notif-input"
+                placeholder="High disk I/O on {{ $labels.node_name }}"
+                value={createForm.summary}
+                onChange={(e) => setCreateForm((f) => ({ ...f, summary: e.target.value }))}
+                disabled={creating}
+              />
+            </div>
+            <div className="notif-field notif-field-wide">
+              <label className="notif-label">Description</label>
+              <input
+                className="notif-input"
+                value={createForm.description}
+                onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
+                disabled={creating}
+              />
+            </div>
+            <div className="notif-field notif-field-submit">
+              <button className="notif-btn-primary" type="submit" disabled={creating}>
+                {creating ? "Publishing…" : "Create & publish"}
+              </button>
+            </div>
+          </form>
+          <div className="notif-help-sub" style={{ marginTop: "0.6rem" }}>
+            Writes directly to <code>prometheus/alerts.yml</code>, commits and pushes it, then
+            reloads Prometheus — takes a few seconds. An existing group name adds to that group;
+            a new name creates one.
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="loading"><div className="spinner" /><span>Loading alert rules from Prometheus…</span></div>
@@ -201,10 +464,20 @@ export default function AlertRulesPage() {
                       <th>State</th>
                       <th>For</th>
                       <th>Summary</th>
+                      {isAdmin && <th></th>}
                     </tr>
                   </thead>
                   <tbody>
-                    {rules.map((r) => <RuleRow key={r.name} rule={r} />)}
+                    {rules.map((r) => (
+                      <RuleRow
+                        key={r.name}
+                        rule={r}
+                        group={groupName}
+                        isAdmin={isAdmin}
+                        onSaved={refresh}
+                        onDeleted={refresh}
+                      />
+                    ))}
                   </tbody>
                 </table>
               </div>
