@@ -757,7 +757,7 @@ class K8sService:
                 "namespace": ing.metadata.namespace,
                 "rules": rules,
                 "tls_hosts": tls_hosts,
-                "ingress_class": (ing.spec.ingress_class_name or ing.metadata.annotations or {}).get("kubernetes.io/ingress.class") if isinstance((ing.spec.ingress_class_name or ing.metadata.annotations or {}).get("kubernetes.io/ingress.class"), str) else ing.spec.ingress_class_name,
+                "ingress_class": ing.spec.ingress_class_name or (ing.metadata.annotations or {}).get("kubernetes.io/ingress.class"),
                 "created_at": ing.metadata.creation_timestamp,
             })
         result.sort(key=lambda x: (x["namespace"], x["name"]))
