@@ -5,7 +5,9 @@ from datetime import datetime, timezone
 MOCK_CHANNEL = {
     "id": 1,
     "name": "slack-alerts",
+    "channel_type": "webhook",
     "url": "https://hooks.slack.com/services/test",
+    "email_address": None,
     "enabled": True,
     "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
 }
