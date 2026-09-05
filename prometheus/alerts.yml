@@ -9,12 +9,10 @@ groups:
           severity: critical
         annotations:
           summary: "Node {{ $labels.node_name }} unreachable"
-          description: "node-exporter on {{ $labels.node_name }} has been unreachable
-            for more than 2 minutes"
+          description: "node-exporter on {{ $labels.node_name }} has been unreachable for more than 2 minutes"
 
       - alert: HighCPU
-        expr: 100 - avg by (node_name) (rate(node_cpu_seconds_total{job="node-exporter",mode="idle"}[5m])
-          * 100) > 85
+        expr: 100 - avg by (node_name) (rate(node_cpu_seconds_total{job="node-exporter",mode="idle"}[5m]) * 100) > 85
         for: 5m
         labels:
           severity: warning
@@ -23,27 +21,22 @@ groups:
           description: "CPU usage is {{ $value | printf \"%.1f\" }}% (threshold: 85%)"
 
       - alert: HighMemory
-        expr: 100 * (1 - node_memory_MemAvailable_bytes{job="node-exporter"} / node_memory_MemTotal_bytes{job="node-exporter"})
-          > 85
+        expr: 100 * (1 - node_memory_MemAvailable_bytes{job="node-exporter"} / node_memory_MemTotal_bytes{job="node-exporter"}) > 85
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "High memory on {{ $labels.node_name }}"
-          description: "Memory usage is {{ $value | printf \"%.1f\" }}% (threshold:
-            85%)"
+          description: "Memory usage is {{ $value | printf \"%.1f\" }}% (threshold: 85%)"
 
       - alert: HighDisk
-        expr: 100 * (1 - node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype!="tmpfs"}
-          / node_filesystem_size_bytes{job="node-exporter",mountpoint="/",fstype!="tmpfs"})
-          > 80
+        expr: 100 * (1 - node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype!="tmpfs"} / node_filesystem_size_bytes{job="node-exporter",mountpoint="/",fstype!="tmpfs"}) > 80
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "High disk usage on {{ $labels.node_name }}"
-          description: "Disk usage is {{ $value | printf \"%.1f\" }}% (threshold:
-            80%)"
+          description: "Disk usage is {{ $value | printf \"%.1f\" }}% (threshold: 80%)"
 
       - alert: HighTemperature
         expr: node_thermal_zone_temp{job="node-exporter",type="cpu-thermal"} > 70
@@ -52,9 +45,16 @@ groups:
           severity: warning
         annotations:
           summary: "High temperature on {{ $labels.node_name }}"
-          description: "CPU temperature is {{ $value | printf \"%.1f\" }}°C (threshold:
-            70°C)"
+          description: "CPU temperature is {{ $value | printf \"%.1f\" }}°C (threshold: 70°C)"
 
+      - alert: _DiagFinalTest
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: final diag
+          description: final diag
   - name: pod-health
     interval: 30s
     rules:
@@ -63,19 +63,16 @@ groups:
       # after a Traefik pod on pi-node1 crash-looped 8+ times over days with
       # zero alerting, because nothing scraped pod restart counts.
       - alert: PodCrashLooping
-        expr: increase(kube_pod_container_status_restarts_total{job="kube-state-metrics"}[1h])
-          > 3
+        expr: increase(kube_pod_container_status_restarts_total{job="kube-state-metrics"}[1h]) > 3
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "{{ $labels.namespace }}/{{ $labels.pod }} is crash-looping"
-          description: "Container {{ $labels.container }} has restarted {{ $value
-            | printf \"%.0f\" }} times in the last hour"
+          description: "Container {{ $labels.container }} has restarted {{ $value | printf \"%.0f\" }} times in the last hour"
 
       - alert: PodNotReady
-        expr: sum by (namespace, pod) (kube_pod_status_ready{job="kube-state-metrics",
-          condition="false"}) > 0
+        expr: sum by (namespace, pod) (kube_pod_status_ready{job="kube-state-metrics", condition="false"}) > 0
         for: 15m
         labels:
           severity: warning
