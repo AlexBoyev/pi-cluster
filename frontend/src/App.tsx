@@ -49,13 +49,19 @@ const NAV = [
 // personal/family use that happen to run on this cluster. Add an entry here
 // as each one lands (Vikunja, Paperless-ngx, Firefly III); nothing else
 // needed on the frontend side per service.
+//
+// href is derived from `slug`, not hardcoded: the SSO cookie (docs/decisions.md)
+// is only ever valid for one domain family per login (whichever host you
+// actually logged in on), so linking to the other family always fails the
+// nginx auth_request gate even with a fresh session. Match whichever family
+// this dashboard itself is being viewed from, same as IS_LAN above.
 const HOUSEHOLD_SERVICES = [
-  {
-    key: "wallabag", label: "Wallabag", icon: "📖",
-    desc: "Read-later article & bookmark archive",
-    href: "http://wallabag.pi-cluster.lan", lanOnly: true,
-  },
+  { key: "wallabag", label: "Wallabag", icon: "📖", slug: "wallabag", desc: "Read-later article & bookmark archive" },
 ];
+
+function serviceHref(slug: string): string {
+  return IS_LAN ? `http://${slug}.pi-cluster.lan` : `https://${slug}.cluster.download`;
+}
 
 // ── Formatters ───────────────────────────────────────────────────────────────
 
@@ -741,7 +747,7 @@ export default function App() {
                     {HOUSEHOLD_SERVICES.map((s) => (
                       <a
                         key={s.key}
-                        href={s.href}
+                        href={serviceHref(s.slug)}
                         target="_blank"
                         rel="noreferrer"
                         className="portal-card svc-card"
@@ -749,7 +755,6 @@ export default function App() {
                         <div className="portal-card-icon">{s.icon}</div>
                         <div className="portal-card-label">{s.label}</div>
                         <div className="portal-card-desc">{s.desc}</div>
-                        {s.lanOnly && <div className="portal-card-badge">LAN only</div>}
                       </a>
                     ))}
                   </div>
