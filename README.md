@@ -164,7 +164,7 @@ Every push to `master` is detected via SCM polling (every 2 minutes) and runs th
   │ Checkout  │──▶│   Sync   │──▶│  Build   │──▶│  Test    │──▶│ Deploy  │──▶│   Migrate    │──▶ Health Check
   └───────────┘   └──────────┘   └──────────┘   └──────────┘   └─────────┘   └──────────────┘
   Clone repo      rsync to        docker build    pytest          compose up    alembic           curl /health
-  from GitHub     pi-node1        backend image   (32 tests)      --build       upgrade head
+  from GitHub     pi-node1        backend image   (310 tests)     --build       upgrade head
 ```
 
 | Stage | What it does |
@@ -172,7 +172,7 @@ Every push to `master` is detected via SCM polling (every 2 minutes) and runs th
 | **Checkout** | Clones `master` from GitHub into the Jenkins workspace |
 | **Sync** | `rsync` copies the workspace to `/home/admin/pi-cluster` on pi-node1 |
 | **Build** | `docker compose build backend` — builds the backend image |
-| **Test** | `pytest` against all 32 tests using an in-process SQLite DB |
+| **Test** | `pytest` against all 310 tests using an in-process SQLite DB |
 | **Deploy** | `docker compose up -d --build backend frontend` — restarts containers |
 | **Migrate** | Waits 5 s, then runs `alembic upgrade head` inside the backend container |
 | **Health Check** | Waits 10 s, then `curl -sf http://10.100.102.10:8000/health` |
