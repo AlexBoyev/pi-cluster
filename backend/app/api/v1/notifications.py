@@ -23,8 +23,16 @@ async def create_channel(
     db: AsyncSession = Depends(get_db),
     _=Depends(require_admin),
 ) -> ChannelResponse:
+    if body.channel_type == "email" and not body.email_address:
+        raise HTTPException(status_code=422, detail="email_address is required for type=email")
+    if body.channel_type == "webhook" and not body.url:
+        raise HTTPException(status_code=422, detail="url is required for type=webhook")
     return await NotificationRepository(db).create(  # type: ignore[return-value]
-        name=body.name, url=body.url, enabled=body.enabled
+        name=body.name,
+        channel_type=body.channel_type,
+        url=body.url,
+        email_address=body.email_address,
+        enabled=body.enabled,
     )
 
 
@@ -65,5 +73,5 @@ async def test_channel_endpoint(
     ch = await repo.get_by_id(channel_id)
     if not ch:
         raise HTTPException(status_code=404, detail="Channel not found")
-    ok = await test_channel(ch.url)
+    ok = await test_channel(ch)
     return {"ok": ok}

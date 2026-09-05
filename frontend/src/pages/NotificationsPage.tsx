@@ -6,7 +6,7 @@ import {
   testChannel,
   updateChannel,
 } from "../api/notifications";
-import type { NotificationChannel } from "../types/notification";
+import type { ChannelType, NotificationChannel } from "../types/notification";
 import "./NotificationsPage.css";
 
 export default function NotificationsPage() {
@@ -19,7 +19,9 @@ export default function NotificationsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmDel, setConfirmDel] = useState<number | null>(null);
 
-  const [form, setForm] = useState({ name: "", url: "", enabled: true });
+  const [form, setForm] = useState<{
+    name: string; channel_type: ChannelType; url: string; email_address: string; enabled: boolean;
+  }>({ name: "", channel_type: "webhook", url: "", email_address: "", enabled: true });
 
   async function refresh() {
     setLoading(true);
@@ -40,8 +42,14 @@ export default function NotificationsPage() {
     setCreating(true);
     setError(null);
     try {
-      await createChannel(form);
-      setForm({ name: "", url: "", enabled: true });
+      await createChannel({
+        name: form.name,
+        channel_type: form.channel_type,
+        url: form.channel_type === "webhook" ? form.url : undefined,
+        email_address: form.channel_type === "email" ? form.email_address : undefined,
+        enabled: form.enabled,
+      });
+      setForm({ name: "", channel_type: "webhook", url: "", email_address: "", enabled: true });
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create channel");
@@ -103,7 +111,7 @@ export default function NotificationsPage() {
       </div>
 
       <div className="section-header">
-        <span className="section-title">Add Webhook Channel</span>
+        <span className="section-title">Add Notification Channel</span>
       </div>
 
       <div className="notif-form-card">
@@ -119,17 +127,44 @@ export default function NotificationsPage() {
               disabled={creating}
             />
           </div>
-          <div className="notif-field notif-field-wide">
-            <label className="notif-label">Webhook URL</label>
-            <input
-              className="notif-input notif-mono"
-              placeholder="https://hooks.slack.com/services/…"
-              value={form.url}
-              onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
-              required
+          <div className="notif-field">
+            <label className="notif-label">Type</label>
+            <select
+              className="notif-input"
+              value={form.channel_type}
+              onChange={(e) => setForm((f) => ({ ...f, channel_type: e.target.value as ChannelType }))}
               disabled={creating}
-            />
+            >
+              <option value="webhook">Webhook</option>
+              <option value="email">Email</option>
+            </select>
           </div>
+          {form.channel_type === "webhook" ? (
+            <div className="notif-field notif-field-wide">
+              <label className="notif-label">Webhook URL</label>
+              <input
+                className="notif-input notif-mono"
+                placeholder="https://hooks.slack.com/services/…"
+                value={form.url}
+                onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
+                required
+                disabled={creating}
+              />
+            </div>
+          ) : (
+            <div className="notif-field notif-field-wide">
+              <label className="notif-label">Destination email</label>
+              <input
+                className="notif-input notif-mono"
+                type="email"
+                placeholder="you@example.com"
+                value={form.email_address}
+                onChange={(e) => setForm((f) => ({ ...f, email_address: e.target.value }))}
+                required
+                disabled={creating}
+              />
+            </div>
+          )}
           <div className="notif-field notif-field-check">
             <label className="notif-label">Enabled</label>
             <input
@@ -162,7 +197,8 @@ export default function NotificationsPage() {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>URL</th>
+                <th>Type</th>
+                <th>Destination</th>
                 <th>Status</th>
                 <th>Created</th>
                 <th></th>
@@ -172,7 +208,10 @@ export default function NotificationsPage() {
               {channels.map((ch) => (
                 <tr key={ch.id} className={ch.enabled ? "" : "notif-row-disabled"}>
                   <td className="notif-name">{ch.name}</td>
-                  <td className="notif-mono notif-url">{ch.url}</td>
+                  <td>{ch.channel_type === "email" ? "Email" : "Webhook"}</td>
+                  <td className="notif-mono notif-url">
+                    {ch.channel_type === "email" ? ch.email_address : ch.url}
+                  </td>
                   <td>
                     <span className={`notif-status-badge ${ch.enabled ? "nsb-active" : "nsb-disabled"}`}>
                       {ch.enabled ? "Enabled" : "Disabled"}
@@ -234,7 +273,11 @@ export default function NotificationsPage() {
   "node": "pi-node2"
 }`}</pre>
         <div className="notif-help-sub">
-          Webhooks are fired for each new alert. Compatible with Slack, Discord, and custom endpoints.
+          Fired for cluster alerts (Prometheus/AlertManager) and security events
+          (e.g. <code>event: "new_login_ip"</code> when an account logs in from an
+          address it hasn't used before). Webhooks get this JSON payload; email
+          channels get an equivalent plain-text message instead. Webhook URLs are
+          compatible with Slack, Discord, and custom endpoints.
         </div>
       </div>
     </div>

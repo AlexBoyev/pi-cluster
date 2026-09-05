@@ -23,8 +23,21 @@ class NotificationRepository:
     async def get_by_id(self, channel_id: int) -> NotificationChannel | None:
         return await self._db.get(NotificationChannel, channel_id)
 
-    async def create(self, name: str, url: str, enabled: bool = True) -> NotificationChannel:
-        ch = NotificationChannel(name=name, url=url, enabled=enabled)
+    async def create(
+        self,
+        name: str,
+        channel_type: str = "webhook",
+        url: str | None = None,
+        email_address: str | None = None,
+        enabled: bool = True,
+    ) -> NotificationChannel:
+        ch = NotificationChannel(
+            name=name,
+            channel_type=channel_type,
+            url=url,
+            email_address=email_address,
+            enabled=enabled,
+        )
         self._db.add(ch)
         await self._db.commit()
         await self._db.refresh(ch)

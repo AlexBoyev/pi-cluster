@@ -56,6 +56,15 @@ class Settings(BaseSettings):
     # to Vikunja's own login, same as before any bridge existed.
     vikunja_bridge_credentials: dict[str, str] = {}
 
+    # Brevo SMTP relay (docs/decisions.md) - shared with Vikunja's own
+    # reminder mail (a separate credential set in its own K8s Secret, not
+    # this one). Used for the "email" notification_channels type.
+    brevo_smtp_host: str = "smtp-relay.brevo.com"
+    brevo_smtp_port: int = 587
+    brevo_smtp_username: str = ""
+    brevo_smtp_password: str = ""
+    brevo_alert_from_email: str = "alerts@cluster.download"
+
     prometheus_url: str = "http://prometheus:9090"
     alertmanager_url: str = "http://alertmanager:9093"
     grafana_url: str = "http://grafana:3000"

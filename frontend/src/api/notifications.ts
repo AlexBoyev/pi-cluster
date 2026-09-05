@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import type { NotificationChannel } from "../types/notification";
+import type { ChannelType, NotificationChannel } from "../types/notification";
 
 export function listChannels(): Promise<NotificationChannel[]> {
   return apiFetch("/notifications/channels");
@@ -7,7 +7,9 @@ export function listChannels(): Promise<NotificationChannel[]> {
 
 export function createChannel(data: {
   name: string;
-  url: string;
+  channel_type: ChannelType;
+  url?: string;
+  email_address?: string;
   enabled: boolean;
 }): Promise<NotificationChannel> {
   return apiFetch("/notifications/channels", {
@@ -18,7 +20,7 @@ export function createChannel(data: {
 
 export function updateChannel(
   id: number,
-  data: Partial<{ name: string; url: string; enabled: boolean }>
+  data: Partial<{ name: string; url: string; email_address: string; enabled: boolean }>
 ): Promise<NotificationChannel> {
   return apiFetch(`/notifications/channels/${id}`, {
     method: "PATCH",

@@ -5,7 +5,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 from app.database import Base
-from app.models import audit, node, user, workload  # noqa: F401 — registers models with metadata
+from app.models import audit, known_login_ip, node, user, workload  # noqa: F401 — registers models with metadata
 
 config = context.config
 

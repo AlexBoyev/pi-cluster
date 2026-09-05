@@ -17,8 +17,10 @@ from app.config import settings
 from app.database import get_db
 from app.models.user import User
 from app.rate_limit import limiter
+from app.repositories.known_login_ip_repository import KnownLoginIpRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import AccessToken, LoginRequest, RefreshRequest, TokenPair, UserInfo
+from app.services.notification_service import dispatch_security_alert
 from app.services.vikunja_bridge_service import VikunjaBridgeService
 from app.services.wallabag_bridge_service import WallabagBridgeService
 
@@ -43,6 +45,18 @@ async def _sso_user(request: Request, db: AsyncSession) -> User | None:
     if user is None or not user.is_active:
         return None
     return user
+
+
+def _client_ip(request: Request) -> str:
+    # nginx sets this (real_client_ip - prefers Cloudflare's Cf-Connecting-Ip
+    # for public traffic, falls back to $remote_addr for LAN-direct
+    # requests - see nginx/nginx.conf). Vite's dev proxy forwards it
+    # through unchanged. Fall back to the raw ASGI peer only if it's
+    # missing entirely (e.g. a direct request bypassing nginx).
+    header = request.headers.get("x-real-ip")
+    if header:
+        return header
+    return request.client.host if request.client else "unknown"
 
 
 def _platform_root(request: Request) -> str:
@@ -79,6 +93,16 @@ async def login(
         )
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
+
+    ip = _client_ip(request)
+    ip_repo = KnownLoginIpRepository(db)
+    if not await ip_repo.is_known(user.id, ip):
+        await dispatch_security_alert(
+            "new_login_ip",
+            f"{user.username} logged in from a new IP address: {ip}",
+        )
+    await ip_repo.record(user.id, ip)
+
     _set_sso_cookie(response, user.username)
     return TokenPair(
         access_token=create_access_token(user.username, user.role.value),
