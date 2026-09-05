@@ -28,6 +28,20 @@ scp -r backend/app admin@10.100.102.10:/home/admin/pi-cluster/backend/
 ssh admin@10.100.102.10 "cd /home/admin/pi-cluster && echo 'admin' | sudo -S docker compose restart backend"
 ```
 
+**If the change adds or edits a `.env` variable, use `up -d` instead of
+`restart`.** Confirmed live, not a guess: `docker compose restart` reuses the
+existing container's already-baked-in environment and does **not** re-read
+`.env` — a newly added var comes back empty even though the file on disk is
+correct. `docker compose up -d backend` recomputes the config (including
+`.env`) and recreates the container if it changed:
+
+```bash
+ssh admin@10.100.102.10 "cd /home/admin/pi-cluster && echo 'admin' | sudo -S docker compose up -d backend"
+```
+
+`restart` is fine — faster, no recreate — for pure code changes that don't
+touch `.env`.
+
 Then verify:
 
 ```bash

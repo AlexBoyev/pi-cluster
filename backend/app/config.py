@@ -48,6 +48,14 @@ class Settings(BaseSettings):
     wallabag_username: str = "wallabag"
     wallabag_password: str = "CHANGE_ME"
 
+    # Vikunja's bridge (see docs/decisions.md) can't use one shared
+    # credential like Wallabag's - it has two real distinct accounts, so
+    # this maps pi-cluster username -> that same person's Vikunja password.
+    # JSON object in .env, e.g. {"admin":"...","Yana":"..."}. A pi-cluster
+    # user with no entry here just doesn't get the bridge - falls through
+    # to Vikunja's own login, same as before any bridge existed.
+    vikunja_bridge_credentials: dict[str, str] = {}
+
     prometheus_url: str = "http://prometheus:9090"
     alertmanager_url: str = "http://alertmanager:9093"
     grafana_url: str = "http://grafana:3000"

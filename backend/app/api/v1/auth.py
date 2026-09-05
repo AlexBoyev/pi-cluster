@@ -8,6 +8,7 @@ from app.auth.service import (
     create_access_token,
     create_refresh_token,
     create_sso_token,
+    create_vikunja_bridge_token,
     create_wallabag_bridge_token,
     decode_token,
     verify_password,
@@ -18,6 +19,7 @@ from app.models.user import User
 from app.rate_limit import limiter
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import AccessToken, LoginRequest, RefreshRequest, TokenPair, UserInfo
+from app.services.vikunja_bridge_service import VikunjaBridgeService
 from app.services.wallabag_bridge_service import WallabagBridgeService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -143,6 +145,51 @@ async def wallabag_sso_finish(t: str) -> Response:
 
     response = RedirectResponse("https://wallabag.cluster.download/")
     response.set_cookie(key="PHPSESSID", value=session_id, path="/", httponly=True, samesite="lax")
+    return response
+
+
+@router.get("/vikunja-sso", include_in_schema=False)
+async def vikunja_sso(request: Request, db: AsyncSession = Depends(get_db)) -> Response:
+    """Auto-login bridge for Vikunja. Unlike Wallabag, Vikunja has two real
+    distinct accounts - VikunjaBridgeService looks up *this* pi-cluster
+    user's own Vikunja password rather than one shared credential. Same
+    two-hop handoff as the Wallabag bridge and for the same reason: this
+    endpoint runs on pi.cluster.download, which can only set Vikunja's
+    refresh-token cookie broadly - vikunja-sso-finish, reached via a
+    redirect to vikunja.cluster.download itself, sets it host-only."""
+    user = await _sso_user(request, db)
+    if user is None:
+        return RedirectResponse(f"http://{_platform_root(request)}/login")
+
+    refresh_token = await VikunjaBridgeService().login(user.username)
+    if refresh_token is None:
+        return RedirectResponse("https://vikunja.cluster.download/login")
+
+    token = create_vikunja_bridge_token(refresh_token)
+    return RedirectResponse(f"https://vikunja.cluster.download/__vikunja_sso_finish?t={token}")
+
+
+@router.get("/vikunja-sso-finish", include_in_schema=False)
+async def vikunja_sso_finish(t: str) -> Response:
+    """Reached only via a redirect from vikunja-sso above, through nginx's
+    `location = /__vikunja_sso_finish` (see nginx/nginx.conf). Vikunja's own
+    refresh-token cookie is Secure+SameSite=None (requires HTTPS) - this
+    reissues it without Secure so it also works over the LAN's plain-http
+    vikunja.pi-cluster.lan; Vikunja's server-side validation only checks the
+    cookie's value, not the flags a browser stored it under."""
+    try:
+        payload = decode_token(t)
+        if payload.get("type") != "vikunja_bridge":
+            raise JWTError()
+        refresh_token = payload["rt"]
+    except JWTError:
+        return RedirectResponse("https://vikunja.cluster.download/login")
+
+    response = RedirectResponse("https://vikunja.cluster.download/")
+    response.set_cookie(
+        key="vikunja_refresh_token", value=refresh_token, path="/",
+        httponly=True, samesite="lax",
+    )
     return response
 
 

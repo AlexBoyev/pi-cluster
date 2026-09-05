@@ -90,12 +90,29 @@ curl -s -o /dev/null -w '%{http_code}\n' https://vikunja.cluster.download/regist
 
 Should not offer account creation — same check already done for Wallabag.
 
+## Auto-login bridge (shipped)
+
+`VIKUNJA_BRIDGE_CREDENTIALS` in the platform's own `.env` (not this
+directory — consumed by the FastAPI backend, not the Vikunja pod) is a
+JSON map of `{"<pi-cluster username>": "<that person's Vikunja password>"}`.
+A pi-cluster user with no entry just falls through to Vikunja's own login
+screen — nothing breaks, they just don't get the one-click convenience.
+
+**Adding a user to the bridge later**: add their entry to the JSON object
+in `.env`, then `docker compose up -d backend` on pi-node1 — **not**
+`restart`, which reuses the container's already-loaded environment and
+silently ignores the `.env` change (confirmed live during this deploy).
+
+CLI-created accounts land with `status = 1` (`StatusEmailConfirmationRequired`)
+in Vikunja 2.6.0 and cannot log in — including through the bridge — until
+confirmed. Either have the person click the confirmation email (needs
+working SMTP, see D2), or set it directly:
+
+```sql
+UPDATE users SET status = 0 WHERE username = '<username>';
+```
+
 ## Not done here (accepted tradeoffs — see `docs/decisions.md`)
 
 - Attachments on the PVC are not covered by the backup role (Postgres-only)
   — same gap Wallabag's own attachments already have.
-- The auto-login bridge (skip Vikunja's own login when already signed into
-  pi-cluster) ships as a fast-follow after the plain SSO gate is verified
-  live — it needs a per-user credential map (two real Vikunja passwords
-  stored server-side), not the single shared credential Wallabag's bridge
-  uses, since Vikunja explicitly has two distinct real accounts.
