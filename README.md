@@ -2,6 +2,8 @@
 
 A self-hosted DevOps platform for a 4-node Raspberry Pi cluster. Provides a React dashboard for deploying, monitoring, and managing containerised workloads on Kubernetes, with a full CI/CD pipeline, GitOps delivery, Prometheus metrics, audit logging, SSH terminal, and live log streaming — all running on the cluster itself.
 
+Alongside the platform, the cluster also hosts a small set of household services (Wallabag, Vikunja) behind a single-sign-on gate and per-service auto-login bridge, and a security-alert notification path (new-login-IP detection, severity-filtered email/webhook channels via a Brevo SMTP relay) — see [Household Services & SSO](#household-services--sso) and [Security](#security) below.
+
 ---
 
 ## Access
@@ -111,8 +113,12 @@ DNS is handled by a dnsmasq container on pi-node1. On home WiFi, `*.pi-cluster.l
 | Orchestration| K3s (Kubernetes)                  | Container scheduling across 4 nodes          |
 | GitOps       | ArgoCD                            | Declarative K8s manifest delivery            |
 | Ingress      | Traefik DaemonSet                 | HTTP/S routing + TLS for workloads           |
+| Reverse proxy| nginx                             | Single entry point on pi-node1: platform hostnames, household-services SSO gate, LAN restrictions |
 | DNS          | dnsmasq                           | LAN wildcard DNS + split-horizon for public domain |
 | Tunnel       | Cloudflare Tunnel (cloudflared)   | Public access without port forwarding        |
+| Log aggregation | Loki + Promtail                | Centralised logs from K3s pods + Compose containers |
+| Household services | Wallabag, Vikunja            | Self-hosted apps for household use, gated by SSO — see below |
+| Mailer       | Brevo SMTP relay                  | Vikunja reminders + security-alert email notifications |
 | Config Mgmt  | Ansible                           | Node bootstrap, K3s install, platform deploy |
 | K8s Packaging| Helm                              | Platform chart (backend, frontend, DB, Redis)|
 | IaC          | Terraform (K8s + Helm providers)  | Namespaces, RBAC, ArgoCD Application         |
@@ -194,6 +200,26 @@ k8s/
 
 - **SYNC STATUS: Synced** → cluster matches what is in `k8s/apps/` at HEAD.
 - **Last Sync commit** shows the last commit that changed a file inside `k8s/apps/`. If recent commits only changed `backend/` or `frontend/`, ArgoCD has nothing new to apply — "Synced to HEAD" is correct and expected.
+
+---
+
+## Household Services & SSO
+
+A separate category from the platform itself: self-hosted apps for household use (2 users) that happen to run on this cluster — they don't manage nodes, workloads, or each other, and keep their own independent user systems. Full reasoning and every decision behind this pattern lives in `docs/decisions.md`'s ADRs and `docs/architecture.md` §23-25; this is the summary.
+
+**Services today**: [Wallabag](https://wallabag.org) (read-later article archive, one shared account) and [Vikunja](https://vikunja.io) (shared task/project management, two real distinct accounts, CalDAV sync). Paperless-ngx and Firefly III are planned to follow the same pattern.
+
+**The pattern**: one dedicated K8s namespace per service, `local-path` storage pinned to a specific worker node (not NFS — no NFS infrastructure exists on this cluster), a dedicated database + role inside the existing platform Postgres (not a new pod per service), an out-of-band `kubectl create secret` (never committed — ArgoCD's `selfHeal` would fight a Secret manifest in git), and a plain K8s `Ingress` with an `ingressClassName: traefik` and a `<name>.pi-cluster.lan` host — nginx's wildcard fallback and Traefik already handle routing for any hostname on that pattern, no nginx edit or platform deploy needed per new service.
+
+**SSO gate**: you can't reach any household service at all without an active pi-cluster session. Logging into the platform sets a second cookie (`pi_sso`, `Domain=.pi-cluster.lan`, `HttpOnly`) alongside the SPA's normal JWT flow. nginx's wildcard `server` block runs `auth_request` against `GET /api/v1/auth/verify` on every request; no valid cookie redirects to the platform login instead of ever reaching Traefik. This gates *reachability* only — each service still has its own separate login once you're through.
+
+**Auto-login bridge**: on top of the gate, a per-service bridge (`WallabagBridgeService`, `VikunjaBridgeService`) logs the current pi-cluster user into the target service server-side and hands off the resulting session via a two-hop redirect through the service's own origin, so the household-service dashboard tile can skip that service's login screen entirely. Wallabag has one shared account (the bridge always uses it); Vikunja has two real distinct accounts, so its bridge looks up the calling user's own Vikunja login from a small credential map (`VIKUNJA_BRIDGE_CREDENTIALS` in `.env`).
+
+**CalDAV is exempt from the SSO gate**: Vikunja needs to work from phones on mobile data over CalDAV, and CalDAV clients (DAVx5, iOS) authenticate with plain HTTP Basic Auth — they cannot follow a redirect to an HTML login page. `/dav/*` is carved out of the gate entirely in `nginx/nginx.conf`, relying on Vikunja's own per-user CalDAV app-password instead (never the account password — also Vikunja's own mitigation for CalDAV's inherent Basic-Auth-can-bypass-2FA risk).
+
+**Mail**: Vikunja's due-date reminders go through a Brevo SMTP relay (`BREVO_SMTP_*` in `.env`) — a free-tier relay, not a personal mailbox, chosen for machine-generated transactional mail. The same relay account also delivers security-alert email (see [Security](#security)) under a distinct `alerts@` sender address.
+
+Manual per-service setup (Postgres role, Secret, first accounts, CalDAV client setup) is documented in each service's own `k8s/apps/<name>/README.md` and in `docs/operations.md` (deploy, upgrade, add-a-user, and troubleshooting runbooks).
 
 ---
 
@@ -315,24 +341,28 @@ A background poller (30s interval) syncs Prometheus firing alerts to the `alert_
   memory_mb          ready_replicas*         status
   last_seen          target_node             detail
                      container_port          created_at
-  users              ingress_host
-  ─────              env_vars (JSON)         alert_history
-  id                 cpu_limit               ─────────────
-  username           memory_limit            id
-  hashed_password    liveness_path           alert_name
-  role               readiness_path          severity
-                     status                  node_name
-  notification_      created_at              instance
-  channels                                   summary
-  ────────────       * live from K8s,        labels (JSON)
-  id                   not stored            fired_at
-  name                                       resolved_at
-  type (slack/email)
-  config (JSON)
-  enabled
+  users              ingress_host           known_login_ips
+  ─────              env_vars (JSON)        ───────────────
+  id                 cpu_limit              id
+  username           memory_limit           user_id (FK → users)
+  hashed_password    liveness_path          ip_address
+  role               readiness_path         first_seen
+                     status                 last_seen
+  notification_      created_at
+  channels                                  alert_history
+  ────────────       * live from K8s,       ─────────────
+  id                   not stored           id
+  name                                      alert_name
+  channel_type                              severity
+  (webhook/email)                           node_name
+  url                                       instance
+  email_address                             summary
+  min_severity                              labels (JSON)
+  enabled                                   fired_at
+                                             resolved_at
 ```
 
-Migrations: `alembic/versions/` — 0001 through 0010.
+Migrations: `alembic/versions/` — 0001 through 0013 (0012 adds `known_login_ips` and `notification_channels.channel_type`/`email_address`; 0013 adds `notification_channels.min_severity`).
 
 ---
 
@@ -415,7 +445,10 @@ All routes are prefixed `/api/v1/`. Authentication is JWT Bearer token (`Authori
 | GET | `/helm/` | user | List Helm releases |
 | GET | `/rbac/` | user | List Roles, ClusterRoles, Bindings |
 | GET | `/objects/` | user | StatefulSets and DaemonSets |
-| GET | `/prom-rules/` | user | List current Prometheus rules |
+| GET | `/prometheus/rules` | admin | List current Prometheus rules |
+| POST | `/prometheus/rules` | admin | Create a new Prometheus alert rule; publishes via git commit/push, recreates Prometheus |
+| PATCH | `/prometheus/rules/{group}/{alert}` | admin | Edit an existing alert rule |
+| DELETE | `/prometheus/rules/{group}/{alert}` | admin | Delete an alert rule |
 
 ### HPA
 
@@ -433,15 +466,23 @@ All routes are prefixed `/api/v1/`. Authentication is JWT Bearer token (`Authori
 | GET | `/alerts/` | user | Active Prometheus alerts (proxied) |
 | GET | `/alert-history/` | user | Persisted alert firings — params: `limit`, `offset`, `severity`, `state` |
 | GET | `/audit/` | user | Audit log — params: `limit`, `offset`, `status`, `resource_type` |
-| POST | `/auth/login` | none | Exchange credentials for JWT |
+| POST | `/auth/login` | none | Exchange credentials for JWT; sets `pi_sso` cookie; triggers new-login-IP security alert if applicable |
+| POST | `/auth/logout` | user | Clear session |
 | POST | `/auth/refresh` | user | Refresh JWT token |
+| GET | `/auth/me` | user | Current authenticated user |
+| GET | `/auth/verify` | cookie | Validates `pi_sso` cookie — called by nginx `auth_request` for the household-services SSO gate, not called directly |
+| GET | `/auth/wallabag-sso` | cookie | Auto-login bridge: logs the current user into Wallabag's shared account, redirects into the app |
+| GET | `/auth/wallabag-sso-finish` | internal | Second hop of the Wallabag bridge handoff — reached only via redirect, not called directly |
+| GET | `/auth/vikunja-sso` | cookie | Auto-login bridge: logs the current user into their own mapped Vikunja account, redirects into the app |
+| GET | `/auth/vikunja-sso-finish` | internal | Second hop of the Vikunja bridge handoff — writes the access JWT into `localStorage` and redirects into the app |
 | GET | `/users/` | admin | List users |
 | POST | `/users/` | admin | Create user |
 | DELETE | `/users/{id}` | admin | Delete user |
-| GET | `/notifications/` | admin | List notification channels |
-| POST | `/notifications/` | admin | Create notification channel |
-| DELETE | `/notifications/{id}` | admin | Delete notification channel |
-| POST | `/notifications/{id}/test` | admin | Send test notification |
+| GET | `/notifications/channels` | admin | List notification channels |
+| POST | `/notifications/channels` | admin | Create notification channel — `channel_type` (`webhook`/`email`), `url` or `email_address`, `min_severity` (`warning`/`critical`, email only) |
+| PATCH | `/notifications/channels/{id}` | admin | Update a channel (e.g. its `min_severity` threshold) |
+| DELETE | `/notifications/channels/{id}` | admin | Delete notification channel |
+| POST | `/notifications/channels/{id}/test` | admin | Send test notification |
 
 ---
 
@@ -449,7 +490,8 @@ All routes are prefixed `/api/v1/`. Authentication is JWT Bearer token (`Authori
 
 | Service | Port | Access |
 |---|---|---|
-| React dashboard | 80 | LAN |
+| nginx (single entry point) | 80 | LAN + public via Cloudflare Tunnel — platform hostnames, household-services SSO gate |
+| React dashboard (Vite) | 5173 | LAN (proxied by nginx; not meant to be hit directly) |
 | FastAPI backend | 8000 | LAN |
 | Jenkins | 8080 | LAN |
 | ArgoCD | 30443 | LAN (HTTPS, NodePort) |
@@ -476,7 +518,7 @@ cd backend
 pytest --tb=long -x
 ```
 
-Tests live in `backend/tests/` and cover: health, auth, nodes, workloads, namespaces, configmaps, storage, pods, jobs, quotas, audit, and WebSocket log routes (23 test files, 304 tests). `asyncio_mode = auto` via `pytest-asyncio`.
+Tests live in `backend/tests/` and cover: health, auth, nodes, workloads, namespaces, configmaps, storage, pods, jobs, quotas, audit, notification channels, rate limiting, retention, and WebSocket log routes (27 test files, 310 tests). `asyncio_mode = auto` via `pytest-asyncio`.
 
 CI runs the test suite on every commit (both pipelines) and blocks deploy if any test fails.
 
@@ -588,7 +630,17 @@ ssh admin@10.100.102.10 "cd /home/admin/pi-cluster && docker compose exec backen
 - Secrets are in `.env` — never committed to Git
 - SSH to pi-node1 as `admin`: key-based for operators, password-based for the backend's own health-check client (`SSH_PASSWORD` in `.env`) — password auth is not disabled on this host
 - `audit_logs` and resolved `alert_history` rows older than `LOG_RETENTION_DAYS` (default 90) are deleted daily by a background job — see `docs/architecture.md` §22
-- Rate limited: 300 requests/minute per IP globally, 10/minute on `/auth/login` specifically (brute-force protection)
+- Rate limited: 300 requests/minute per IP globally, 10/minute on `/auth/login` specifically (brute-force protection); the real client IP behind the Cloudflare Tunnel is read from `Cf-Connecting-Ip`, not the tunnel's own loopback connection — see `docs/decisions.md`
+- The GitHub PAT used to publish alert-rule edits (below) is a fine-grained token scoped to Contents-write on this one repository only, held in `.env` and never written to git config
+
+### Security alerts
+
+A separate, never-muted notification path from the infra-alert pipeline above, for events where email must not be filtered:
+
+- **New-login-IP detection**: every successful login checks the user's IP against `known_login_ips` (per-user history). An IP never seen before for that user fires an alert to every enabled notification channel — no severity threshold applies, since there's no lower-severity version of "someone may be accessing your account."
+- **Severity-filtered infra alerts, email only**: Prometheus/AlertManager firings (the alerting rules table above) go to every `webhook` channel unfiltered, but to `email` channels only at or above that channel's own configurable severity threshold (`warning`/`critical`, set per-channel in the Notifications page). This exists specifically so routine infra noise (HighCPU, HighDisk, etc.) doesn't drown out a personal inbox the way it would a Slack channel — an explicit fix after the first version of email alerting shipped and immediately proved too noisy.
+- **Delivery**: outbound email goes through a Brevo SMTP relay (`BREVO_SMTP_*` in `.env`), shared with Vikunja's own reminder mail under a distinct `alerts@` sender address.
+- **Alert rules themselves are editable from the dashboard** (Alert Rules page, admin-only) — add, edit, and delete Prometheus rules without SSH; changes publish via a real `git commit`/`push` to this repository (see `docs/architecture.md` §25) and recreate the Prometheus container to pick them up.
 
 ---
 
@@ -684,21 +736,27 @@ pi-cluster/
 │   │   ├── models/         ← ORM models
 │   │   ├── schemas/        ← Pydantic request/response types
 │   │   └── auth/           ← JWT, dependencies
-│   ├── alembic/versions/   ← DB migrations (0001–0010)
-│   └── tests/              ← pytest suite (14 files, 32+ tests)
+│   ├── alembic/versions/   ← DB migrations (0001–0013)
+│   └── tests/              ← pytest suite (27 files, 310 tests)
 ├── frontend/
 │   └── src/
-│       ├── pages/          ← full-page views
+│       ├── pages/          ← full-page views (incl. AlertRulesPage, NotificationsPage)
 │       ├── components/     ← modals, panels, shared UI
 │       ├── api/            ← typed fetch wrappers
 │       └── types/          ← TypeScript interfaces
 ├── k8s/
-│   └── apps/               ← ArgoCD watches this directory only
-│       ├── node-exporter.yaml
-│       └── traefik.yaml
+│   ├── apps/                ← ArgoCD watches this directory only
+│   │   ├── node-exporter.yaml
+│   │   ├── promtail.yaml
+│   │   ├── kube-state-metrics.yaml
+│   │   ├── wallabag/         ← household service: namespace, PVC, ConfigMap, Deployment, Service, Ingress, README
+│   │   └── vikunja/          ← same pattern as wallabag/
+│   └── traefik/              ← NOT ArgoCD-managed, see docs/architecture.md §13
+├── nginx/
+│   └── nginx.conf           ← platform hostnames, SSO gate, household-services wildcard fallback
 ├── prometheus/
 │   ├── prometheus.yml
-│   └── alerts.yml
+│   └── alerts.yml            ← editable from the dashboard's Alert Rules page, see docs/architecture.md §25
 ├── alertmanager/
 │   └── alertmanager.yml
 ├── grafana/dashboards/
@@ -706,7 +764,8 @@ pi-cluster/
 ├── docs/
 │   ├── architecture.md
 │   ├── roadmap.md
-│   └── decisions.md
+│   ├── decisions.md
+│   └── operations.md        ← day-to-day runbooks: household services, node drain impact
 ├── docker-compose.yml
 ├── Jenkinsfile              ← post-merge: build + test + deploy
 └── Jenkinsfile.test         ← pre-merge: build + test only

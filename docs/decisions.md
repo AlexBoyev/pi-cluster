@@ -172,6 +172,26 @@ This was found by checking, not assumed: `cloudflared`'s actual tunnel routing r
 
 `dispatch_security_alert` (new-login-IP detection, `app/api/v1/auth.py`) is never filtered by this rule, for either channel type — these are exactly the "someone's hacking my account" cases email must never be muted for, and there's no lower-severity version of a security event the way there is for infra alerts.
 
+## New-login-IP detection fires on every login, not just "suspicious" ones
+
+`known_login_ips` (migration 0012) records every IP a user has ever successfully logged in from. Any login from an IP not already in that set fires `dispatch_security_alert` immediately — no heuristic scoring, no geo-distance check, no rate threshold. Explicit user request: "i dont want notifications to be spammed in my emails, only critical rules such as ddos attacks/someone hacking my account and etc.. not every cpu alarm" — the bar for *this* event is deliberately low (any new IP, full stop) precisely because the noise-reduction ask was about routine infra alerts, not about security events. A missed compromise is a much worse failure mode here than an extra email when a phone changes cell towers.
+
+This is why `dispatch_security_alert` is architecturally separate from `dispatch_alert_notification` (previous entry) rather than the same function with a `severity="critical"` argument — the two have opposite defaults (alert-by-default vs. filtered-by-default) and conflating them risked a future change to one silently changing the other's behavior.
+
+## Real client IP behind the Cloudflare Tunnel: `Cf-Connecting-Ip`, not `$remote_addr`
+
+`cloudflared` runs with `network_mode: host` and forwards to nginx over `localhost` — for any request that arrived through the public tunnel, `$remote_addr` at nginx is always `127.0.0.1` (cloudflared's own local connection), never the real visitor IP. Left uncorrected, this would have made new-login-IP detection (previous entry) useless for anyone using the public domain (`pi.cluster.download`) — every login would appear to come from the same "IP" (nginx's loopback), so a genuine new location would never trigger an alert, and conversely every user would appear to share one IP.
+
+Fixed with an nginx `map` (`$http_cf_connecting_ip` → `$real_client_ip`, falling back to `$remote_addr` when the header is absent — i.e. genuine direct-LAN requests, which never carry it) on the platform's own `server` block, forwarded as `X-Real-IP` to the backend. Cloudflare sets `Cf-Connecting-Ip` on every request it proxies and it cannot be spoofed by the client (Cloudflare overwrites it at their edge), unlike a client-supplied `X-Forwarded-For`. Only the platform's own block needed this — household services don't do IP-based security logic backend-side, so their proxy blocks were left on plain `$remote_addr`.
+
+## Alert Rules CRUD publishes via a scoped GitHub PAT and a full git round-trip, not a direct file write
+
+Editing `prometheus/alerts.yml` in place on pi-node1 (SSH + write the file, no git involved) was rejected: it would leave the live file permanently diverged from git, silently reverted by the next Jenkins deploy's rsync, and with no history of who changed which rule when. Instead every edit goes through a real `git commit` + `git push` to `origin/master`, authenticated with a fine-grained GitHub PAT scoped to Contents-write on this one repository only (`GITHUB_PAT` in `.env`) — passed as a one-off push URL rather than stored in `admin@pi-node1`'s own git config, so it's never visible via `git remote -v` and revoking it doesn't touch any other credential.
+
+This surfaced two pre-existing, previously-unnoticed bugs in how this local clone was actually maintained (full detail in the service's own docstrings, `backend/app/services/alert_rules_service.py`, and `docs/roadmap.md` Phase 64): the clone was root-owned from Jenkins' rsync (writes silently failed with Permission Denied while the old code reported success anyway), and the clone was months behind `origin/master` since nothing had ever run `git pull` on it (pushes were silently rejected as non-fast-forward). Both are fixed by re-syncing (`chown` + `git fetch && git reset --hard origin/master`) before every single read and write, not just once at startup.
+
+`ruamel.yaml`'s round-trip loader is used instead of the stdlib `yaml` module already used elsewhere in this codebase specifically because `alerts.yml` is a hand-maintained file with comments — confirmed live that a plain `safe_load`/`dump` round trip strips every comment in the file on the very first UI-driven edit, including comments on rules the edit never touched.
+
 ---
 
 # ADR: Household Services — Wallabag (first of four)
@@ -274,6 +294,14 @@ Said explicitly, per the brief that scoped this work: if deploying the second se
 
 1. **The SSO gate assumed every household service is browser-only.** Wallabag is; Vikunja isn't, because of CalDAV. The gate itself (`auth_request` in nginx) had to gain a path-based exemption it never needed before — see D1. Reusable as-is for Paperless/Firefly if either ever exposes a similar non-interactive endpoint (a WebDAV path, an API token flow).
 2. **The auto-login bridge (Wallabag's `wallabag_bridge_service.py`) assumed one shared credential.** That's true for Wallabag because Wallabag only has one shared account; it is explicitly not true for Vikunja, which requires two real, distinct accounts (assignment and history are meaningless otherwise). Vikunja's bridge — a fast-follow after the plain gate above, not shipped in the same pass — needs a small per-pi-cluster-user credential map instead, doubling the "real password stored server-side" tradeoff already accepted for Wallabag rather than removing it.
+
+## The auto-login bridge needed the SPA's own token storage, not just its cookie
+
+Shipped after the two items above, and only found because it was tested in a genuinely fresh browser session rather than re-tested in a browser that already had a stale cookie sitting around (the same class of check that caught Wallabag's Domain-collision bug). `vikunja-sso-finish` originally just set Vikunja's `vikunja_refresh_token` cookie (correctly scoped, matching Vikunja's own native `Path`s) and redirected to `/` — this looked complete because every curl-based test of the same three hops passed every time, repeatedly.
+
+A real browser in a fresh incognito window still landed back on Vikunja's own `/login`. Root-caused by reading Vikunja's own access logs during a live reproduction: the real browser only ever called `GET /login`, never `POST /api/v1/user/token/refresh` — while curl, calling that same refresh endpoint directly with the same cookie, got `200` every time. The difference is Vikunja's frontend itself: `checkAuth()` (`stores/auth.ts`) only attempts a cookie-based silent refresh when it already finds an *expired* JWT sitting in `localStorage['token']`; on a genuinely fresh load there's nothing there to find expired, so it never touches the refresh cookie at all and just renders `/login`. No amount of curl-testing the HTTP layer in isolation could have caught this — the gap was entirely in what the SPA's own JavaScript does (or doesn't do) with a valid cookie, not in anything the server sent.
+
+Fixed by capturing the access-token JWT Vikunja's login response already returns in its body (previously discarded — only the refresh cookie was kept) and having the finish step serve a small same-origin HTML page that writes it into `localStorage['token']` before handing control to the SPA, instead of a bare redirect. The refresh cookie is still set alongside it, for the *later* silent-renewal path (`checkAuth()` finding an expired token and refreshing it) which does work correctly once there's a first token to expire. General lesson for the next bridge (Paperless, Firefly): a target SPA's own client-side auth-bootstrap logic is part of the integration surface, not just its HTTP auth endpoints — verify what the frontend actually does with a cookie on a cold load, not only what the server does with the cookie when asked directly.
 
 ## Verified live, not just configured
 
