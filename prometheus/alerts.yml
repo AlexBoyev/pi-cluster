@@ -55,14 +55,6 @@ groups:
           description: "CPU temperature is {{ $value | printf \"%.1f\" }}°C (threshold:
             70°C)"
 
-      - alert: _DiagTestRule3
-        expr: up == 0
-        for: 1m
-        labels:
-          severity: warning
-        annotations:
-          summary: diag3
-          description: diag3
   - name: pod-health
     interval: 30s
     rules:
