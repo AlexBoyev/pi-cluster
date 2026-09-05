@@ -39,7 +39,15 @@
 .ar-group-firing { font-size: 0.65rem; font-weight: 800; color: var(--red); letter-spacing: 0.05em; }
 
 .ar-table-wrap { overflow-x: auto; }
-.ar-table { width: 100%; border-collapse: collapse; }
+/* border-collapse: collapse inside an overflow-x: auto ancestor is a known
+   Chromium/WebKit sub-pixel border-painting bug - collapsed row borders
+   render as short/broken segments instead of a full line once the table
+   sits in a scrolling container (only became visible after ar-table-wrap
+   switched from overflow: hidden to overflow-x: auto - the clipping bug
+   fix exposed this one). border-separate + zero spacing draws each cell's
+   own border independently instead of merging adjacent borders, which
+   isn't subject to the same collapsed-border paint path. */
+.ar-table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .ar-table th {
   padding: 0.45rem 0.9rem; background: var(--bg); border-bottom: 1px solid var(--border);
   font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
