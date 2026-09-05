@@ -16,7 +16,7 @@ outside Kubernetes entirely.
 |---|---|
 | pi-node1 | Docker Compose stack (backend, Postgres, Grafana, Jenkins, etc.) is **unaffected** — it's not managed by K3s, draining only evicts K8s DaemonSet pods there (node-exporter, promtail), which just get recreated once uncordoned. Not that draining pi-node1 is generally advisable anyway; it's the control plane. |
 | pi-node2 | Reserved for Paperless (not yet deployed). Currently just loses one of its three Traefik replicas — the other two on pi-node3/4 keep serving ingress traffic (`nginx`'s `upstream` has passive health checks for exactly this). No household-service impact yet. |
-| pi-node3 | **Wallabag goes down.** Its pod can't reschedule elsewhere — the PVC's `nodeAffinity` ties it to pi-node3 (`local-path`, not portable). The pod sits `Pending` until pi-node3 is uncordoned. |
+| pi-node3 | **Wallabag and Vikunja both go down.** Neither pod can reschedule elsewhere — each PVC's `nodeAffinity` ties it to pi-node3 (`local-path`, not portable). Both sit `Pending` until pi-node3 is uncordoned. |
 | pi-node4 | Backup target, not a K8s workload host for anything yet. K8s-level drain doesn't stop the nightly backup cron (that's a plain SSH/rsync job on pi-node1, not scheduled *on* pi-node4) — but if pi-node4 is offline outright (not just drained), that night's backup fails to ship; local copies on pi-node1 still exist until the next cleanup cycle trims them. |
 
 ## Manually migrating a household service to a different node
@@ -59,3 +59,88 @@ Registration is disabled after the first two accounts (`docs/decisions.md`). Don
 ```bash
 sudo k3s kubectl exec -n wallabag deploy/wallabag -- bin/console fos:user:create <username> <email> <password>
 ```
+
+## Vikunja
+
+### Deploy
+
+See `k8s/apps/vikunja/README.md` for the full manual-steps sequence
+(Postgres role, Secret, Brevo SMTP, first accounts, team). Manifests sync
+via ArgoCD automatically once the Secret exists, same as Wallabag.
+
+### Unlike Wallabag: migrations run automatically, no manual install step
+
+Confirmed live in the pod's own logs on first boot: `Running migrations…`
+→ `Ran all migrations successfully.` within seconds, no `wallabag:install`-style
+extra step needed. Restarts pay this cost again but it's fast (Go, not
+Symfony/`composer install`) — don't expect Wallabag's slow-boot behavior
+here.
+
+### CalDAV client setup
+
+Each user creates their own **app password** first — Settings → CalDAV in
+the web UI (never the account password; this also caps the blast radius of
+CalDAV's inherent Basic-Auth-bypasses-2FA exposure, see `docs/decisions.md`).
+
+**iOS** (native, no app needed): Settings → Calendar → Accounts → Add
+Account → Other → Add CalDAV Account.
+- Server: `vikunja.cluster.download`
+- Username: your Vikunja username
+- Password: the CalDAV app password, not your account password
+
+**Android**: install DAVx5, add an account with the base URL
+`https://vikunja.cluster.download/dav/principals/<username>/` and the same
+app password — let it discover the project collections rather than typing
+individual calendar URLs.
+
+**Simpler read-only fallback**: Vikunja also exposes a per-project ICS feed
+for anyone who just wants to see due dates without full two-way sync —
+find it in a project's settings; subscribe to it as a read-only calendar
+subscription instead of a full CalDAV account.
+
+**Sync scope**: defaults to every project shared with you. A calendar full
+of every household task is noisy — a due date is a deadline, not an
+appointment. If that gets overwhelming, narrow it per-project in Vikunja's
+CalDAV settings rather than syncing everything by default.
+
+### When reminders (or CalDAV mail-based notifications) stop arriving
+
+1. Check Brevo's own dashboard (Transactional → Logs) first — it will show
+   delivered / soft-bounced / blocked / dropped, which tells you whether
+   Brevo rejected it or Gmail (or another provider) silently dropped it
+   after accepting.
+2. If it shows dropped/blocked at the receiving end: check the SPF/DKIM/DMARC
+   records for `cluster.download` are still present in Cloudflare DNS
+   (`docs/decisions.md`, D2) — these are what convince Gmail the mail is
+   legitimate; a `250 OK, queued` from Brevo does **not** mean delivered.
+3. If Brevo's logs show it never left: check `VIKUNJA_MAILER_*` in
+   `k8s/apps/vikunja/configmap.yaml` and the `mailer-username`/`mailer-password`
+   keys in the `vikunja-secret` Secret haven't drifted from the real Brevo
+   credentials.
+
+### Upgrade
+
+1. Check the [Vikunja releases page](https://github.com/go-vikunja/vikunja/releases)
+   for the target version's migration/breaking-change notes.
+2. Back up first — trigger `/home/admin/backup.sh` manually rather than
+   waiting for the nightly cron.
+3. Edit the pinned tag in `k8s/apps/vikunja/deployment.yaml`, commit, push
+   (or `kubectl apply -f k8s/apps/vikunja/` to skip the ArgoCD sync wait).
+4. Watch the pod come up (`kubectl get pods -n vikunja -w`) and check Loki
+   (Grafana Explore, `{namespace="vikunja"}`) for migration errors.
+5. **Rollback**: revert the tag, then restore the `vikunja` database from
+   the pre-upgrade backup only if the new version wrote data in a format
+   the old one can't read — check the release notes from step 1 first.
+
+### Add a user later
+
+Registration is disabled after the first two accounts. Create a new one
+via the CLI (never re-enable registration, even briefly):
+
+```bash
+kubectl exec -n vikunja deploy/vikunja -- ./vikunja user create -u <username> -e <email> -p '<password>'
+```
+
+Then add them to the "Household" team (Settings → Teams) — they
+immediately inherit access to every project already shared with the team,
+no per-project reconfiguration needed.
