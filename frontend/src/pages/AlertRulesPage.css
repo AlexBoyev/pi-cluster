@@ -38,7 +38,7 @@
 .ar-group-count { font-size: 0.7rem; color: var(--t3); margin-left: auto; }
 .ar-group-firing { font-size: 0.65rem; font-weight: 800; color: var(--red); letter-spacing: 0.05em; }
 
-.ar-table-wrap { overflow: hidden; }
+.ar-table-wrap { overflow-x: auto; }
 .ar-table { width: 100%; border-collapse: collapse; }
 .ar-table th {
   padding: 0.45rem 0.9rem; background: var(--bg); border-bottom: 1px solid var(--border);
