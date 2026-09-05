@@ -37,6 +37,17 @@ async def get_vault() -> dict:
             "username": "admin",
             "password": settings.argocd_admin_password or "(not set — add ARGOCD_ADMIN_PASSWORD to .env)",
         },
+        "paperless": {
+            "url": "https://paperless.cluster.download",
+            "username": settings.paperless_admin_user or "admin",
+            "password": settings.paperless_admin_password or "(not set — add PAPERLESS_ADMIN_PASSWORD to .env)",
+            "note": "SSO auto-logs in via Remote-User when already logged into pi-cluster — this is the Django superuser fallback, not needed day to day.",
+        },
+        "paperless_samba": {
+            "note": "Consume-folder share, LAN-only — \\\\10.100.102.16\\inbox (Windows) or smb://10.100.102.16/inbox",
+            "username": "paperless",
+            "password": settings.paperless_samba_password or "(not set — add PAPERLESS_SAMBA_PASSWORD to .env)",
+        },
         "prometheus": {
             "url": "https://prometheus.cluster.download",
             "note": "No authentication configured.",

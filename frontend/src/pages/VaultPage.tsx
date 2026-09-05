@@ -12,6 +12,8 @@ interface VaultData {
   prometheus: { url: string; note: string };
   app_admin: { username: string; password: string; note: string };
   jwt: { secret_key: string };
+  paperless: { url: string; username: string; password: string; note: string };
+  paperless_samba: { username: string; password: string; note: string };
 }
 
 interface CredRow {
@@ -90,6 +92,23 @@ function buildGroups(v: VaultData): CredGroup[] {
     {
       title: "JWT",
       rows: [{ label: "Secret Key", value: v.jwt.secret_key, secret: true }],
+    },
+    {
+      title: "Paperless",
+      rows: [
+        { label: "URL", value: v.paperless.url },
+        { label: "Username", value: v.paperless.username },
+        { label: "Password", value: v.paperless.password, secret: true },
+        { label: "Note", value: v.paperless.note },
+      ],
+    },
+    {
+      title: "Paperless (Samba share)",
+      rows: [
+        { label: "Username", value: v.paperless_samba.username },
+        { label: "Password", value: v.paperless_samba.password, secret: true },
+        { label: "Note", value: v.paperless_samba.note },
+      ],
     },
   ];
 }

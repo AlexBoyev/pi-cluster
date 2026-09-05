@@ -86,6 +86,19 @@ class Settings(BaseSettings):
     # under it with no signal that it did.
     argocd_admin_password: str = ""
 
+    # Paperless's Django superuser (docs/decisions.md D4) - a fallback/admin
+    # login, distinct from the SSO path everyone else uses day to day
+    # (Remote-User, no password at all). Mirrors the credential already in
+    # the paperless-secret K8s Secret so the vault can show it without a
+    # live cluster read - same reasoning as the ArgoCD entry above, keep
+    # this in sync by hand if the K8s Secret is ever rotated.
+    paperless_admin_user: str = ""
+    paperless_admin_password: str = ""
+    # The consume-folder Samba share's own credential (docs/decisions.md D2)
+    # - shown here purely for convenience; it's a LAN-only, non-SSO
+    # credential and was never going to live anywhere near the pi_sso flow.
+    paperless_samba_password: str = ""
+
     log_retention_days: int = 90
 
     k8s_kubeconfig_path: str = "/app/kubeconfig"
