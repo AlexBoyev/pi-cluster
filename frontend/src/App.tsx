@@ -57,19 +57,22 @@ const NAV = [
 // this dashboard itself is being viewed from, same as IS_LAN above.
 //
 // ssoBridge: true routes through the backend's auto-login bridge instead of
-// the service directly - only for apps with no native SSO/remote-user
-// support of their own (Wallabag; see docs/decisions.md). Vikunja,
-// Paperless-ngx and Firefly III all support trusted-header or OIDC login
-// natively, so they won't need this - just link to them directly.
+// the service directly - Wallabag (one shared account, single stored
+// credential) and Vikunja (two real accounts, per-pi-cluster-user
+// credential map - see docs/decisions.md) both need it since neither has
+// clean pre-auth support of its own. Paperless-ngx and Firefly III both
+// support trusted-header/OIDC login natively and won't need a bridge at
+// all when they land - just link to them directly.
 const HOUSEHOLD_SERVICES = [
   { key: "wallabag", label: "Wallabag", icon: "📖", slug: "wallabag", desc: "Read-later article & bookmark archive", ssoBridge: true },
+  { key: "vikunja", label: "Vikunja", icon: "✅", slug: "vikunja", desc: "Shared tasks, projects & calendar sync", ssoBridge: true },
 ];
 
 function serviceHref(s: { slug: string; ssoBridge?: boolean }): string {
   if (s.ssoBridge) {
     return IS_LAN
-      ? "http://pi-cluster.lan/api/v1/auth/wallabag-sso"
-      : "https://pi.cluster.download/api/v1/auth/wallabag-sso";
+      ? `http://pi-cluster.lan/api/v1/auth/${s.slug}-sso`
+      : `https://pi.cluster.download/api/v1/auth/${s.slug}-sso`;
   }
   return IS_LAN ? `http://${s.slug}.pi-cluster.lan` : `https://${s.slug}.cluster.download`;
 }
