@@ -278,3 +278,67 @@ filesystem quota, so the number that actually matters is pi-node2's real
 disk usage, which the existing `HighDisk` Prometheus rule already alerts
 on at 80% for any node. See `k8s/apps/paperless/README.md`'s Capacity
 section for the full reasoning.
+
+## Firefly III
+
+### Deploy
+
+See `k8s/apps/firefly/README.md` for the full manual-steps sequence
+(Postgres role, Secret, first account, nginx block, Cloudflare Tunnel
+routes, Data Importer setup). Manifests sync via ArgoCD automatically
+(`k8s/apps/` — the whole tree, recursively, as of 2026-09-07 — is watched,
+see `docs/decisions.md`).
+
+### First import is CSV, not a bank connection
+
+See `docs/decisions.md` Firefly D1 for the full reasoning: bank-API
+auto-sync (GoCardless/Nordigen, SaltEdge) is EU/UK PSD2-specific and
+there's no regulatory basis to expect Israeli bank coverage. Export a CSV
+from the bank's own online banking and run it through the Data Importer
+(`firefly-import.cluster.download`) instead — works with any bank, no
+cooperation needed. Save the resulting column-mapping profile once
+verified correct so future months are a re-upload, not a re-mapping.
+
+### When recurring transactions/bill reminders don't fire
+
+The daily `firefly-cron` CronJob (`k8s/apps/firefly/cronjob.yaml`, 03:00)
+hits Firefly's own `/api/v1/cron/<token>` endpoint — check it actually ran:
+
+```bash
+kubectl get cronjob firefly-cron -n firefly
+kubectl get jobs -n firefly --sort-by=.metadata.creationTimestamp
+```
+
+A `STATIC_CRON_TOKEN` mismatch between the CronJob's env (reads from
+`firefly-secret`) and what Firefly itself expects would show as the job
+running but the request failing — check the job's own pod logs, not just
+whether the CronJob fired.
+
+### Upgrade
+
+1. Check the [Firefly III releases page](https://github.com/firefly-iii/firefly-iii/releases)
+   for the target version's migration/breaking-change notes.
+2. Back up first — trigger `/home/admin/backup.sh` manually rather than
+   waiting for the nightly cron.
+3. Edit the pinned tag in `k8s/apps/firefly/deployment.yaml`, commit, push
+   (or `kubectl apply -f k8s/apps/firefly/` to skip the ArgoCD sync wait).
+   Update `k8s/apps/firefly/importer-deployment.yaml` separately if the
+   Data Importer has its own new release — the two version independently.
+4. Watch the pod come up (`kubectl get pods -n firefly -w`) and check Loki
+   (Grafana Explore, `{namespace="firefly"}`) for migration errors.
+5. **Rollback**: revert the tag, then restore the `firefly` database from
+   the pre-upgrade backup only if the new version wrote data in a format
+   the old one can't read — check the release notes from step 1 first.
+   `APP_KEY` must never change across a rollback either, or existing
+   encrypted fields become unreadable.
+
+### Add a user later
+
+No CLI user-create command the way Wallabag/Vikunja have — new accounts go
+through Firefly's own registration flow if ever re-enabled
+(`APP_ENABLE_REGISTRATION` in `k8s/apps/firefly/configmap.yaml`, currently
+`false`), or are created directly in Firefly's own admin UI by an existing
+admin. Since `AUTHENTICATION_GUARD=remote_user_guard` is active, confirm
+live whether the new account's identifier needs to match the pi-cluster
+username or email before creating it — flagged as unverified in
+`docs/decisions.md` Firefly D2, not assumed either way.

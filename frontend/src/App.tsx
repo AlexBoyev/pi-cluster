@@ -61,12 +61,13 @@ const NAV = [
 // credential) and Vikunja (two real accounts, per-pi-cluster-user
 // credential map - see docs/decisions.md) both need it since neither has
 // clean pre-auth support of its own. Paperless-ngx and Firefly III both
-// support trusted-header/OIDC login natively and won't need a bridge at
-// all when they land - just link to them directly.
+// support trusted-header login natively (PAPERLESS_ENABLE_HTTP_REMOTE_USER /
+// remote_user_guard) and link to them directly instead.
 const HOUSEHOLD_SERVICES = [
   { key: "wallabag", label: "Wallabag", icon: "📖", slug: "wallabag", desc: "Read-later article & bookmark archive", ssoBridge: true },
   { key: "vikunja", label: "Vikunja", icon: "✅", slug: "vikunja", desc: "Shared tasks, projects & calendar sync", ssoBridge: true },
   { key: "paperless", label: "Paperless", icon: "🗂️", slug: "paperless", desc: "Scanned document archive & search", ssoBridge: false },
+  { key: "firefly", label: "Firefly III", icon: "💰", slug: "firefly", desc: "Personal finance & budgeting", ssoBridge: false },
 ];
 
 function serviceHref(s: { slug: string; ssoBridge?: boolean }): string {
