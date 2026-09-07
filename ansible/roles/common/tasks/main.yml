@@ -46,11 +46,34 @@
   become: yes
 
 - name: Enable cgroups for K3s (cmdline.txt for Raspberry Pi)
+  # /boot/cmdline.txt is a placeholder on Raspberry Pi OS Bookworm+ ("DO NOT
+  # EDIT THIS FILE, the file you are looking for has moved to
+  # /boot/firmware/cmdline.txt") — this task silently did nothing against
+  # the real boot config until caught while diagnosing the 2026-09-07
+  # outage. See docs/decisions.md.
   lineinfile:
-    path: /boot/cmdline.txt
+    path: /boot/firmware/cmdline.txt
     backrefs: yes
     regexp: '^((?!.*cgroup_enable=cpuset).*)$'
     line: '\1 cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory'
+  become: yes
+  notify: reboot node
+
+- name: Force usb-storage driver instead of uas for the ASMedia USB-SATA bridge
+  # All 4 nodes' Kingston SA400S37 SSDs sit behind an ASMedia ASM235CM
+  # bridge (USB ID 174c:235c) whose `uas` driver hangs on the first burst
+  # of small reads after a cold boot on Raspberry Pi — a known class of Pi
+  # + USB-SSD issue. Caused an 18+ minute full outage on 2026-09-07: every
+  # worker's Traefik pod got stuck inside its own entrypoint's `traefik
+  # --help` self-check, blocked in kernel disk-wait (D state, unkillable)
+  # trying to read the traefik binary. Confirmed independent per-node (not
+  # cross-node contention) by observing the identical hang recur in
+  # isolation even after staggering boot times. See docs/decisions.md.
+  lineinfile:
+    path: /boot/firmware/cmdline.txt
+    backrefs: yes
+    regexp: '^((?!.*usb-storage\.quirks=174c:235c:u).*)$'
+    line: '\1 usb-storage.quirks=174c:235c:u'
   become: yes
   notify: reboot node
 

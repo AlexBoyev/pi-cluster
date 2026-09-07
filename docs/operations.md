@@ -19,35 +19,48 @@ outside Kubernetes entirely.
 | pi-node3 | **Wallabag and Vikunja both go down.** Neither pod can reschedule elsewhere — each PVC's `nodeAffinity` ties it to pi-node3 (`local-path`, not portable). Both sit `Pending` until pi-node3 is uncordoned. |
 | pi-node4 | Backup target, not a K8s workload host for anything yet. K8s-level drain doesn't stop the nightly backup cron (that's a plain SSH/rsync job on pi-node1, not scheduled *on* pi-node4) — but if pi-node4 is offline outright (not just drained), that night's backup fails to ship; local copies on pi-node1 still exist until the next cleanup cycle trims them. |
 
-## Full cluster power cycle: expect a slow, staggered recovery
+## Full cluster power cycle: what to expect, and what was actually wrong once
 
-All 4 Pis share one power source, so a full shutdown/power-on always brings
-every node up within the same few seconds — there's no way to stagger the
-physical boot. `ansible/roles/k3s_agent` compensates in software: each
-worker's `k3s-agent` has a boot delay before it starts (`boot_delay_seconds`
-in `ansible/inventory/hosts.ini` — pi-node2=0, pi-node3=60, pi-node4=120),
-so their DaemonSet pods (Traefik, node-exporter, promtail) don't all start
-on the same saturated local disk in the same instant. See `docs/decisions.md`
-for the 2026-09-07 incident this came from — an 18+ minute full outage of
-every household service, traced to Traefik's container being stuck reading
-its own binary off a slow SSD, not any config or network problem.
+All 4 Pis share one power source — there's no way to stagger the physical
+boot. Two separate things were fixed after the 2026-09-07 outage, and it's
+worth knowing which is which if this ever looks like it's happening again:
 
-What this means in practice after a full power-on:
+1. **The actual root cause**: all 4 nodes' SSDs sit behind an ASMedia
+   USB-SATA bridge (`174c:235c`) whose `uas` driver hangs on the first
+   burst of reads after a cold boot — a known Pi + USB-SSD problem, fixed
+   with `usb-storage.quirks=174c:235c:u` in each node's
+   `/boot/firmware/cmdline.txt` (`ansible/roles/common`). Before this fix,
+   Traefik's container could get stuck for 40+ minutes inside its own
+   entrypoint script, in kernel disk-wait (`D` state — unkillable, not
+   even `SIGKILL` clears it), never reaching the point of binding port 80.
+2. **Defense in depth, kept but not the actual fix**: a per-node boot
+   delay before `k3s-agent` starts (`boot_delay_seconds` in
+   `ansible/inventory/hosts.ini` — pi-node2=0, pi-node3=60, pi-node4=120),
+   so DaemonSet pods don't all start in the same instant on a future
+   slower disk. Initially believed to be the fix; disproved when all 3
+   workers hung the *same* way even staggered, in isolation, which is what
+   led to finding (1). See `docs/decisions.md` for the full incident and
+   the correction.
 
-- **Expect roughly 2-3 minutes before ingress (Traefik) is reliably serving
-  traffic again**, even with the stagger — pi-node4 alone still delays
-  120s before its agent starts. This is normal, not a fault.
-- If a household service or the dashboard itself 502s in that window,
-  check `kubectl get pods -n traefik` — as of the Traefik manifest's
-  `startupProbe`/`readinessProbe`/`livenessProbe`, a genuinely wedged pod
-  now shows `0/1` instead of lying `Running`/`Ready`. If it's still not
-  Ready 10+ minutes after boot, that's worth investigating for real
-  (`kubectl describe pod`, then `crictl inspect`/`ps -o stat,wchan` on the
-  node directly for a `D`-state process stuck on disk I/O).
-- **Don't restart Traefik pods to "fix" a slow boot** — if the node is
-  still I/O-saturated, a restart just re-triggers the same slow binary
-  read and adds more contention on top of what's already there. Let the
-  `startupProbe` grace period (up to ~10 minutes) run its course first.
+What this means in practice after a full power-on, now that (1) is fixed:
+
+- **Expect roughly 1-2 minutes before ingress (Traefik) is reliably
+  serving traffic again** — normal boot + the agent stagger, not a fault.
+- If a household service or the dashboard itself 502s well beyond that,
+  check `kubectl get pods -n traefik` — the Traefik manifest's
+  `startupProbe`/`readinessProbe`/`livenessProbe` now show a genuinely
+  wedged pod as `0/1` instead of lying `Running`/`Ready`. If still not
+  Ready 10+ minutes after boot, that's worth investigating for real:
+  `ps -o pid,stat,etimes,cmd -C traefik` on the node itself — `D` state
+  with `etimes` climbing past a minute or two means the USB quirk isn't
+  applied on that node (check `/boot/firmware/cmdline.txt` has
+  `usb-storage.quirks=174c:235c:u`, and `dmesg -T | grep -i uas` shows
+  "UAS is ignored for this device" rather than `scsi host0: uas`).
+- **Don't restart a Traefik pod to "fix" a slow boot** — a `D`-state
+  process can't be killed by any signal anyway (this is exactly why pods
+  have gotten stuck `Terminating` past their grace period before, per
+  `docs/decisions.md`'s "Traefik is excluded from pi-node1" section), and
+  forcing it just adds more contention on top of what's already there.
 - `k8s/traefik/traefik.yaml` is **not** ArgoCD-managed (`docs/decisions.md`
   — "Traefik is excluded from pi-node1"); any future change to it needs
   `kubectl apply -f k8s/traefik/traefik.yaml` by hand, pushing to git alone
