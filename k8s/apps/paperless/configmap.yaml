@@ -24,12 +24,15 @@ data:
   # pod for a task queue this household barely stresses. docs/decisions.md.
   PAPERLESS_REDIS: "redis://10.100.102.10:6379/1"
 
-  # Household is Hebrew-first with mixed English (docs/decisions.md D-OCR).
-  # LANGUAGE is the actual Tesseract invocation string (+ separator);
-  # LANGUAGES is the space-separated list of extra apt packages the
-  # entrypoint installs at startup beyond the image's built-in eng.
-  PAPERLESS_OCR_LANGUAGE: "heb+eng"
-  PAPERLESS_OCR_LANGUAGES: "heb"
+  # Household is mostly Hebrew, with English and Russian both real (not
+  # edge-case) languages in the document mix - explicit user correction,
+  # not the original heb+eng-only assumption (docs/decisions.md D-OCR).
+  # LANGUAGE is the actual Tesseract invocation string (+ separator, order
+  # is priority - Hebrew first since it's the common case); LANGUAGES is
+  # the space-separated list of extra apt packages the entrypoint installs
+  # at startup beyond the image's built-in eng.
+  PAPERLESS_OCR_LANGUAGE: "heb+eng+rus"
+  PAPERLESS_OCR_LANGUAGES: "heb rus"
 
   # Skip OCR on pages that already carry a text layer - much faster for
   # born-digital PDFs (municipal/school PDFs are frequently not scans at
