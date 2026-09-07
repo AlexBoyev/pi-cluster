@@ -1,0 +1,65 @@
+# A separate upstream image by design, not a sidecar - see docs/decisions.md
+# Firefly D4. Stateless, no PVC, restartable anytime - a small interactive
+# web wizard for running a CSV/OFX import, not a background daemon.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firefly-importer
+  namespace: firefly
+  labels:
+    app: firefly-importer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: firefly-importer
+  template:
+    metadata:
+      labels:
+        app: firefly-importer
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: pi-node3
+      containers:
+        - name: firefly-importer
+          # Verified linux/arm64 via the Docker Hub registry API - see
+          # docs/decisions.md.
+          image: fireflyiii/data-importer:version-2.3.4
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            # Internal K8s Service DNS - the importer runs inside the same
+            # cluster as Firefly itself, not through the public URL.
+            - name: FIREFLY_III_URL
+              value: "http://firefly.firefly.svc.cluster.local:80"
+            - name: VANITY_URL
+              value: "https://firefly.cluster.download"
+            # No FIREFLY_III_ACCESS_TOKEN baked in - a Personal Access
+            # Token pasted into the importer's own setup wizard by an
+            # admin, not a stored credential in .env. Gated by the
+            # standard pi_sso wildcard, not a dedicated SSO block - this
+            # is an occasional admin tool, not something auto-login helps.
+          resources:
+            # Lighter than Firefly itself - used rarely, no DB of its own.
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          startupProbe:
+            tcpSocket:
+              port: 8080
+            failureThreshold: 20
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 3

@@ -1,0 +1,34 @@
+# Reachable via nginx's DEDICATED firefly.* block (nginx/nginx.conf, not
+# the shared household-services wildcard - see docs/decisions.md Firefly
+# D2) -> Traefik (pi-node2/3/4) -> this Ingress. Two host rules since
+# Traefik matches Host by exact string against spec.rules[].host - same
+# reason every prior service needed both (docs/decisions.md, Wallabag
+# correction).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: firefly
+  namespace: firefly
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: firefly.pi-cluster.lan
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: firefly
+                port:
+                  number: 80
+    - host: firefly.cluster.download
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: firefly
+                port:
+                  number: 80

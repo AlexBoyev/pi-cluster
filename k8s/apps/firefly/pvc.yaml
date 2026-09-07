@@ -1,0 +1,17 @@
+# local-path, not NFS - same reasoning as every prior household service
+# (docs/decisions.md, Wallabag D1). Small on purpose: this holds CSV
+# upload staging and export files, not a media archive - actual
+# transaction data lives in Postgres, not the filesystem (docs/decisions.md,
+# Firefly D3).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: firefly-data
+  namespace: firefly
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

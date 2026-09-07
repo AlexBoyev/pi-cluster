@@ -16,6 +16,7 @@ backup_postgres_databases:
   - wallabag
   - vikunja
   - paperless
+  - firefly
 
 # Where backups are assembled on pi-node1 before being shipped out.
 backup_local_dir: /home/admin/backups

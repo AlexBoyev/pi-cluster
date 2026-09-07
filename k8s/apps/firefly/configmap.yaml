@@ -1,0 +1,49 @@
+# Non-secret configuration. APP_KEY, DB_PASSWORD, and STATIC_CRON_TOKEN
+# live in the firefly-secret Secret instead - created manually, never in
+# git. See k8s/apps/firefly/README.md.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: firefly-config
+  namespace: firefly
+data:
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  # Canonical from day one - Wallabag's own DOMAIN_NAME was pinned to its
+  # LAN host first and had to be corrected later (docs/decisions.md).
+  # cluster.download works both from the LAN (dnsmasq split-horizon) and
+  # publicly, same lesson Vikunja already applied.
+  APP_URL: "https://firefly.cluster.download"
+
+  # Postgres runs in Docker Compose on pi-node1, not in K8s - reached over
+  # the LAN, not a K8s Service. Same pattern as Wallabag/Vikunja/Paperless.
+  DB_CONNECTION: "pgsql"
+  DB_HOST: "10.100.102.10"
+  DB_PORT: "5432"
+  DB_DATABASE: "firefly"
+  DB_USERNAME: "firefly"
+
+  # Trusted-header SSO, not a stored-credential bridge - docs/decisions.md
+  # Firefly D2. nginx forwards the verified pi-cluster username as a
+  # literal "Remote-User" header; PHP/Laravel sees that as $_SERVER
+  # key HTTP_REMOTE_USER, which is what AUTHENTICATION_GUARD_HEADER wants
+  # here (the PHP name of the header, not the wire name) - verify this
+  # live during rollout, community reports on the exact expected value
+  # are inconsistent across versions.
+  AUTHENTICATION_GUARD: "remote_user_guard"
+  AUTHENTICATION_GUARD_HEADER: "HTTP_REMOTE_USER"
+  TRUSTED_PROXIES: "**"
+
+  # Brevo relay (docs/decisions.md) - same account Vikunja's reminder mail
+  # and the platform's security alerts use, distinct sender address for
+  # readability. Host/port are not secret; USERNAME/PASSWORD live in
+  # firefly-secret.
+  MAIL_MAILER: "smtp"
+  MAIL_HOST: "smtp-relay.brevo.com"
+  MAIL_PORT: "587"
+  MAIL_FROM: "firefly@cluster.download"
+  MAIL_ENCRYPTION: "tls"
+
+  # No self-registration - accounts created manually, same closed-by-design
+  # posture as every prior service.
+  APP_ENABLE_REGISTRATION: "false"

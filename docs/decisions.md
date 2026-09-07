@@ -373,3 +373,33 @@ Two things make this safe rather than merely convenient:
 ## Verified live, not just configured
 
 *(filled in during rollout — see `docs/roadmap.md` for the phase entry and `docs/operations.md` for the runbooks this produces)*
+
+# ADR: Household Services — Firefly III (fourth of four)
+
+`ghcr.io`/Docker Hub `fireflyiii/core` — confirmed via direct Docker Hub API query (not a docs page) to carry a real `linux/arm64` manifest for the `latest` tag (currently 6.6.6, ~304MB compressed arm64). `fireflyiii/data-importer:version-2.3.4` (its companion CSV/bank-import tool, see D1) independently confirmed `linux/arm64` the same way.
+
+## D1 — Import path: CSV via the Data Importer, bank-API integration explicitly unverified
+
+The brief asked for CSV/txt input and, hopefully, bank integration. Both are real Firefly III capabilities, but they are not equally certain to work for this household:
+
+- **CSV/OFX import is solid and verified to exist**: the official `fireflyiii/data-importer` container (not baked into `core` — a deliberate upstream split, kept here too, see D4) provides a web wizard for uploading a CSV/OFX export and mapping columns to Firefly's fields, with reusable per-bank mapping profiles once set up once.
+- **Bank-API integration is a real feature, but its coverage is the wrong shape for this household — stated honestly rather than assumed to work.** The Data Importer's automatic bank-sync options (GoCardless/Nordigen, SaltEdge) are PSD2 open-banking integrations, which are EU/UK-regulation-specific. Nothing found in Firefly III's own docs or community discussions confirms Israeli bank coverage through either provider, and PSD2 itself doesn't apply to Israeli banks — there's no regulatory basis to expect it works, not just an unconfirmed detail. **Treat automatic bank sync as unavailable until proven otherwise for this household's actual bank** — the real, working path is exporting a CSV from the bank's own online banking (nearly universal even where open-banking APIs aren't) and importing it through the Data Importer's manual path, which needs no bank cooperation at all.
+
+## D2 — SSO: `remote_user_guard`, the same trusted-header mechanism as Paperless, not a new bridge
+
+Firefly III has its own documented reverse-proxy trust mechanism: the `AUTHENTICATION_GUARD` setting, pointed at its `remote_user_guard` mode, reads a configurable header (`AUTHENTICATION_GUARD_HEADER`, defaulting to `REMOTE_USER`) and logs in whichever user it names — architecturally identical to Paperless's remote-user mechanism (D4 in the Paperless ADR above). Reused directly: a dedicated `firefly.*` nginx `server` block (not the shared wildcard — same reasoning as Paperless, this block needs to read `/api/v1/auth/verify`'s `X-Pi-User` response header and forward it as `Remote-User`, which the wildcard fallback doesn't do) plus a wide-open `TRUSTED_PROXIES` value so Firefly accepts the header from nginx's own upstream hop through Traefik.
+
+This is the **third** distinct SSO pattern this project has now built (Wallabag: shared-credential bridge; Vikunja: per-user-credential-map bridge; Paperless/Firefly: trusted-header, no stored credential at all) — trusted-header is strictly better where the target app supports it, since there's no service-specific password sitting in `.env` at all. Two things to verify live, not assumed from the docs alone: whether `remote_user_guard` matches the header value against a Firefly username or email (community reports are inconsistent, likely version-dependent), and that `TRUSTED_PROXIES` is actually required for the header to be trusted rather than merely recommended.
+
+## D3 — Storage, database, and node placement: joins the pi-node3 pattern
+
+- **Node**: pi-node3, alongside Wallabag and Vikunja — same reasoning as Vikunja joining Wallabag there (light footprint, well under the node's allocatable). Not pi-node2 (Paperless's OCR wants a full core to itself) and never pi-node1 (control plane, no household-service workloads by convention).
+- **Storage**: `local-path` PVC, sized small (1Gi) — Firefly stores CSV upload staging and export files, not a media archive; actual transaction data lives in Postgres, not the filesystem. Same "not NFS" reasoning as every prior service (D1, Wallabag ADR).
+- **Database**: a dedicated `firefly` Postgres role + database inside the existing platform Postgres (`10.100.102.10:5432`), added to `ansible/roles/backup`'s `backup_postgres_databases` list immediately — the same "add it now, not deferred" discipline as Paperless, since the nightly cron's `set -euo pipefail` aborts the whole run (K3s datastore snapshot included) against a database that doesn't exist yet.
+- **Secret**: created manually via `kubectl create secret`, never in git — same reasoning as every prior service (ArgoCD's `selfHeal` would fight a committed Secret manifest).
+
+## D4 — Data Importer as its own Deployment, not a sidecar or one-off job
+
+The Data Importer is a separate upstream image by design — a small interactive web app you visit occasionally to run an import, not a background daemon. Kept as its own Deployment + Service + Ingress (`firefly-import.pi-cluster.lan`/`.cluster.download`) in the same namespace rather than folded into Firefly's own pod: its lifecycle genuinely differs (stateless, restartable anytime, no PVC of its own), and a shared pod would mean an importer crash takes Firefly itself down for no reason. Gated by the platform's standard `pi_sso` wildcard fallback (not a dedicated trusted-header block like Firefly itself) — it's an admin tool used rarely, not something that benefits from auto-login, and its own auth is a one-time Personal Access Token pasted into its setup wizard, not a login screen a bridge would even help with.
+
+**Recurring transactions/reminders**: upstream's docker-compose example runs this as a plain cron container hitting an authenticated API endpoint once a day. Implemented here as a K8s `CronJob` instead (`k8s/apps/firefly/cronjob.yaml`) — this platform already has first-class CronJob management (dashboard + API, Phase 39), so a scheduled task belongs there rather than as a hand-rolled Alpine+cron sidecar image nothing else in this repo uses that pattern for.

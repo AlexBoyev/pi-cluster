@@ -1,0 +1,37 @@
+# Recurring transactions / bill reminders need a daily hit to Firefly's own
+# cron endpoint (GET /api/v1/cron/<STATIC_CRON_TOKEN>) - implemented as a
+# real K8s CronJob rather than a hand-rolled Alpine+cron sidecar, since this
+# platform already has first-class CronJob management (dashboard + API,
+# Phase 39). See docs/decisions.md Firefly D4.
+#
+# Known upstream wrinkle, not fixed here: the token is passed in the URL
+# path, so it lands in Firefly's own access logs on every run - a real,
+# acknowledged upstream security concern, not something this manifest can
+# work around.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: firefly-cron
+  namespace: firefly
+spec:
+  schedule: "0 3 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            kubernetes.io/hostname: pi-node3
+          restartPolicy: OnFailure
+          containers:
+            - name: firefly-cron
+              image: curlimages/curl:8.10.1
+              env:
+                - name: STATIC_CRON_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: firefly-secret
+                      key: cron-token
+              command:
+                - sh
+                - -c
+                - "curl -sf http://firefly.firefly.svc.cluster.local:80/api/v1/cron/$STATIC_CRON_TOKEN"
