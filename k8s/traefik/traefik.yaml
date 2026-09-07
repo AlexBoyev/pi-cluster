@@ -94,6 +94,8 @@ spec:
             - --providers.kubernetesingress.ingressclass=traefik
             - --providers.kubernetesingress.allowExternalNameServices=true
             - --log.level=INFO
+            - --ping=true
+            - --ping.entrypoint=web
           ports:
             - name: web
               containerPort: 80
@@ -103,6 +105,35 @@ spec:
               containerPort: 443
               hostPort: 443
               protocol: TCP
+          # No probes previously — kubelet reported the pod Ready as soon as
+          # the container process existed, even though the entrypoint's own
+          # `traefik --help` self-check can hang for minutes under node I/O
+          # pressure (a cold-boot storm on all 4 nodes at once) before
+          # Traefik ever execs and binds :80. Ready was a lie during the
+          # 2026-09-07 outage — this makes it real. See docs/decisions.md.
+          # startupProbe gates the other two: a wedged first boot can take
+          # up to 10 minutes (worse than the ~18 observed, with headroom)
+          # without livenessProbe killing it and adding more I/O to an
+          # already-saturated disk. Once it succeeds once, normal
+          # readiness/liveness periods apply.
+          startupProbe:
+            httpGet:
+              path: /ping
+              port: 80
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 80
+            periodSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 80
+            periodSeconds: 10
+            failureThreshold: 12
           resources:
             requests:
               cpu: 50m

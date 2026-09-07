@@ -19,6 +19,40 @@ outside Kubernetes entirely.
 | pi-node3 | **Wallabag and Vikunja both go down.** Neither pod can reschedule elsewhere — each PVC's `nodeAffinity` ties it to pi-node3 (`local-path`, not portable). Both sit `Pending` until pi-node3 is uncordoned. |
 | pi-node4 | Backup target, not a K8s workload host for anything yet. K8s-level drain doesn't stop the nightly backup cron (that's a plain SSH/rsync job on pi-node1, not scheduled *on* pi-node4) — but if pi-node4 is offline outright (not just drained), that night's backup fails to ship; local copies on pi-node1 still exist until the next cleanup cycle trims them. |
 
+## Full cluster power cycle: expect a slow, staggered recovery
+
+All 4 Pis share one power source, so a full shutdown/power-on always brings
+every node up within the same few seconds — there's no way to stagger the
+physical boot. `ansible/roles/k3s_agent` compensates in software: each
+worker's `k3s-agent` has a boot delay before it starts (`boot_delay_seconds`
+in `ansible/inventory/hosts.ini` — pi-node2=0, pi-node3=60, pi-node4=120),
+so their DaemonSet pods (Traefik, node-exporter, promtail) don't all start
+on the same saturated local disk in the same instant. See `docs/decisions.md`
+for the 2026-09-07 incident this came from — an 18+ minute full outage of
+every household service, traced to Traefik's container being stuck reading
+its own binary off a slow SSD, not any config or network problem.
+
+What this means in practice after a full power-on:
+
+- **Expect roughly 2-3 minutes before ingress (Traefik) is reliably serving
+  traffic again**, even with the stagger — pi-node4 alone still delays
+  120s before its agent starts. This is normal, not a fault.
+- If a household service or the dashboard itself 502s in that window,
+  check `kubectl get pods -n traefik` — as of the Traefik manifest's
+  `startupProbe`/`readinessProbe`/`livenessProbe`, a genuinely wedged pod
+  now shows `0/1` instead of lying `Running`/`Ready`. If it's still not
+  Ready 10+ minutes after boot, that's worth investigating for real
+  (`kubectl describe pod`, then `crictl inspect`/`ps -o stat,wchan` on the
+  node directly for a `D`-state process stuck on disk I/O).
+- **Don't restart Traefik pods to "fix" a slow boot** — if the node is
+  still I/O-saturated, a restart just re-triggers the same slow binary
+  read and adds more contention on top of what's already there. Let the
+  `startupProbe` grace period (up to ~10 minutes) run its course first.
+- `k8s/traefik/traefik.yaml` is **not** ArgoCD-managed (`docs/decisions.md`
+  — "Traefik is excluded from pi-node1"); any future change to it needs
+  `kubectl apply -f k8s/traefik/traefik.yaml` by hand, pushing to git alone
+  does nothing.
+
 ## Manually migrating a household service to a different node
 
 `local-path` PVCs aren't portable — there's no live reschedule. This is the

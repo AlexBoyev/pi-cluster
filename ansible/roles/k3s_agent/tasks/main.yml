@@ -20,3 +20,29 @@
     enabled: yes
     state: started
   become: yes
+
+- name: Create systemd drop-in directory for k3s-agent
+  file:
+    path: /etc/systemd/system/k3s-agent.service.d
+    state: directory
+    mode: "0755"
+  become: yes
+
+- name: Stagger k3s-agent start at boot
+  # All 4 Pis are on one power source and boot simultaneously — there is no
+  # hardware way to stagger them. Without this, every worker's containerd
+  # starts every DaemonSet pod (Traefik, node-exporter, promtail) in the
+  # same few seconds, saturating each node's own local SSD (a Kingston A400
+  # over USB, no DRAM cache) badly enough that Traefik's entrypoint took
+  # 18+ minutes just to exec the traefik binary — a full outage of every
+  # household service. Delaying when each node's k3s-agent (and therefore
+  # its pod starts) begins spreads that I/O burst out instead of having all
+  # 3 workers hit it in the same instant. See docs/decisions.md.
+  copy:
+    dest: /etc/systemd/system/k3s-agent.service.d/boot-delay.conf
+    content: |
+      [Service]
+      ExecStartPre=/bin/sleep {{ boot_delay_seconds | default(0) }}
+    mode: "0644"
+  become: yes
+  notify: reload systemd
