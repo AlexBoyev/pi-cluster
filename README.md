@@ -2,7 +2,7 @@
 
 A self-hosted DevOps platform for a 4-node Raspberry Pi cluster. Provides a React dashboard for deploying, monitoring, and managing containerised workloads on Kubernetes, with a full CI/CD pipeline, GitOps delivery, Prometheus metrics, audit logging, SSH terminal, live log streaming (Loki + Promtail), a container registry, nightly backup/disaster-recovery, and log/audit retention — all running on the cluster itself. This is a full K3s admin platform, not just a monitoring dashboard; see `docs/roadmap.md` for the complete phase-by-phase history.
 
-Alongside the platform, the cluster also hosts a small set of household services (Wallabag, Vikunja, Paperless-ngx) behind a single-sign-on gate and per-service auto-login bridge (or trusted-header SSO, for Paperless), and a security-alert notification path (new-login-IP detection, severity-filtered email/webhook channels via a Brevo SMTP relay) — see [Household Services & SSO](#household-services--sso) and [Security](#security) below.
+Alongside the platform, the cluster also hosts a small set of household services (Wallabag, Vikunja, Paperless-ngx, Firefly III) behind a single-sign-on gate and per-service auto-login bridge (or trusted-header SSO, for Paperless and Firefly), and a security-alert notification path (new-login-IP detection, severity-filtered email/webhook channels via a Brevo SMTP relay) — see [Household Services & SSO](#household-services--sso) and [Security](#security) below.
 
 ---
 

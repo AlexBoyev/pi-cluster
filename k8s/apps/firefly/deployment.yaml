@@ -79,11 +79,19 @@ spec:
           # assumed - see docs/decisions.md). Upgrade to an HTTP probe once
           # one is verified live rather than guess a path that might 404 or
           # redirect unpredictably under remote_user_guard.
+          #
+          # 600s budget, not the original 150s: first-boot `composer
+          # dump-autoload` + migrations genuinely took longer than 150s on
+          # pi-node3's ARM hardware, and the too-short original budget
+          # caused a real restart-before-ready loop on first deploy
+          # (verified live, 2026-09-07) - same class of mistake this
+          # project already paid for once with Tika's slow JVM boot on
+          # Paperless.
           startupProbe:
             tcpSocket:
               port: 8080
-            failureThreshold: 30
-            periodSeconds: 5
+            failureThreshold: 60
+            periodSeconds: 10
           livenessProbe:
             tcpSocket:
               port: 8080
