@@ -1,8 +1,8 @@
 # Pi-Cluster
 
-A self-hosted DevOps platform for a 4-node Raspberry Pi cluster. Provides a React dashboard for deploying, monitoring, and managing containerised workloads on Kubernetes, with a full CI/CD pipeline, GitOps delivery, Prometheus metrics, audit logging, SSH terminal, and live log streaming — all running on the cluster itself.
+A self-hosted DevOps platform for a 4-node Raspberry Pi cluster. Provides a React dashboard for deploying, monitoring, and managing containerised workloads on Kubernetes, with a full CI/CD pipeline, GitOps delivery, Prometheus metrics, audit logging, SSH terminal, live log streaming (Loki + Promtail), a container registry, nightly backup/disaster-recovery, and log/audit retention — all running on the cluster itself. This is a full K3s admin platform, not just a monitoring dashboard; see `docs/roadmap.md` for the complete phase-by-phase history.
 
-Alongside the platform, the cluster also hosts a small set of household services (Wallabag, Vikunja) behind a single-sign-on gate and per-service auto-login bridge, and a security-alert notification path (new-login-IP detection, severity-filtered email/webhook channels via a Brevo SMTP relay) — see [Household Services & SSO](#household-services--sso) and [Security](#security) below.
+Alongside the platform, the cluster also hosts a small set of household services (Wallabag, Vikunja, Paperless-ngx) behind a single-sign-on gate and per-service auto-login bridge (or trusted-header SSO, for Paperless), and a security-alert notification path (new-login-IP detection, severity-filtered email/webhook channels via a Brevo SMTP relay) — see [Household Services & SSO](#household-services--sso) and [Security](#security) below.
 
 ---
 
@@ -117,7 +117,7 @@ DNS is handled by a dnsmasq container on pi-node1. On home WiFi, `*.pi-cluster.l
 | DNS          | dnsmasq                           | LAN wildcard DNS + split-horizon for public domain |
 | Tunnel       | Cloudflare Tunnel (cloudflared)   | Public access without port forwarding        |
 | Log aggregation | Loki + Promtail                | Centralised logs from K3s pods + Compose containers |
-| Household services | Wallabag, Vikunja            | Self-hosted apps for household use, gated by SSO — see below |
+| Household services | Wallabag, Vikunja, Paperless-ngx | Self-hosted apps for household use, gated by SSO — see below |
 | Mailer       | Brevo SMTP relay                  | Vikunja reminders + security-alert email notifications |
 | Config Mgmt  | Ansible                           | Node bootstrap, K3s install, platform deploy |
 | K8s Packaging| Helm                              | Platform chart (backend, frontend, DB, Redis)|
@@ -207,7 +207,7 @@ k8s/
 
 A separate category from the platform itself: self-hosted apps for household use (2 users) that happen to run on this cluster — they don't manage nodes, workloads, or each other, and keep their own independent user systems. Full reasoning and every decision behind this pattern lives in `docs/decisions.md`'s ADRs and `docs/architecture.md` §23-25; this is the summary.
 
-**Services today**: [Wallabag](https://wallabag.org) (read-later article archive, one shared account) and [Vikunja](https://vikunja.io) (shared task/project management, two real distinct accounts, CalDAV sync). Paperless-ngx and Firefly III are planned to follow the same pattern.
+**Services today**: [Wallabag](https://wallabag.org) (read-later article archive, one shared account), [Vikunja](https://vikunja.io) (shared task/project management, two real distinct accounts, CalDAV sync), and [Paperless-ngx](https://docs.paperless-ngx.com) (scanned document archive with OCR — Hebrew/English/Russian — Tika/Gotenberg for Office docs, Samba share for ingestion, trusted-header SSO instead of an auto-login bridge). Firefly III (personal finance) is planned to follow the same pattern next.
 
 **The pattern**: one dedicated K8s namespace per service, `local-path` storage pinned to a specific worker node (not NFS — no NFS infrastructure exists on this cluster), a dedicated database + role inside the existing platform Postgres (not a new pod per service), an out-of-band `kubectl create secret` (never committed — ArgoCD's `selfHeal` would fight a Secret manifest in git), and a plain K8s `Ingress` with an `ingressClassName: traefik` and a `<name>.pi-cluster.lan` host — nginx's wildcard fallback and Traefik already handle routing for any hostname on that pattern, no nginx edit or platform deploy needed per new service.
 
@@ -749,8 +749,10 @@ pi-cluster/
 │   │   ├── node-exporter.yaml
 │   │   ├── promtail.yaml
 │   │   ├── kube-state-metrics.yaml
+│   │   ├── promtail.yaml
 │   │   ├── wallabag/         ← household service: namespace, PVC, ConfigMap, Deployment, Service, Ingress, README
-│   │   └── vikunja/          ← same pattern as wallabag/
+│   │   ├── vikunja/          ← same pattern as wallabag/
+│   │   └── paperless/        ← same pattern + Tika, Gotenberg, Samba (hostNetwork) — see docs/decisions.md
 │   └── traefik/              ← NOT ArgoCD-managed, see docs/architecture.md §13
 ├── nginx/
 │   └── nginx.conf           ← platform hostnames, SSO gate, household-services wildcard fallback

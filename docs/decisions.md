@@ -128,7 +128,7 @@ Client-side filtering only works against the currently loaded page, so filtering
 
 Operator/interactive SSH and Claude Code sessions use `admin@10.100.102.10`, key-based. The backend's own `SSHService` (health checks, node restart/shutdown, the in-app SSH terminal) authenticates as the same `admin` user but with a **password** (`SSH_PASSWORD` in `.env`) via paramiko — password auth is not disabled on this host, and this was previously documented incorrectly (docs asserted `alex` + key-only, which was never true in practice).
 
-A separate `alex` identity exists only for Ansible-managed automation (`ansible_user: alex` in `ansible/group_vars/all.yml`) — a distinct credential from the one used for actual day-to-day operations, and untested/unverified as of this writing (see the `/opt/pi-cluster` entry below for the same pattern: an Ansible-declared value that never matched what's actually running).
+**Correction, 2026-09-07**: the `alex` Ansible identity described above never existed in practice — verified by reading `ansible/group_vars/all.yml` directly while working an incident: `ansible_user: admin`, same as everything else. There is exactly one operator identity on this cluster, `admin`, used for Ansible, interactive SSH, and the backend's own `SSHService` alike. This is the second time an Ansible-declared value in this file turned out to never have matched what's actually running (see the `/opt/pi-cluster` entry below) — worth treating any not-yet-reverified claim in this doc about Ansible-managed state with the same suspicion until checked against the real file.
 
 ## `/home/admin/pi-cluster` is the real application root, not `/opt/pi-cluster`
 
