@@ -61,10 +61,9 @@ What this means in practice after a full power-on, now that (1) is fixed:
   have gotten stuck `Terminating` past their grace period before, per
   `docs/decisions.md`'s "Traefik is excluded from pi-node1" section), and
   forcing it just adds more contention on top of what's already there.
-- `k8s/traefik/traefik.yaml` is **not** ArgoCD-managed (`docs/decisions.md`
-  — "Traefik is excluded from pi-node1"); any future change to it needs
-  `kubectl apply -f k8s/traefik/traefik.yaml` by hand, pushing to git alone
-  does nothing.
+- `k8s/traefik/traefik.yaml` moved to `k8s/apps/traefik.yaml` on 2026-09-07
+  and is ArgoCD-managed like everything else in that directory now — a
+  push to git is enough, no more manual `kubectl apply` special case.
 
 ## Manually migrating a household service to a different node
 
@@ -85,7 +84,7 @@ This is manual and a little fiddly by design — `local-path` was chosen specifi
 
 ### Deploy
 
-See `k8s/apps/wallabag/README.md` for the full manual-steps sequence (Postgres role, Secret, first accounts). Manifests sync via ArgoCD automatically once the Secret exists (`k8s/apps/` is watched — unlike `k8s/traefik/`, see `docs/architecture.md` §13).
+See `k8s/apps/wallabag/README.md` for the full manual-steps sequence (Postgres role, Secret, first accounts). Manifests sync via ArgoCD automatically once the Secret exists (`k8s/apps/` — the whole directory, Traefik included as of 2026-09-07 — is watched, see `docs/architecture.md` §13).
 
 ### First boot is slow — this is expected
 

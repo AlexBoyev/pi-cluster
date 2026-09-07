@@ -40,8 +40,8 @@ created it — `apply` is idempotent.)
 ## 3. Apply / wait for ArgoCD sync
 
 Manifests in this directory sync automatically (`k8s/apps/` is ArgoCD-managed
-— unlike `k8s/traefik/`, see `docs/architecture.md` §13). Or apply directly
-to skip the ~3 minute wait:
+— including Traefik itself since 2026-09-07, see `docs/architecture.md` §13).
+Or apply directly to skip the ~3 minute wait:
 
 ```bash
 sudo k3s kubectl apply -f k8s/apps/wallabag/

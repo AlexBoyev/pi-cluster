@@ -236,21 +236,21 @@ ArgoCD (K3s, NodePort `:30443`) watches **only** the `k8s/apps/` directory (`spe
 
 ```
 k8s/
-├── apps/
-│   ├── namespace.yaml              ← pi-apps namespace
-│   ├── node-exporter.yaml          ← node-exporter DaemonSet, all 4 nodes
-│   ├── promtail.yaml                ← Promtail DaemonSet, all 4 nodes
-│   ├── kube-state-metrics.yaml     ← kube-state-metrics Deployment + NodePort
-│   └── sample-nginx.yaml           ← example workload
-└── traefik/
-    └── traefik.yaml                 ← Traefik DaemonSet + RBAC — NOT under k8s/apps/, NOT GitOps-managed
+└── apps/
+    ├── namespace.yaml              ← pi-apps namespace
+    ├── node-exporter.yaml          ← node-exporter DaemonSet, all 4 nodes
+    ├── promtail.yaml                ← Promtail DaemonSet, all 4 nodes
+    ├── kube-state-metrics.yaml     ← kube-state-metrics Deployment + NodePort
+    ├── traefik.yaml                 ← Traefik DaemonSet + RBAC — GitOps-managed since 2026-09-07, see below
+    ├── sample-nginx.yaml           ← example workload
+    ├── wallabag/, vikunja/, paperless/  ← household services
 ```
 
-**`k8s/traefik/traefik.yaml` is a documentation trap** — it looks like it belongs with the other K8s manifests, but ArgoCD never watches it. It was applied once by hand (Phase 8) and any change to it since requires a manual `kubectl apply -f k8s/traefik/traefik.yaml` — pushing to git alone does nothing. Discovered the hard way while deploying the pi-node1 exclusion fix (see `docs/decisions.md`). Worth moving into `k8s/apps/` at some point so it stops being a special case; not done as of this writing.
+**`k8s/traefik/traefik.yaml` used to be a documentation trap** — it looked like it belonged with the other K8s manifests, but ArgoCD never watched it (applied once by hand in Phase 8, drifting from git ever since; any change needed a manual `kubectl apply`). Moved into `k8s/apps/traefik.yaml` on 2026-09-07 while closing out operational-hardening follow-ups — it's now a normal ArgoCD-managed resource like everything else here, adopted cleanly since the manifest content didn't change, just its path. No more special case.
 
 ArgoCD does **not** manage the Docker Compose stack — that is Jenkins's responsibility.
 
-**Sync policy:** automated with `prune: true` and `selfHeal: true`. Any change to `k8s/apps/` in Git is applied within ~3 minutes. Manual `kubectl apply` is not needed for resources in that directory — but is needed for `k8s/traefik/`, per above.
+**Sync policy:** automated with `prune: true` and `selfHeal: true`. Any change to `k8s/apps/` in Git — Traefik included, now — is applied within ~3 minutes. Manual `kubectl apply` is no longer needed for any in-cluster K8s resource this repo manages.
 
 ---
 

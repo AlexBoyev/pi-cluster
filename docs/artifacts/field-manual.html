@@ -1,0 +1,725 @@
+<title>Pi-Cluster Field Manual</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#f5f2f0;
+    --surface:#ffffff;
+    --surface-2:#faf7f5;
+    --ink:#201a1c;
+    --ink-muted:#6d6266;
+    --ink-faint:#a6999c;
+    --border:#e5dcdc;
+    --border-strong:#d3c6c7;
+    --accent:#b8225a;
+    --accent-ink:#7a1740;
+    --accent-soft:#f6dde7;
+    --accent-soft-ink:#8a1c4b;
+    --good:#2e7d5b;
+    --good-soft:#dcefe4;
+    --warn:#a56a10;
+    --warn-soft:#f4e6cd;
+    --crit:#a83a3a;
+    --crit-soft:#f6dede;
+    --code-bg:#211a1d;
+    --code-ink:#f1e6e9;
+    --code-accent:#f0a8c4;
+    --shadow:0 1px 2px rgba(32,20,24,.06), 0 8px 24px -12px rgba(32,20,24,.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#181314;
+      --surface:#211a1c;
+      --surface-2:#271f22;
+      --ink:#f2e9ea;
+      --ink-muted:#b8a9ac;
+      --ink-faint:#7c6b6e;
+      --border:#3a2e31;
+      --border-strong:#4a3a3e;
+      --accent:#f0568c;
+      --accent-ink:#ffd3e4;
+      --accent-soft:#3a1d29;
+      --accent-soft-ink:#f7b8d1;
+      --good:#5fc79a;
+      --good-soft:#173327;
+      --warn:#e0ab52;
+      --warn-soft:#332711;
+      --crit:#e88080;
+      --crit-soft:#3a2020;
+      --code-bg:#100c0d;
+      --code-ink:#f1e6e9;
+      --code-accent:#f0a8c4;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#181314;
+    --surface:#211a1c;
+    --surface-2:#271f22;
+    --ink:#f2e9ea;
+    --ink-muted:#b8a9ac;
+    --ink-faint:#7c6b6e;
+    --border:#3a2e31;
+    --border-strong:#4a3a3e;
+    --accent:#f0568c;
+    --accent-ink:#ffd3e4;
+    --accent-soft:#3a1d29;
+    --accent-soft-ink:#f7b8d1;
+    --good:#5fc79a;
+    --good-soft:#173327;
+    --warn:#e0ab52;
+    --warn-soft:#332711;
+    --crit:#e88080;
+    --crit-soft:#3a2020;
+    --code-bg:#100c0d;
+    --code-ink:#f1e6e9;
+    --code-accent:#f0a8c4;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+    font-size:16px;
+    line-height:1.6;
+  }
+  ::selection{ background:var(--accent-soft); color:var(--accent-soft-ink); }
+
+  h1,h2,h3,h4{
+    font-family:'Fraunces', Georgia, serif;
+    font-weight:600;
+    text-wrap:balance;
+    color:var(--ink);
+    letter-spacing:-0.01em;
+  }
+  code, .mono, .stat-num, table, .pill, .code-block{
+    font-family:'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+  }
+  a{ color:var(--accent-ink); }
+  :root[data-theme="dark"] a, @media (prefers-color-scheme:dark){ a{ color:var(--accent); } }
+
+  a:focus-visible, button:focus-visible, .nav-link:focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:2px;
+    border-radius:3px;
+  }
+
+  .shell{
+    display:grid;
+    grid-template-columns:240px minmax(0,1fr);
+    gap:0;
+    max-width:1180px;
+    margin:0 auto;
+  }
+
+  /* ---------- Sidebar nav ---------- */
+  nav.toc{
+    position:sticky;
+    top:0;
+    align-self:start;
+    height:100vh;
+    overflow-y:auto;
+    padding:28px 18px 28px 24px;
+    border-right:1px solid var(--border);
+  }
+  .toc-brand{
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    margin-bottom:4px;
+  }
+  .toc-brand .mark{ color:var(--accent); font-size:1.1rem; }
+  .toc-brand .name{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:1.05rem;
+  }
+  .toc-sub{
+    font-size:.72rem;
+    color:var(--ink-faint);
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    margin-bottom:22px;
+  }
+  .toc-group{ margin-bottom:18px; }
+  .toc-group-label{
+    font-size:.68rem;
+    text-transform:uppercase;
+    letter-spacing:.09em;
+    color:var(--ink-faint);
+    margin-bottom:6px;
+    padding-left:10px;
+  }
+  .nav-link{
+    display:block;
+    padding:5px 10px;
+    margin:1px 0;
+    font-size:.86rem;
+    color:var(--ink-muted);
+    text-decoration:none;
+    border-left:2px solid transparent;
+    border-radius:0 4px 4px 0;
+    transition:color .15s, border-color .15s, background .15s;
+  }
+  .nav-link:hover{ color:var(--ink); background:var(--surface-2); }
+  .nav-link.active{
+    color:var(--accent-ink);
+    border-left-color:var(--accent);
+    background:var(--accent-soft);
+    font-weight:500;
+  }
+
+  /* ---------- Main content ---------- */
+  main{ padding:44px 40px 100px; min-width:0; }
+  .content{ max-width:720px; }
+
+  .doc-header{ margin-bottom:36px; }
+  .eyebrow{
+    display:inline-block;
+    font-size:.72rem;
+    text-transform:uppercase;
+    letter-spacing:.1em;
+    color:var(--accent-ink);
+    background:var(--accent-soft);
+    padding:3px 9px;
+    border-radius:20px;
+    margin-bottom:14px;
+  }
+  h1.title{ font-size:2.5rem; line-height:1.08; margin:0 0 10px; }
+  .dek{ font-size:1.08rem; color:var(--ink-muted); max-width:62ch; margin:0 0 26px; }
+
+  .stat-strip{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:1px;
+    background:var(--border);
+    border:1px solid var(--border);
+    border-radius:10px;
+    overflow:hidden;
+    margin-bottom:8px;
+  }
+  .stat{
+    background:var(--surface);
+    padding:14px 16px;
+  }
+  .stat-num{ font-size:1.5rem; font-weight:600; color:var(--accent-ink); line-height:1.1; }
+  .stat-label{ font-size:.72rem; color:var(--ink-muted); margin-top:3px; text-transform:uppercase; letter-spacing:.05em; }
+
+  section{ margin:52px 0; scroll-margin-top:24px; }
+  section h2{
+    font-size:1.5rem;
+    padding-bottom:10px;
+    border-bottom:1px solid var(--border);
+    margin-bottom:18px;
+  }
+  section h3{ font-size:1.12rem; margin:26px 0 10px; }
+  p{ margin:0 0 14px; max-width:68ch; }
+  ul, ol{ margin:0 0 16px; padding-left:22px; }
+  li{ margin-bottom:6px; max-width:66ch; }
+  li::marker{ color:var(--ink-faint); }
+
+  .lede{ font-size:1.02rem; color:var(--ink); }
+
+  code:not(.code-block code){
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    padding:1px 5px;
+    border-radius:4px;
+    font-size:.87em;
+    color:var(--accent-ink);
+  }
+
+  .code-block{
+    background:var(--code-bg);
+    color:var(--code-ink);
+    border-radius:10px;
+    padding:16px 18px;
+    font-size:.82rem;
+    line-height:1.6;
+    overflow-x:auto;
+    margin:14px 0 20px;
+  }
+  .code-block .c1{ color:var(--code-accent); }
+
+  .diagram-wrap{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:20px;
+    margin:16px 0 22px;
+    overflow-x:auto;
+    box-shadow:var(--shadow);
+  }
+  .diagram-cap{
+    font-size:.78rem;
+    color:var(--ink-faint);
+    margin-top:10px;
+    text-align:center;
+  }
+
+  .table-wrap{ overflow-x:auto; margin:14px 0 22px; border:1px solid var(--border); border-radius:10px; }
+  table{ border-collapse:collapse; width:100%; font-size:.82rem; }
+  th, td{ text-align:left; padding:9px 12px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  th{
+    background:var(--surface-2);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:.72rem;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:var(--ink-muted);
+  }
+  td{ color:var(--ink); font-variant-numeric:tabular-nums; }
+  tr:last-child td{ border-bottom:none; }
+  td.wrap, th.wrap{ white-space:normal; }
+
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-size:.72rem;
+    font-weight:500;
+    padding:2px 8px;
+    border-radius:20px;
+    white-space:nowrap;
+  }
+  .pill-good{ background:var(--good-soft); color:var(--good); }
+  .pill-warn{ background:var(--warn-soft); color:var(--warn); }
+  .pill-crit{ background:var(--crit-soft); color:var(--crit); }
+  .pill::before{ content:''; width:6px; height:6px; border-radius:50%; background:currentColor; }
+
+  .card-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; margin:16px 0 22px; }
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px 18px;
+  }
+  .card h4{ font-size:.95rem; margin:0 0 6px; }
+  .card p{ font-size:.85rem; color:var(--ink-muted); margin:0; }
+  .card .pill{ margin-bottom:8px; }
+
+  .callout{
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-left:3px solid var(--accent);
+    border-radius:0 10px 10px 0;
+    padding:16px 20px;
+    margin:16px 0 22px;
+  }
+  .callout h4{ font-size:.9rem; margin:0 0 6px; color:var(--accent-ink); }
+  .callout p{ font-size:.9rem; margin:0; }
+  .callout p + p{ margin-top:8px; }
+
+  .era-row{
+    display:grid;
+    grid-template-columns:100px 1fr;
+    gap:16px;
+    padding:14px 0;
+    border-top:1px solid var(--border);
+  }
+  .era-row:first-of-type{ border-top:none; }
+  .era-range{ font-size:.78rem; color:var(--ink-faint); padding-top:2px; }
+  .era-body h4{ font-size:.95rem; margin:0 0 4px; }
+  .era-body p{ font-size:.87rem; color:var(--ink-muted); margin:0; }
+
+  .gap-list{ list-style:none; padding:0; margin:0 0 22px; display:flex; flex-direction:column; gap:10px; }
+  .gap-item{
+    display:grid;
+    grid-template-columns:90px 1fr;
+    gap:14px;
+    padding:12px 14px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    align-items:start;
+  }
+  .gap-item p{ margin:0; font-size:.88rem; }
+  .gap-item .pill{ margin-top:1px; }
+
+  .rec{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:22px 24px;
+    margin:0 0 18px;
+    box-shadow:var(--shadow);
+  }
+  .rec-head{ display:flex; align-items:baseline; gap:12px; margin-bottom:8px; }
+  .rec-num{
+    font-family:'Fraunces', serif;
+    font-size:1.6rem;
+    font-weight:600;
+    color:var(--accent);
+    line-height:1;
+  }
+  .rec h3{ margin:0; font-size:1.08rem; }
+  .rec .tag{ font-size:.7rem; color:var(--accent-ink); background:var(--accent-soft); padding:2px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:.05em; margin-left:auto; }
+  .rec-why{ font-size:.85rem; color:var(--ink-muted); margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); }
+  .rec-why strong{ color:var(--ink); font-weight:600; }
+
+  footer{
+    max-width:720px;
+    margin-top:60px;
+    padding-top:22px;
+    border-top:1px solid var(--border);
+    font-size:.8rem;
+    color:var(--ink-faint);
+  }
+
+  @media (max-width: 860px){
+    .shell{ grid-template-columns:1fr; }
+    nav.toc{
+      position:static;
+      height:auto;
+      border-right:none;
+      border-bottom:1px solid var(--border);
+      display:flex;
+      overflow-x:auto;
+      padding:14px 16px;
+      gap:4px;
+      white-space:nowrap;
+    }
+    .toc-brand, .toc-sub, .toc-group-label{ display:none; }
+    .toc-group{ display:flex; gap:4px; margin:0; }
+    .nav-link{ border-left:none; border-bottom:2px solid transparent; }
+    .nav-link.active{ border-left:none; border-bottom-color:var(--accent); border-radius:6px 6px 0 0; }
+    main{ padding:28px 20px 80px; }
+    .stat-strip{ grid-template-columns:repeat(2,1fr); }
+    h1.title{ font-size:1.9rem; }
+    .era-row, .gap-item{ grid-template-columns:1fr; gap:4px; }
+  }
+</style>
+
+<div class="shell">
+  <nav class="toc" id="toc">
+    <div class="toc-brand"><span class="mark">◆</span><span class="name">Pi-Cluster</span></div>
+    <div class="toc-sub">Field Manual — 2026-09-07</div>
+
+    <div class="toc-group">
+      <div class="toc-group-label">Orientation</div>
+      <a class="nav-link" href="#overview">Overview</a>
+      <a class="nav-link" href="#architecture">Architecture</a>
+      <a class="nav-link" href="#stack">Stack</a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-label">Subsystems</div>
+      <a class="nav-link" href="#household">Household services</a>
+      <a class="nav-link" href="#security">Security</a>
+      <a class="nav-link" href="#hardening">Operational hardening</a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-label">Where it stands</div>
+      <a class="nav-link" href="#history">Build history</a>
+      <a class="nav-link" href="#gaps">Known gaps</a>
+    </div>
+    <div class="toc-group">
+      <div class="toc-group-label">Planning</div>
+      <a class="nav-link" href="#recommendations">Recommendations</a>
+    </div>
+  </nav>
+
+  <main>
+    <div class="content">
+
+      <div class="doc-header">
+        <span class="eyebrow">Reference doc · for planning next steps</span>
+        <h1 class="title">Pi-Cluster Field Manual</h1>
+        <p class="dek">A self-hosted DevOps control platform running on a 4-node Raspberry Pi cluster — Kubernetes orchestration, CI/CD, GitOps, monitoring, and three household services, built incrementally across 66 shipped phases. This document is a full-context handoff: current state, what's actually done vs. assumed, and where the open edges are.</p>
+
+        <div class="stat-strip">
+          <div class="stat"><div class="stat-num">4</div><div class="stat-label">Pi nodes</div></div>
+          <div class="stat"><div class="stat-num">66</div><div class="stat-label">Phases shipped</div></div>
+          <div class="stat"><div class="stat-num">3 / 4</div><div class="stat-label">Household services live</div></div>
+          <div class="stat"><div class="stat-num">310</div><div class="stat-label">Backend tests</div></div>
+        </div>
+      </div>
+
+      <section id="overview">
+        <h2>Overview</h2>
+        <p class="lede">Pi-Cluster is two things running on the same four Raspberry Pis: a <strong>DevOps admin platform</strong> (React + FastAPI, its own CI/CD, its own monitoring stack) that manages Kubernetes workloads on the cluster it runs on — and, riding on top of the K8s orchestration that platform built, a small set of <strong>household services</strong> (Wallabag, Vikunja, Paperless-ngx) gated behind single sign-on.</p>
+        <p>The platform is not a toy dashboard. It does real orchestration: deploy, scale, rolling image updates, HPA, node drain, live pod exec/log streaming, RBAC/Secret/ConfigMap/PVC management, alert-rule CRUD from the UI — all audit-logged, all backed by a real Postgres schema, all covering 310 backend tests. <strong>Current priority is operational hardening</strong> (backup/DR, log aggregation, image registry, retention), not new dashboard features — those are all already built; see <a href="#hardening">Operational hardening</a>.</p>
+
+        <div class="card-grid">
+          <div class="card">
+            <span class="pill pill-good">control plane</span>
+            <h4>pi-node1 · 10.100.102.10</h4>
+            <p>Docker Compose stack: backend, Postgres, Redis, Prometheus, Grafana, AlertManager, Jenkins, nginx, dnsmasq, cloudflared, Loki, registry. Also the K3s server (embedded SQLite/kine, not etcd).</p>
+          </div>
+          <div class="card">
+            <span class="pill pill-good">worker</span>
+            <h4>pi-node2 · 10.100.102.16</h4>
+            <p>K3s agent + Traefik. Hosts Paperless-ngx, Tika, Gotenberg, and the Samba ingestion share — pinned alone (OCR wants a full core).</p>
+          </div>
+          <div class="card">
+            <span class="pill pill-good">worker</span>
+            <h4>pi-node3 · 10.100.102.17</h4>
+            <p>K3s agent + Traefik. Hosts Wallabag and Vikunja side by side — combined footprint is well under allocatable.</p>
+          </div>
+          <div class="card">
+            <span class="pill pill-good">worker</span>
+            <h4>pi-node4 · 10.100.102.12</h4>
+            <p>K3s agent + Traefik. Doubles as the nightly backup target (Postgres dump + K3s datastore snapshot, rsync'd over a dedicated key).</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="architecture">
+        <h2>Architecture</h2>
+        <p>Two independent delivery pipelines feed the same node. Jenkins owns the Docker Compose stack; ArgoCD owns everything under <code>k8s/apps/</code>. One real exception: <code>k8s/traefik/traefik.yaml</code> looks GitOps-managed but isn't — ArgoCD's Application only watches <code>k8s/apps/</code>, so a change there needs a manual <code>kubectl apply</code>. This has bitten the project twice already (see <a href="#gaps">Known gaps</a>).</p>
+
+        <div class="diagram-wrap">
+<pre class="mermaid">
+flowchart TB
+    Dev["Developer laptop"] -->|"git push"| GH["GitHub"]
+    GH -->|"SCM poll · 2 min"| JK["Jenkins :8080"]
+    GH -->|"poll · ~3 min"| AC["ArgoCD :30443"]
+
+    subgraph N1["pi-node1 — Docker Compose"]
+      NX["nginx :80\n(single entry point)"]
+      BE["FastAPI backend :8000"]
+      PG[("PostgreSQL")]
+      RD[("Redis")]
+      PR["Prometheus :9090"]
+      GF["Grafana :3000"]
+      AM["AlertManager :9093"]
+      LK["Loki :3100"]
+      REG["registry:2 :5000"]
+    end
+
+    subgraph K3S["K3s cluster — pi-node1..4"]
+      TR["Traefik Ingress\nHostPort 80/443\n(node2/3/4 only)"]
+      HH["Household services\nWallabag · Vikunja · Paperless"]
+      NE["node-exporter DaemonSet"]
+      PT["promtail DaemonSet"]
+    end
+
+    JK -->|"rsync + docker build"| N1
+    AC -->|"apply k8s/apps/**"| K3S
+    NX --> BE
+    NX -->|"wildcard fallback"| TR
+    TR --> HH
+    BE -->|"kubeconfig"| K3S
+    PR --> AM
+    PR --> GF
+    NE --> PR
+    PT --> LK
+</pre>
+          <div class="diagram-cap">Two delivery paths, one entry point. nginx on pi-node1 fronts everything — platform, monitoring, and the K8s-hosted household services alike.</div>
+        </div>
+
+        <h3>The SSO gate + auto-login bridge</h3>
+        <p>Household services keep fully independent user systems — nothing talks to the platform's own <code>users</code> table. What's shared is <em>reachability</em>: nginx runs <code>auth_request</code> against the backend on every request to a household-service hostname, checking a dedicated <code>pi_sso</code> cookie set at platform login. No valid cookie, no route to Traefik at all.</p>
+
+        <div class="diagram-wrap">
+<pre class="mermaid">
+sequenceDiagram
+    participant B as Browser
+    participant N as nginx (pi-node1)
+    participant V as backend /auth/verify
+    participant T as Traefik
+    participant S as service pod
+
+    B->>N: GET wallabag.cluster.download/
+    N->>V: auth_request (pi_sso cookie)
+    alt no valid session
+        V-->>N: 401
+        N-->>B: 302 to platform login
+    else valid session
+        V-->>N: 200 (+ X-Pi-User for Paperless)
+        N->>T: proxy_pass, Host preserved
+        T->>S: route via Ingress
+        S-->>B: app response, own login skipped
+    end
+</pre>
+          <div class="diagram-cap">Wallabag/Vikunja get a server-side auto-login bridge on top of the gate; Paperless uses <code>PAPERLESS_ENABLE_HTTP_REMOTE_USER</code> with a trusted <code>X-Pi-User</code> header instead — no stored credential at all.</div>
+        </div>
+      </section>
+
+      <section id="stack">
+        <h2>Stack</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Layer</th><th>Technology</th><th class="wrap">Purpose</th></tr></thead>
+            <tbody>
+              <tr><td>Frontend</td><td>React + TypeScript + Vite</td><td class="wrap">Dashboard UI</td></tr>
+              <tr><td>Backend</td><td>Python + FastAPI + SQLAlchemy</td><td class="wrap">REST API, business logic, K8s control</td></tr>
+              <tr><td>Database</td><td>PostgreSQL</td><td class="wrap">Persistent state — nodes, workloads, audit, household-service DBs</td></tr>
+              <tr><td>Cache</td><td>Redis</td><td class="wrap">Health cache (90s TTL), distributed locks</td></tr>
+              <tr><td>Orchestration</td><td>K3s</td><td class="wrap">Single-server, embedded SQLite/kine — not etcd</td></tr>
+              <tr><td>Ingress</td><td>Traefik DaemonSet</td><td class="wrap">HostPort 80/443, excluded from pi-node1 (port conflict with nginx)</td></tr>
+              <tr><td>GitOps</td><td>ArgoCD</td><td class="wrap">Declarative delivery for <code>k8s/apps/</code> only</td></tr>
+              <tr><td>CI/CD</td><td>Jenkins, 2 pipelines</td><td class="wrap">Pre-merge gate + post-merge build/test/deploy</td></tr>
+              <tr><td>Metrics</td><td>Prometheus + node-exporter + kube-state-metrics</td><td class="wrap">Node and pod-level time series</td></tr>
+              <tr><td>Dashboards</td><td>Grafana</td><td class="wrap">10-panel cluster dashboard</td></tr>
+              <tr><td>Alerting</td><td>Prometheus rules + AlertManager</td><td class="wrap">Node/pod rules, editable from the dashboard</td></tr>
+              <tr><td>Logs</td><td>Loki + Promtail</td><td class="wrap">K3s pods (all 4 nodes) + Compose containers (pi-node1)</td></tr>
+              <tr><td>Registry</td><td><code>registry:2</code></td><td class="wrap">LAN-only, no auth — platform's own images, SHA + latest tags</td></tr>
+              <tr><td>Reverse proxy</td><td>nginx</td><td class="wrap">Single entry point — platform hostnames, SSO gate, LAN restrictions</td></tr>
+              <tr><td>DNS</td><td>dnsmasq</td><td class="wrap">LAN wildcard DNS, split-horizon for the public domain</td></tr>
+              <tr><td>Public access</td><td>Cloudflare Tunnel</td><td class="wrap">Outbound-only, no port forwarding</td></tr>
+              <tr><td>Mailer</td><td>Brevo SMTP relay</td><td class="wrap">Vikunja reminders + security-alert email</td></tr>
+              <tr><td>Config mgmt</td><td>Ansible</td><td class="wrap">Node bootstrap, K3s install, platform deploy, backups</td></tr>
+              <tr><td>IaC</td><td>Terraform</td><td class="wrap">K8s namespaces, RBAC, ArgoCD Application</td></tr>
+              <tr><td>K8s packaging</td><td>Helm</td><td class="wrap">Platform chart — not currently used for deployment</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="household">
+        <h2>Household services</h2>
+        <p>A deliberately separate category from the platform: self-hosted apps for two real people, gated but not identity-merged. Same repeatable pattern each time — one namespace, <code>local-path</code> storage pinned to a worker node, a dedicated Postgres role inside the existing database, a manually-created Secret (never in git — ArgoCD's <code>selfHeal</code> would fight it), and a plain <code>Ingress</code> on <code>&lt;name&gt;.pi-cluster.lan</code>.</p>
+
+        <div class="card-grid">
+          <div class="card">
+            <span class="pill pill-good">live</span>
+            <h4>Wallabag</h4>
+            <p>Read-later article archive. One shared account, server-side auto-login bridge. pi-node3.</p>
+          </div>
+          <div class="card">
+            <span class="pill pill-good">live</span>
+            <h4>Vikunja</h4>
+            <p>Shared tasks/projects, two real accounts, CalDAV (exempted from the SSO gate — Basic Auth can't follow a redirect). pi-node3.</p>
+          </div>
+          <div class="card">
+            <span class="pill pill-good">live</span>
+            <h4>Paperless-ngx</h4>
+            <p>Scanned document archive. OCR: Hebrew + English + Russian. Tika + Gotenberg for Office docs, Samba share for ingestion, trusted-header SSO (no bridge). pi-node2, alone.</p>
+          </div>
+          <div class="card">
+            <span class="pill pill-warn">planned</span>
+            <h4>Firefly III</h4>
+            <p>Personal finance — named as the fourth service since the pattern was first designed, not started yet.</p>
+          </div>
+        </div>
+
+        <p>Each new service has extended the pattern rather than just reused it: Vikunja needed a non-interactive CalDAV bypass and a per-user credential map instead of one shared login; Paperless needed a dedicated nginx block for trusted-header SSO and <code>hostNetwork: true</code> for real SMB port 445. Both are documented as reusable for Firefly if it needs the same.</p>
+      </section>
+
+      <section id="security">
+        <h2>Security</h2>
+        <ul>
+          <li>JWT Bearer auth, auto-refreshed by the frontend; every mutating route requires the admin role.</li>
+          <li>SSH credentials never reach the frontend or API responses — held only in backend environment variables.</li>
+          <li>Every workload/node operation is audit-logged with actor, timestamp, and result; <code>audit_logs</code> and resolved <code>alert_history</code> rows past <code>LOG_RETENTION_DAYS</code> (default 90) are purged daily.</li>
+          <li>Rate limited — 300 req/min per IP globally, 10/min on <code>/auth/login</code>; real client IP read from <code>Cf-Connecting-Ip</code> behind the Cloudflare Tunnel, not the tunnel's own loopback.</li>
+          <li>New-login-IP detection fires on <em>every</em> unrecognized IP for a user, unfiltered by severity — there's no "mildly urgent" version of a possible account compromise.</li>
+          <li>Infra alerts are severity-filtered per email channel (so HighCPU doesn't drown out a personal inbox); webhook channels stay unfiltered.</li>
+          <li>Alert-rule edits from the dashboard publish via a fine-grained GitHub PAT, Contents-write scoped to this one repo only.</li>
+          <li>Container registry has <strong>no auth</strong> — accepted, LAN-only posture, matching Prometheus/AlertManager's own LAN-restriction approach.</li>
+        </ul>
+      </section>
+
+      <section id="hardening">
+        <h2>Operational hardening</h2>
+        <p>This is the stated current priority over new features, and the bulk of it already shipped:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Area</th><th class="wrap">State</th></tr></thead>
+            <tbody>
+              <tr><td>Backup / DR</td><td class="wrap">Nightly Postgres dump + K3s SQLite <code>.backup</code>, rsync'd to pi-node4. Postgres restore drilled for real (row counts matched). K3s datastore restore <strong>not</strong> drilled.</td></tr>
+              <tr><td>Log aggregation</td><td class="wrap">Loki + Promtail live across all 4 nodes and the Compose stack; verified pods running, log <em>content</em> spot-checked per-service as each was built.</td></tr>
+              <tr><td>Image registry</td><td class="wrap">Live, closes the original CI/CD gap. No auth — accepted for LAN-only scope.</td></tr>
+              <tr><td>Retention</td><td class="wrap">Audit/alert-history DB retention live (90d default). Loki has its own independent 30d retention.</td></tr>
+              <tr><td>Rate limiting</td><td class="wrap">In-memory (not Redis — deliberate, single-process app), 300/min global + 10/min login.</td></tr>
+              <tr><td>Boot resilience</td><td class="wrap">Fixed 2026-09-07 — see <a href="#history">Phase 66</a>. USB driver quirk + health probes + boot stagger.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="history">
+        <h2>Build history</h2>
+        <p>66 phases, each independently shipped and mostly verified live rather than just written. Grouped by era:</p>
+
+        <div class="era-row">
+          <div class="era-range">01 – 11</div>
+          <div class="era-body"><h4>Foundation</h4><p>Scaffold, node inventory, SSH health polling, Prometheus/Grafana, JWT auth, Jenkins, K3s + ArgoCD, workload API, Traefik, audit logging, alerting.</p></div>
+        </div>
+        <div class="era-row">
+          <div class="era-range">12 – 39</div>
+          <div class="era-body"><h4>Dashboard depth</h4><p>Scaling, log/event/pod viewers, rolling image updates, env vars, resource limits, restart/rollback, node detail pages with Prometheus sparklines, alert history, cluster capacity, HPA, ConfigMaps/Secrets/Services/CronJobs, namespace and user management.</p></div>
+        </div>
+        <div class="era-row">
+          <div class="era-range">40 – 50</div>
+          <div class="era-body"><h4>Reconstructed from git history</h4><p>PVC/storage, webhook notifications, pod exec terminal, StatefulSets/DaemonSets/Helm/RBAC explorer, live log streaming, pod detail, batch jobs/quotas, node SSH terminal + power management, nginx + dnsmasq + Cloudflare Tunnel, access lockdown + Key Vault. This file's own tracking lapsed here — a real drift incident, later caught and backfilled.</p></div>
+        </div>
+        <div class="era-row">
+          <div class="era-range">51 – 57</div>
+          <div class="era-body"><h4>Operational hardening, round one</h4><p>Backup/DR (drilled live), container registry, Loki/Promtail, audit/alert retention, API rate limiting, kube-state-metrics + a real pod-level Traefik/pi-node1 CPU incident fixed live, then a full documentation-consistency pass.</p></div>
+        </div>
+        <div class="era-row">
+          <div class="era-range">58 – 65</div>
+          <div class="era-body"><h4>Household services</h4><p>Wallabag → SSO gate → auto-login bridge → Vikunja → its own bridge → security alerts (new-login-IP + severity-filtered email) → alert-rule CRUD from the UI → Paperless-ngx. Each service surfaced at least one previously-invisible, cluster-wide infrastructure bug — RBAC gaps, Promtail scraping zero targets, a stale git clone silently rejecting pushes.</p></div>
+        </div>
+        <div class="era-row">
+          <div class="era-range">66</div>
+          <div class="era-body"><h4>Cold-boot outage — 2026-09-07</h4><p>18+ minute full outage after a full power cycle. First fix (a per-node <code>k3s-agent</code> boot-delay stagger) was reasonable but wrong — the real cause, found after the fix failed to prevent a reproduction, was Linux's <code>uas</code> driver hanging on the USB-SATA bridge behind all 4 nodes' SSDs on cold boot. Fixed with a kernel quirk (<code>usb-storage.quirks=174c:235c:u</code>) plus health probes on Traefik so a wedged pod can no longer report false-<code>Ready</code>. Full writeup in <code>docs/decisions.md</code>, including the correction.</p></div>
+        </div>
+      </section>
+
+      <section id="gaps">
+        <h2>Known gaps</h2>
+        <p>What's genuinely open right now, not speculative — the honest state to plan from.</p>
+        <ul class="gap-list">
+          <li class="gap-item"><span class="pill pill-warn">infra</span><p><code>k8s/traefik/traefik.yaml</code> still isn't GitOps-managed — a change requires a manual <code>kubectl apply</code>, and this has already caused a silent-drift incident once.</p></li>
+          <li class="gap-item"><span class="pill pill-crit">infra</span><p>K3s datastore restore has never been drilled — the Postgres side of DR is proven live, the K3s SQLite side is not.</p></li>
+          <li class="gap-item"><span class="pill pill-warn">infra</span><p><code>dnsmasq</code> on pi-node1 was observed restart-looping during the 2026-09-07 incident (SIGTERM every few seconds) — caused real DNS/<code>sudo</code> failures mid-diagnosis, not yet root-caused or fixed.</p></li>
+          <li class="gap-item"><span class="pill pill-warn">infra</span><p>SSH key auth to pi-node3/pi-node4 fails intermittently while pi-node1/pi-node2 work fine with the identical key — not root-caused; password auth via <code>plink</code> is the working fallback.</p></li>
+          <li class="gap-item"><span class="pill pill-warn">infra</span><p>No automated check that the frontend sidebar's <code>Phase N</code> string matches <code>docs/roadmap.md</code> — it's already drifted once (Phase 39 → 50 silently, caught only by chance).</p></li>
+          <li class="gap-item"><span class="pill pill-good">service</span><p>Paperless's Cloudflare Tunnel public route isn't added yet; Hebrew/Russian OCR accuracy and a real Samba client connection are unverified against actual hardware.</p></li>
+          <li class="gap-item"><span class="pill pill-good">service</span><p>Firefly III (personal finance) is the named fourth household service — pattern is proven three times over, just not started.</p></li>
+        </ul>
+      </section>
+
+      <section id="recommendations">
+        <h2>Recommendations</h2>
+        <p class="lede">Three directions, in the order this document would prioritize them — not mutually exclusive, but sequenced by risk and how much of the existing pattern each one reuses.</p>
+
+        <div class="rec">
+          <div class="rec-head"><span class="rec-num">01</span><h3>Close the operational-hardening loop before adding anything new</h3><span class="tag">Infra</span></div>
+          <p>The stated priority is already hardening, and it's 90% done — finishing it is cheaper than any new feature. Concretely: drill the K3s datastore restore (the one DR path never actually tested), move <code>k8s/traefik/traefik.yaml</code> into <code>k8s/apps/</code> so it stops silently drifting from git, root-cause the <code>dnsmasq</code> restart loop and the pi-node3/4 key-auth failure, and add a CI check (or just a shared constant) so the sidebar's phase string can't drift from <code>docs/roadmap.md</code> again.</p>
+          <div class="rec-why"><strong>Why this first:</strong> every one of these is a known, named gap already sitting in this document — not a guess. The 2026-09-07 incident (Phase 66) is exactly what an untested edge case looks like when it becomes real; the K3s restore path is the same class of risk, just not yet triggered.</div>
+        </div>
+
+        <div class="rec">
+          <div class="rec-head"><span class="rec-num">02</span><h3>Ship Firefly III as the fourth household service</h3><span class="tag">More services</span></div>
+          <p>Lowest-risk feature work available: the household-service pattern has now been proven three times, each time extending cleanly (SSO bridge → CalDAV exemption → trusted-header SSO) rather than breaking. Firefly III (personal finance) has been the named next service since Wallabag's own ADR — reuses the namespace/PVC/Postgres/Ingress pattern directly, and its own OAuth-style API might even avoid needing a bridge at all, closer to Paperless's trusted-header approach than Wallabag's shared-credential one.</p>
+          <div class="rec-why"><strong>Why this next:</strong> it's already the committed plan, not a new idea — and every prior service in this pattern has paid for itself by surfacing one more previously-invisible cluster bug (RBAC gaps, Promtail's zero-target scrape, a stale git clone). A fourth pass is likely to keep finding real infrastructure debt, which is directly useful for item 01.</div>
+        </div>
+
+        <div class="rec">
+          <div class="rec-head"><span class="rec-num">03</span><h3>Wire up the already-reserved AI hook — start with Paperless, not a new chat feature</h3><span class="tag">AI</span></div>
+          <p><code>.env.example</code> has carried placeholder <code>ANTHROPIC_API_KEY</code>/<code>OPENAI_API_KEY</code> entries since Wallabag's own ADR, explicitly reserved for "a future companion service" and never built. Paperless is the strongest fit for that hook to finally land: OCR text is already extracted and stored, so an enrichment worker (its own pod, not baked into the Paperless container) could call an LLM to auto-tag, summarize, or flag documents needing attention — a real capability gap Paperless doesn't natively have, not a chatbot bolted onto working infra.</p>
+          <div class="rec-why"><strong>Why this, not an ops-assistant panel:</strong> a natural-language "ask your cluster" dashboard feature is tempting but speculative — Prometheus/Loki/Grafana already answer those questions directly, so it would mostly restate existing UI. Document enrichment is a capability that doesn't exist today, was already scoped for, and doesn't touch anything the platform depends on to keep running if it's wrong.</div>
+        </div>
+      </section>
+
+      <footer>
+        Generated by Claude Code from a live read of <code>README.md</code>, <code>docs/architecture.md</code>, <code>docs/decisions.md</code>, and <code>docs/roadmap.md</code>, plus direct verification during the 2026-09-07 incident (Phase 66). Treat phase-history detail as accurate as of that date — check <code>docs/roadmap.md</code> for anything shipped after.
+      </footer>
+
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('.nav-link'));
+  var sections = links.map(function(l){ return document.querySelector(l.getAttribute('href')); }).filter(Boolean);
+
+  function onScroll(){
+    var pos = window.scrollY + 120;
+    var current = sections[0];
+    sections.forEach(function(s){ if (s.offsetTop <= pos) current = s; });
+    links.forEach(function(l){
+      var match = l.getAttribute('href') === '#' + current.id;
+      l.classList.toggle('active', match);
+    });
+  }
+  document.addEventListener('scroll', onScroll, { passive:true });
+  onScroll();
+})();
+</script>
