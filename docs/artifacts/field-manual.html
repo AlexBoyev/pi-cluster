@@ -426,19 +426,19 @@
       <div class="doc-header">
         <span class="eyebrow">Reference doc · for planning next steps</span>
         <h1 class="title">Pi-Cluster Field Manual</h1>
-        <p class="dek">A self-hosted DevOps control platform running on a 4-node Raspberry Pi cluster — Kubernetes orchestration, CI/CD, GitOps, monitoring, and three household services, built incrementally across 66 shipped phases. This document is a full-context handoff: current state, what's actually done vs. assumed, and where the open edges are.</p>
+        <p class="dek">A self-hosted DevOps control platform running on a 4-node Raspberry Pi cluster — Kubernetes orchestration, CI/CD, GitOps, monitoring, and four household services, built incrementally across 67 shipped phases. This document is a full-context handoff: current state, what's actually done vs. assumed, and where the open edges are.</p>
 
         <div class="stat-strip">
           <div class="stat"><div class="stat-num">4</div><div class="stat-label">Pi nodes</div></div>
-          <div class="stat"><div class="stat-num">66</div><div class="stat-label">Phases shipped</div></div>
-          <div class="stat"><div class="stat-num">3 / 4</div><div class="stat-label">Household services live</div></div>
+          <div class="stat"><div class="stat-num">67</div><div class="stat-label">Phases shipped</div></div>
+          <div class="stat"><div class="stat-num">4 / 4</div><div class="stat-label">Household services live</div></div>
           <div class="stat"><div class="stat-num">310</div><div class="stat-label">Backend tests</div></div>
         </div>
       </div>
 
       <section id="overview">
         <h2>Overview</h2>
-        <p class="lede">Pi-Cluster is two things running on the same four Raspberry Pis: a <strong>DevOps admin platform</strong> (React + FastAPI, its own CI/CD, its own monitoring stack) that manages Kubernetes workloads on the cluster it runs on — and, riding on top of the K8s orchestration that platform built, a small set of <strong>household services</strong> (Wallabag, Vikunja, Paperless-ngx) gated behind single sign-on.</p>
+        <p class="lede">Pi-Cluster is two things running on the same four Raspberry Pis: a <strong>DevOps admin platform</strong> (React + FastAPI, its own CI/CD, its own monitoring stack) that manages Kubernetes workloads on the cluster it runs on — and, riding on top of the K8s orchestration that platform built, a small set of <strong>household services</strong> (Wallabag, Vikunja, Paperless-ngx, Firefly III) gated behind single sign-on. All four originally-planned services are now live.</p>
         <p>The platform is not a toy dashboard. It does real orchestration: deploy, scale, rolling image updates, HPA, node drain, live pod exec/log streaming, RBAC/Secret/ConfigMap/PVC management, alert-rule CRUD from the UI — all audit-logged, all backed by a real Postgres schema, all covering 310 backend tests. <strong>Current priority is operational hardening</strong> (backup/DR, log aggregation, image registry, retention), not new dashboard features — those are all already built; see <a href="#hardening">Operational hardening</a>.</p>
 
         <div class="card-grid">
@@ -455,7 +455,7 @@
           <div class="card">
             <span class="pill pill-good">worker</span>
             <h4>pi-node3 · 10.100.102.17</h4>
-            <p>K3s agent + Traefik. Hosts Wallabag and Vikunja side by side — combined footprint is well under allocatable.</p>
+            <p>K3s agent + Traefik. Hosts Wallabag, Vikunja, and Firefly III side by side — combined footprint is well under allocatable.</p>
           </div>
           <div class="card">
             <span class="pill pill-good">worker</span>
@@ -467,7 +467,7 @@
 
       <section id="architecture">
         <h2>Architecture</h2>
-        <p>Two independent delivery pipelines feed the same node. Jenkins owns the Docker Compose stack; ArgoCD owns everything under <code>k8s/apps/</code>. One real exception: <code>k8s/traefik/traefik.yaml</code> looks GitOps-managed but isn't — ArgoCD's Application only watches <code>k8s/apps/</code>, so a change there needs a manual <code>kubectl apply</code>. This has bitten the project twice already (see <a href="#gaps">Known gaps</a>).</p>
+        <p>Two independent delivery pipelines feed the same node. Jenkins owns the Docker Compose stack; ArgoCD owns everything under <code>k8s/apps/</code>, recursively into every subdirectory. That last word is load-bearing: until 2026-09-07 the live ArgoCD Application had no <code>directory.recurse</code> set, so it silently applied only root-level files — every household service (Wallabag, Vikunja, Paperless) had been reachable purely through each one's manual <code>kubectl apply</code> fallback since it was first deployed, never actually through the automated path every doc described. Fixed live and in Terraform, which — separately — never even matched the live Application's real name/namespace to begin with; its true origin is still unknown (see <a href="#gaps">Known gaps</a>).</p>
 
         <div class="diagram-wrap">
 <pre class="mermaid">
@@ -490,7 +490,7 @@ flowchart TB
 
     subgraph K3S["K3s cluster — pi-node1..4"]
       TR["Traefik Ingress\nHostPort 80/443\n(node2/3/4 only)"]
-      HH["Household services\nWallabag · Vikunja · Paperless"]
+      HH["Household services\nWallabag · Vikunja · Paperless · Firefly"]
       NE["node-exporter DaemonSet"]
       PT["promtail DaemonSet"]
     end
@@ -527,13 +527,13 @@ sequenceDiagram
         V-->>N: 401
         N-->>B: 302 to platform login
     else valid session
-        V-->>N: 200 (+ X-Pi-User for Paperless)
+        V-->>N: 200 (+ X-Pi-User for Paperless/Firefly)
         N->>T: proxy_pass, Host preserved
         T->>S: route via Ingress
         S-->>B: app response, own login skipped
     end
 </pre>
-          <div class="diagram-cap">Wallabag/Vikunja get a server-side auto-login bridge on top of the gate; Paperless uses <code>PAPERLESS_ENABLE_HTTP_REMOTE_USER</code> with a trusted <code>X-Pi-User</code> header instead — no stored credential at all.</div>
+          <div class="diagram-cap">Wallabag/Vikunja get a server-side auto-login bridge on top of the gate; Paperless and Firefly both use a trusted <code>X-Pi-User</code> header instead (<code>PAPERLESS_ENABLE_HTTP_REMOTE_USER</code> / <code>remote_user_guard</code>) — no stored credential at all, the same mechanism reused directly for the second service that supports it.</div>
         </div>
       </section>
 
@@ -589,13 +589,18 @@ sequenceDiagram
             <p>Scanned document archive. OCR: Hebrew + English + Russian. Tika + Gotenberg for Office docs, Samba share for ingestion, trusted-header SSO (no bridge). pi-node2, alone.</p>
           </div>
           <div class="card">
-            <span class="pill pill-warn">planned</span>
+            <span class="pill pill-good">live</span>
             <h4>Firefly III</h4>
-            <p>Personal finance — named as the fourth service since the pattern was first designed, not started yet.</p>
+            <p>Personal finance. CSV/OFX import via its Data Importer companion (its own Deployment); trusted-header SSO, no bridge; a K8s CronJob drives daily recurring-transaction processing. pi-node3.</p>
           </div>
         </div>
 
-        <p>Each new service has extended the pattern rather than just reused it: Vikunja needed a non-interactive CalDAV bypass and a per-user credential map instead of one shared login; Paperless needed a dedicated nginx block for trusted-header SSO and <code>hostNetwork: true</code> for real SMB port 445. Both are documented as reusable for Firefly if it needs the same.</p>
+        <p>Each new service has extended the pattern rather than just reused it: Vikunja needed a non-interactive CalDAV bypass and a per-user credential map instead of one shared login; Paperless needed a dedicated nginx block for trusted-header SSO and <code>hostNetwork: true</code> for real SMB port 445; Firefly reused Paperless's trusted-header block directly, unchanged, and added a second in-namespace Deployment pattern (the Data Importer) for a companion tool with its own lifecycle. All four originally-planned services are live — a fifth would need a new decision, not just a repeat of this pattern.</p>
+
+        <div class="callout">
+          <h4>Bank-API integration: deliberately not attempted</h4>
+          <p>Firefly's Data Importer supports automatic bank sync via GoCardless/Nordigen or SaltEdge, both PSD2 open-banking integrations — EU/UK-regulation-specific, with no basis to expect Israeli bank coverage. Documented as unavailable until proven otherwise rather than assumed to work. CSV export from the bank's own site, run through the Data Importer's manual mapping wizard, is the real working path — any bank, no cooperation needed.</p>
+        </div>
       </section>
 
       <section id="security">
@@ -632,7 +637,7 @@ sequenceDiagram
 
       <section id="history">
         <h2>Build history</h2>
-        <p>66 phases, each independently shipped and mostly verified live rather than just written. Grouped by era:</p>
+        <p>67 phases, each independently shipped and mostly verified live rather than just written. Grouped by era:</p>
 
         <div class="era-row">
           <div class="era-range">01 – 11</div>
@@ -656,49 +661,51 @@ sequenceDiagram
         </div>
         <div class="era-row">
           <div class="era-range">66</div>
-          <div class="era-body"><h4>Cold-boot outage — 2026-09-07</h4><p>18+ minute full outage after a full power cycle. First fix (a per-node <code>k3s-agent</code> boot-delay stagger) was reasonable but wrong — the real cause, found after the fix failed to prevent a reproduction, was Linux's <code>uas</code> driver hanging on the USB-SATA bridge behind all 4 nodes' SSDs on cold boot. Fixed with a kernel quirk (<code>usb-storage.quirks=174c:235c:u</code>) plus health probes on Traefik so a wedged pod can no longer report false-<code>Ready</code>. Full writeup in <code>docs/decisions.md</code>, including the correction.</p></div>
+          <div class="era-body"><h4>Cold-boot outage — 2026-09-07</h4><p>18+ minute full outage after a full power cycle. First fix (a per-node <code>k3s-agent</code> boot-delay stagger) was reasonable but wrong — the real cause, found after the fix failed to prevent a reproduction, was Linux's <code>uas</code> driver hanging on the USB-SATA bridge behind all 4 nodes' SSDs on cold boot. Fixed with a kernel quirk (<code>usb-storage.quirks=174c:235c:u</code>) plus health probes on Traefik so a wedged pod can no longer report false-<code>Ready</code>. Same night: SSH key auth to pi-node3/4 root-caused (pi-node3 had no <code>~/.ssh</code> at all) and a <code>dnsmasq</code> "restart loop" from earlier in the incident turned out to be a misdiagnosis — routine daily restarts misread from an untimestamped log tail. Full writeup in <code>docs/decisions.md</code>, including the correction.</p></div>
+        </div>
+        <div class="era-row">
+          <div class="era-range">67</div>
+          <div class="era-body"><h4>Firefly III — fourth household service, completes the set</h4><p>Deployed live and verified end-to-end, same ADR-first discipline as every prior service. Surfaced two real bugs bigger than Firefly itself: a too-short <code>startupProbe</code> caused a genuine restart-before-ready loop on first deploy, and — much bigger — ArgoCD had never actually recursed into <code>k8s/apps/</code> subdirectories at all, meaning Wallabag/Vikunja/Paperless had silently never been GitOps-managed either, the entire time. Fixed for all four services at once. A third gap found after: the frontend's household-service tile array never got a Firefly entry despite its own comment saying to add one — Firefly was live and reachable by direct URL with zero dashboard link to it until caught.</p></div>
         </div>
       </section>
 
       <section id="gaps">
         <h2>Known gaps</h2>
-        <p>What's genuinely open right now, not speculative — the honest state to plan from.</p>
+        <p>What's genuinely open right now, not speculative — the honest state to plan from. Several items from the previous pass are gone because they turned out fixed, not because they were quietly dropped.</p>
         <ul class="gap-list">
-          <li class="gap-item"><span class="pill pill-warn">infra</span><p><code>k8s/traefik/traefik.yaml</code> still isn't GitOps-managed — a change requires a manual <code>kubectl apply</code>, and this has already caused a silent-drift incident once.</p></li>
-          <li class="gap-item"><span class="pill pill-crit">infra</span><p>K3s datastore restore has never been drilled — the Postgres side of DR is proven live, the K3s SQLite side is not.</p></li>
-          <li class="gap-item"><span class="pill pill-warn">infra</span><p><code>dnsmasq</code> on pi-node1 was observed restart-looping during the 2026-09-07 incident (SIGTERM every few seconds) — caused real DNS/<code>sudo</code> failures mid-diagnosis, not yet root-caused or fixed.</p></li>
-          <li class="gap-item"><span class="pill pill-warn">infra</span><p>SSH key auth to pi-node3/pi-node4 fails intermittently while pi-node1/pi-node2 work fine with the identical key — not root-caused; password auth via <code>plink</code> is the working fallback.</p></li>
-          <li class="gap-item"><span class="pill pill-warn">infra</span><p>No automated check that the frontend sidebar's <code>Phase N</code> string matches <code>docs/roadmap.md</code> — it's already drifted once (Phase 39 → 50 silently, caught only by chance).</p></li>
-          <li class="gap-item"><span class="pill pill-good">service</span><p>Paperless's Cloudflare Tunnel public route isn't added yet; Hebrew/Russian OCR accuracy and a real Samba client connection are unverified against actual hardware.</p></li>
-          <li class="gap-item"><span class="pill pill-good">service</span><p>Firefly III (personal finance) is the named fourth household service — pattern is proven three times over, just not started.</p></li>
+          <li class="gap-item"><span class="pill pill-crit">infra</span><p>K3s datastore restore has never been drilled — the Postgres side of DR is proven live, the K3s SQLite side is not. Deliberately not attempted casually; stops the control plane's datastore, needs a scheduled window.</p></li>
+          <li class="gap-item"><span class="pill pill-warn">infra</span><p>The live ArgoCD Application's real origin is unknown — neither <code>terraform/argocd.tf</code> nor <code>ansible/playbooks/argocd.yml</code> ever created the resource that's actually running, even after both were corrected to match its current spec. If it's ever deleted, no IaC path alone recreates it identically.</p></li>
+          <li class="gap-item"><span class="pill pill-warn">infra</span><p><code>backend/tests/test_docs_consistency.py</code> (the phase-drift guard) can only run against a full repo checkout — Jenkins's Test stage runs pytest inside the built backend Docker image, whose build context excludes <code>docs/</code> and <code>frontend/</code> entirely, so it skips there rather than actually checking. A real check, but a structural CI blind spot.</p></li>
+          <li class="gap-item"><span class="pill pill-good">service</span><p>Firefly's first admin account (via its setup wizard) and a real CSV import from an actual bank statement are both still unverified against live use — the deploy itself is confirmed, first real use isn't yet.</p></li>
+          <li class="gap-item"><span class="pill pill-good">service</span><p>Paperless's Cloudflare Tunnel public route status is unconfirmed as of this pass; Hebrew/Russian OCR accuracy and a real Samba client connection remain unverified against actual hardware.</p></li>
         </ul>
       </section>
 
       <section id="recommendations">
         <h2>Recommendations</h2>
-        <p class="lede">Three directions, in the order this document would prioritize them — not mutually exclusive, but sequenced by risk and how much of the existing pattern each one reuses.</p>
+        <p class="lede">The previous pass's #1 (hardening) and #2 (ship Firefly) are both substantially done — this is the updated set, reflecting that. Three directions, sequenced by risk and how much is already decided vs. still open.</p>
 
         <div class="rec">
-          <div class="rec-head"><span class="rec-num">01</span><h3>Close the operational-hardening loop before adding anything new</h3><span class="tag">Infra</span></div>
-          <p>The stated priority is already hardening, and it's 90% done — finishing it is cheaper than any new feature. Concretely: drill the K3s datastore restore (the one DR path never actually tested), move <code>k8s/traefik/traefik.yaml</code> into <code>k8s/apps/</code> so it stops silently drifting from git, root-cause the <code>dnsmasq</code> restart loop and the pi-node3/4 key-auth failure, and add a CI check (or just a shared constant) so the sidebar's phase string can't drift from <code>docs/roadmap.md</code> again.</p>
-          <div class="rec-why"><strong>Why this first:</strong> every one of these is a known, named gap already sitting in this document — not a guess. The 2026-09-07 incident (Phase 66) is exactly what an untested edge case looks like when it becomes real; the K3s restore path is the same class of risk, just not yet triggered.</div>
+          <div class="rec-head"><span class="rec-num">01</span><h3>Close the last two hardening loose ends</h3><span class="tag">Infra</span></div>
+          <p>Everything from the previous round closed except two, and both are small: drill the K3s datastore restore for real (stop k3s, restore <code>state.db</code>, confirm the cluster comes back — needs a scheduled window, not a solo late-night attempt), and either accept or replace the ArgoCD Application's unknown origin — reverse-engineer how it was actually created and encode that in Terraform/Ansible for real, or deliberately decide "recreate it once from the corrected Terraform and treat that as the new source of truth" and do it.</p>
+          <div class="rec-why"><strong>Why this first, still:</strong> both are the same class of risk the 2026-09-07 incident and the ArgoCD-recurse discovery already proved out — an untested path that looks fine until it isn't. Small scope now, not a new investigation.</div>
         </div>
 
         <div class="rec">
-          <div class="rec-head"><span class="rec-num">02</span><h3>Ship Firefly III as the fourth household service</h3><span class="tag">More services</span></div>
-          <p>Lowest-risk feature work available: the household-service pattern has now been proven three times, each time extending cleanly (SSO bridge → CalDAV exemption → trusted-header SSO) rather than breaking. Firefly III (personal finance) has been the named next service since Wallabag's own ADR — reuses the namespace/PVC/Postgres/Ingress pattern directly, and its own OAuth-style API might even avoid needing a bridge at all, closer to Paperless's trusted-header approach than Wallabag's shared-credential one.</p>
-          <div class="rec-why"><strong>Why this next:</strong> it's already the committed plan, not a new idea — and every prior service in this pattern has paid for itself by surfacing one more previously-invisible cluster bug (RBAC gaps, Promtail's zero-target scrape, a stale git clone). A fourth pass is likely to keep finding real infrastructure debt, which is directly useful for item 01.</div>
+          <div class="rec-head"><span class="rec-num">02</span><h3>Finish onboarding Firefly, don't just leave it deployed</h3><span class="tag">Follow-through</span></div>
+          <p>The deploy is verified — pods healthy, routing correct — but nobody has actually used it yet. Concretely: create the first admin account through the setup wizard (confirming live whether <code>remote_user_guard</code> wants username or email, still unverified either way), run one real CSV import from an actual bank statement through the Data Importer, and confirm Paperless's Cloudflare Tunnel route status while at it — it was flagged open in the same pass Firefly's route just got added.</p>
+          <div class="rec-why"><strong>Why this, not new work:</strong> a service that's "deployed" but never used for real hasn't actually validated the interesting parts of its own ADR (D1's CSV path, D2's auth-matching uncertainty) — those are exactly the assumptions worth confirming before trusting it with real financial data.</div>
         </div>
 
         <div class="rec">
-          <div class="rec-head"><span class="rec-num">03</span><h3>Wire up the already-reserved AI hook — start with Paperless, not a new chat feature</h3><span class="tag">AI</span></div>
-          <p><code>.env.example</code> has carried placeholder <code>ANTHROPIC_API_KEY</code>/<code>OPENAI_API_KEY</code> entries since Wallabag's own ADR, explicitly reserved for "a future companion service" and never built. Paperless is the strongest fit for that hook to finally land: OCR text is already extracted and stored, so an enrichment worker (its own pod, not baked into the Paperless container) could call an LLM to auto-tag, summarize, or flag documents needing attention — a real capability gap Paperless doesn't natively have, not a chatbot bolted onto working infra.</p>
-          <div class="rec-why"><strong>Why this, not an ops-assistant panel:</strong> a natural-language "ask your cluster" dashboard feature is tempting but speculative — Prometheus/Loki/Grafana already answer those questions directly, so it would mostly restate existing UI. Document enrichment is a capability that doesn't exist today, was already scoped for, and doesn't touch anything the platform depends on to keep running if it's wrong.</div>
+          <div class="rec-head"><span class="rec-num">03</span><h3>AI hooks — now the clear next initiative, not a placeholder</h3><span class="tag">AI</span></div>
+          <p>With hardening nearly closed and all four household services live, this is genuinely what's next rather than one option among three. <code>.env.example</code> has carried placeholder <code>ANTHROPIC_API_KEY</code>/<code>OPENAI_API_KEY</code> entries since Wallabag's own ADR, reserved and never built. Stated direction is broad — "agent helpers/scanners/log conclusions/service assistants" — which argues for picking one concrete, bounded first target rather than a general framework: a Paperless enrichment worker (auto-tag/summarize OCR'd documents, its own pod, not baked into the container) is the best-scoped starting point, since the data (OCR text) already exists and the failure mode if it's wrong (a bad tag) is low-stakes compared to, say, an agent that acts on infra directly.</p>
+          <div class="rec-why"><strong>Why start narrow:</strong> "many AI components" is the eventual goal, but a log-summarizer, a service assistant, and an infra-scanning agent each have different trust levels (read-only vs. can-take-action) and different failure costs. Shipping one low-stakes, well-scoped worker first establishes the actual pattern (where does it run, how does it auth, what does "verified live" mean for an LLM call) before the second and third ones inherit it — the same incremental discipline every household service already used.</div>
         </div>
       </section>
 
       <footer>
-        Generated by Claude Code from a live read of <code>README.md</code>, <code>docs/architecture.md</code>, <code>docs/decisions.md</code>, and <code>docs/roadmap.md</code>, plus direct verification during the 2026-09-07 incident (Phase 66). Treat phase-history detail as accurate as of that date — check <code>docs/roadmap.md</code> for anything shipped after.
+        Generated by Claude Code from a live read of <code>README.md</code>, <code>docs/architecture.md</code>, <code>docs/decisions.md</code>, and <code>docs/roadmap.md</code>, plus direct verification during the 2026-09-07 incident (Phase 66) and the Firefly III deployment (Phase 67) the same night. Treat phase-history detail as accurate as of that date — check <code>docs/roadmap.md</code> for anything shipped after.
       </footer>
 
     </div>
