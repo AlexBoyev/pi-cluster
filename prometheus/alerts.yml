@@ -92,10 +92,17 @@ groups:
         # this fire forever on every cron run with no way to auto-clear
         # (caught 2026-09-08 on firefly-cron, PodNotReady stuck 3h+ on an
         # already-successful run). See docs/decisions.md.
+        #
+        # `unless` binds LOOSER than `>` in PromQL, so the first cut of this
+        # (no parens) parsed as `A unless (B > 0)` - the >0 filter landed on
+        # the exclusion side, not the readiness sum, so it matched every pod
+        # in the cluster unconditionally (all with value 0, still returned).
+        # Caught live 2026-09-09 as "32 pending" right after deploying the
+        # fix meant to prevent exactly this. Explicit parens fix the
+        # precedence. See docs/decisions.md.
         expr: |
-          sum by (namespace, pod) (kube_pod_status_ready{job="kube-state-metrics", condition="false"})
+          (sum by (namespace, pod) (kube_pod_status_ready{job="kube-state-metrics", condition="false"}) > 0)
           unless on (namespace, pod) (kube_pod_status_phase{job="kube-state-metrics", phase="Succeeded"} == 1)
-          > 0
         for: 15m
         labels:
           severity: warning
