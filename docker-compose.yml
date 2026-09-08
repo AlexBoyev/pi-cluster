@@ -70,6 +70,14 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
       - --web.enable-lifecycle
+      # Default (1h) restores each alert's pending/firing "for" timer from
+      # persisted history on every container restart - harmless for a true
+      # brief outage, but every deploy force-recreates this container (see
+      # Jenkinsfile), and the restored state doesn't get reconciled against
+      # live truth for many minutes, so every deploy showed ~32 phantom
+      # "firing" alerts for pods that were actually fine (2026-09-08/09,
+      # see docs/decisions.md). 1m still covers a real quick restart.
+      - --rules.alert.for-outage-tolerance=1m
     restart: unless-stopped
 
   alertmanager:

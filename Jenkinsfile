@@ -20,6 +20,24 @@ pipeline {
             steps {
                 git url: 'https://github.com/AlexBoyev/pi-cluster',
                     branch: 'master'
+                script {
+                    // Only recreate prometheus (see Deploy stage) when
+                    // prometheus/ actually changed this build - recreating
+                    // it on every ordinary backend/frontend deploy loses
+                    // metrics history for no reason and re-triggers the
+                    // alert-restore bug documented there.
+                    def prev = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT
+                    env.PROMETHEUS_CONFIG_CHANGED = prev ? "false" : "true"
+                    if (prev) {
+                        def changed = sh(
+                            script: "git diff --name-only ${prev} ${env.GIT_COMMIT} -- prometheus/",
+                            returnStdout: true
+                        ).trim()
+                        if (changed) {
+                            env.PROMETHEUS_CONFIG_CHANGED = "true"
+                        }
+                    }
+                }
             }
         }
 
@@ -88,7 +106,12 @@ pipeline {
                     # despite a fresh host-side write and a successful
                     # `-/reload` call. Only recreating the container
                     # re-resolves the mount.
-                    docker compose up -d --force-recreate prometheus
+                    if [ "$PROMETHEUS_CONFIG_CHANGED" = "true" ]; then
+                        echo "prometheus/ changed - recreating to pick up the new bind-mounted config"
+                        docker compose up -d --force-recreate prometheus
+                    else
+                        echo "prometheus/ unchanged - leaving the running container alone (preserves metrics history, avoids the alert-restore bug)"
+                    fi
                 '''
             }
         }
