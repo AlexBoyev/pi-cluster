@@ -31,6 +31,11 @@ spec:
             - --path.sysfs=/host/sys
             - --path.rootfs=/host/rootfs
             - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($|/)
+            # rpi_throttle_metrics.sh (ansible/roles/common) writes here every
+            # minute - vcgencmd's undervoltage/throttle bits, not otherwise
+            # exposed reliably (kernel hwmon in0_lcrit_alarm missed a live
+            # undervoltage event during the 2026-09-08 pi-node3 incident).
+            - --collector.textfile.directory=/host/textfile
           ports:
             - name: metrics
               containerPort: 9100
@@ -56,6 +61,9 @@ spec:
               mountPath: /host/rootfs
               mountPropagation: HostToContainer
               readOnly: true
+            - name: textfile
+              mountPath: /host/textfile
+              readOnly: true
       volumes:
         - name: proc
           hostPath:
@@ -66,3 +74,7 @@ spec:
         - name: rootfs
           hostPath:
             path: /
+        - name: textfile
+          hostPath:
+            path: /var/lib/node-exporter/textfile-collector
+            type: DirectoryOrCreate

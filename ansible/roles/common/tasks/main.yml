@@ -77,6 +77,34 @@
   become: yes
   notify: reboot node
 
+- name: Ensure node-exporter textfile collector directory exists
+  file:
+    path: /var/lib/node-exporter/textfile-collector
+    state: directory
+    owner: admin
+    group: admin
+    mode: "0755"
+  become: yes
+
+- name: Deploy Raspberry Pi throttle/undervoltage metrics script
+  copy:
+    src: rpi_throttle_metrics.sh
+    dest: /home/admin/rpi_throttle_metrics.sh
+    owner: admin
+    group: admin
+    mode: "0700"
+  become: yes
+
+- name: Schedule Raspberry Pi throttle metrics collection via cron
+  # Firmware undervoltage (checked live via vcgencmd) is the same condition
+  # that took down every pod on pi-node3 on 2026-09-08 - see docs/decisions.md.
+  cron:
+    name: "rpi throttle metrics"
+    user: admin
+    minute: "*"
+    job: "/home/admin/rpi_throttle_metrics.sh"
+  become: yes
+
 - name: Configure UFW — allow SSH
   ufw:
     rule: allow

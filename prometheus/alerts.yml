@@ -47,6 +47,29 @@ groups:
           summary: "High temperature on {{ $labels.node_name }}"
           description: "CPU temperature is {{ $value | printf \"%.1f\" }}°C (threshold: 70°C)"
 
+      # rpi_throttle_metrics.sh (ansible/roles/common), polled every minute,
+      # feeds node-exporter's textfile collector. Root-caused the 2026-09-08
+      # pi-node3 incident (firefly-cron crash-loop alerts were a symptom, not
+      # the cause): a marginal PSU/cable sagging under the combined
+      # board+USB-SSD draw. See docs/decisions.md.
+      - alert: NodeUndervoltage
+        expr: node_rpi_throttled_bit{job="node-exporter",bit="undervoltage_now"} == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.node_name }} is currently under-voltage"
+          description: "vcgencmd reports live undervoltage on {{ $labels.node_name }} - board is brownout-cycling, expect pods on this node to restart. Hardware/power issue, not fixable by restarting the node."
+
+      - alert: NodeThrottled
+        expr: node_rpi_throttled_bit{job="node-exporter",bit="throttled_now"} == 1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.node_name }} is currently CPU-throttled"
+          description: "vcgencmd reports live frequency throttling on {{ $labels.node_name }}, usually caused by undervoltage."
+
   - name: pod-health
     interval: 30s
     rules:
@@ -64,7 +87,15 @@ groups:
           description: "Container {{ $labels.container }} has restarted {{ $value | printf \"%.0f\" }} times in the last hour"
 
       - alert: PodNotReady
-        expr: sum by (namespace, pod) (kube_pod_status_ready{job="kube-state-metrics", condition="false"}) > 0
+        # Excludes Succeeded pods - a completed Job/CronJob pod's Ready
+        # condition is permanently False (reason: PodCompleted), which made
+        # this fire forever on every cron run with no way to auto-clear
+        # (caught 2026-09-08 on firefly-cron, PodNotReady stuck 3h+ on an
+        # already-successful run). See docs/decisions.md.
+        expr: |
+          sum by (namespace, pod) (kube_pod_status_ready{job="kube-state-metrics", condition="false"})
+          unless on (namespace, pod) (kube_pod_status_phase{job="kube-state-metrics", phase="Succeeded"} == 1)
+          > 0
         for: 15m
         labels:
           severity: warning
