@@ -37,6 +37,78 @@ print(json.dumps({
 }))
 """
 
+# Runs on the Pi via python3 stdin. Loads all cores with `timeout N bash -c
+# 'while :; do :; done'` per core - deliberately not stress-ng: no package
+# install, no internet dependency, and it's the exact method already used
+# live to diagnose the 2026-09-08 pi-node3/pi-node2 undervoltage incident
+# (see docs/decisions.md). Samples vcgencmd every INTERVAL seconds for the
+# full duration so a live undervoltage/throttle event is actually caught,
+# not just a before/after snapshot.
+_STRESS_SCRIPT_TEMPLATE = """
+import json, subprocess, time, os
+
+DURATION = {duration}
+INTERVAL = {interval}
+
+def _run(args):
+    try:
+        return subprocess.check_output(args, stderr=subprocess.DEVNULL, timeout=5).decode().strip()
+    except Exception:
+        return None
+
+def read_vcgencmd():
+    thr = _run(['vcgencmd', 'get_throttled'])
+    temp = _run(['vcgencmd', 'measure_temp'])
+    volt = _run(['vcgencmd', 'measure_volts'])
+    try:
+        val = int(thr.split('=')[1], 16) if thr else 0
+    except Exception:
+        val = 0
+    try:
+        t = float(temp.split('=')[1].rstrip("'C")) if temp else None
+    except Exception:
+        t = None
+    try:
+        v = float(volt.split('=')[1].rstrip('V')) if volt else None
+    except Exception:
+        v = None
+    return {{
+        'throttled_hex': hex(val),
+        'undervoltage_now': bool(val & 0x1),
+        'freq_capped_now': bool(val & 0x2),
+        'throttled_now': bool(val & 0x4),
+        'undervoltage_occurred': bool(val & 0x10000),
+        'throttled_occurred': bool(val & 0x40000),
+        'temp_celsius': t,
+        'volts': v,
+    }}
+
+ncores = os.cpu_count() or 4
+start = time.time()
+baseline = read_vcgencmd()
+baseline['elapsed_seconds'] = 0.0
+
+workers = [
+    subprocess.Popen(['timeout', str(DURATION), 'bash', '-c', 'while :; do :; done'])
+    for _ in range(ncores)
+]
+
+samples = []
+while time.time() - start < DURATION:
+    time.sleep(INTERVAL)
+    r = read_vcgencmd()
+    r['elapsed_seconds'] = round(time.time() - start, 1)
+    samples.append(r)
+
+for w in workers:
+    w.wait()
+
+final = read_vcgencmd()
+final['elapsed_seconds'] = round(time.time() - start, 1)
+
+print(json.dumps({{'baseline': baseline, 'samples': samples, 'final': final, 'ncores': ncores}}))
+"""
+
 _pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="ssh")
 
 
@@ -62,6 +134,34 @@ class SSHService:
     async def collect_metrics(self, host: str) -> dict:
         import asyncio
         return await asyncio.get_event_loop().run_in_executor(_pool, self._run_sync, host)
+
+    def _run_stress_sync(self, host: str, duration: int, interval: int) -> dict:
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(
+            host,
+            username=settings.ssh_username,
+            password=settings.ssh_password,
+            timeout=settings.ssh_connect_timeout,
+        )
+        try:
+            script = _STRESS_SCRIPT_TEMPLATE.format(duration=duration, interval=interval)
+            stdin, stdout, _ = client.exec_command("python3 -")
+            stdin.write(script.encode())
+            stdin.close()
+            # The remote script itself blocks for `duration` seconds - give
+            # the channel read real headroom on top of that, not the default
+            # short command timeout meant for instant commands.
+            stdout.channel.settimeout(duration + settings.ssh_connect_timeout + 15)
+            return json.loads(stdout.read().decode())
+        finally:
+            client.close()
+
+    async def run_stress_test(self, host: str, duration: int, interval: int = 5) -> dict:
+        import asyncio
+        return await asyncio.get_event_loop().run_in_executor(
+            _pool, self._run_stress_sync, host, duration, interval
+        )
 
     def _exec_sync(self, host: str, command: str) -> str:
         client = paramiko.SSHClient()

@@ -4,6 +4,7 @@ import { getAllHealth } from "./api/health";
 import { restartAllNodes, shutdownAllNodes, restartNode, shutdownNode } from "./api/nodes";
 import { useAuth } from "./context/AuthContext";
 import ConfirmDialog from "./components/ConfirmDialog";
+import StressTestModal from "./components/StressTestModal";
 import AlertHistoryPage from "./pages/AlertHistoryPage";
 import AlertRulesPage from "./pages/AlertRulesPage";
 import AuditPage from "./pages/AuditPage";
@@ -401,6 +402,7 @@ export default function App() {
   const [selectedNode,  setSelectedNode]  = useState<NodeHealth | null>(null);
   const [clusterAction, setClusterAction] = useState<"restart" | "shutdown" | null>(null);
   const [clusterBusy,   setClusterBusy]   = useState(false);
+  const [stressTestOpen, setStressTestOpen] = useState(false);
 
   const navigate = (p: Page) => {
     setPage(p);
@@ -772,6 +774,12 @@ export default function App() {
                     >
                       ⏻ Shutdown All Nodes
                     </button>
+                    <button
+                      className="cluster-restart-btn"
+                      onClick={() => setStressTestOpen(true)}
+                    >
+                      🔥 Stress Test
+                    </button>
                   </div>
 
                   <AlertsPanel />
@@ -834,6 +842,8 @@ export default function App() {
           onCancel={() => setClusterAction(null)}
         />
       )}
+
+      {stressTestOpen && <StressTestModal onClose={() => setStressTestOpen(false)} />}
     </div>
   );
 }

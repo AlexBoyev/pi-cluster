@@ -8,8 +8,10 @@ from app.database import get_db
 from app.repositories.node_repository import NodeRepository
 from app.schemas.node import NodeCreate, NodeResponse
 from app.schemas.node_metrics import NodeMetricsHistory
+from app.schemas.stress_test import StressTestReport, StressTestRequest
 from app.services.node_metrics_service import get_metrics_history
 from app.services.node_service import NodeService
+from app.services.stress_test_service import stress_test_service
 
 router = APIRouter(prefix="/nodes", tags=["nodes"])
 
@@ -58,6 +60,23 @@ async def shutdown_all_nodes(
         return_exceptions=True,
     )
     return {"status": "shutting_down", "count": len(nodes)}
+
+
+@router.post("/stress-test", response_model=StressTestReport)
+async def run_stress_test(
+    request: StressTestRequest,
+    service: NodeService = Depends(get_node_service),
+    _: None = Depends(require_admin),
+) -> StressTestReport:
+    # Loads every node's CPU for the full duration and watches vcgencmd
+    # live - this is a diagnostic tool for exactly the power-delivery class
+    # of failure it can also trigger (see docs/decisions.md, 2026-09-08
+    # incident): on genuinely marginal hardware a node can brown out and
+    # reboot mid-test. That is a real result the report surfaces
+    # (verdict="crashed_or_unreachable"), not a bug to be hidden - callers
+    # must not assume this endpoint can never cause a node restart.
+    nodes = await service.list_nodes()
+    return await stress_test_service.run(nodes, request.duration_seconds)
 
 
 @router.get("/{node_id}/metrics/history", response_model=NodeMetricsHistory)
